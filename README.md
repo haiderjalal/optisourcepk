@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OptiSource PK
 
-## Getting Started
+Wholesale optical supply website for **OptiSource PK — The Optical Supply**.
+A lead-generation site: visitors browse the trade catalogue, build a request
+list, and submit a trade inquiry. **No payment is taken anywhere on the site.**
 
-First, run the development server:
+> Your Partner in Clear Vision
+
+---
+
+## Stack
+
+| Concern    | Choice                                        |
+| ---------- | --------------------------------------------- |
+| Framework  | Next.js 16 (App Router) · React 19            |
+| Language   | TypeScript, strict                            |
+| Styling    | Tailwind CSS v4 (`@theme` tokens)             |
+| 3D         | React Three Fiber + drei (`three`)            |
+| Motion     | Motion (`motion/react`) + Lenis smooth scroll |
+| Forms      | React Hook Form + Zod                         |
+| Icons      | Lucide React                                  |
+| Email      | Resend (optional — see Environment)           |
+| Deployment | Vercel                                        |
+
+---
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+| Script              | Does                          |
+| ------------------- | ----------------------------- |
+| `npm run dev`       | Dev server                    |
+| `npm run build`     | Production build              |
+| `npm run start`     | Serve the production build    |
+| `npm run lint`      | ESLint (incl. React Compiler) |
+| `npm run typecheck` | `tsc --noEmit`                |
+| `npm run format`    | Prettier write                |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+See [`.env.example`](.env.example). Only `NEXT_PUBLIC_SITE_URL` is required
+to run.
 
-To learn more about Next.js, take a look at the following resources:
+Inquiry notifications are **optional by design**: without `RESEND_API_KEY`
+and `INQUIRY_FROM_EMAIL`, `POST /api/inquiries` still validates, accepts and
+logs the submission with a reference — a missing key never silently loses a
+lead. Set both before launch.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Architecture
 
-## Deploy on Vercel
+```
+UI (app/, components/)
+      ↓
+Hooks / feature state (features/, hooks/)
+      ↓
+Services (services/)      ← business rules live here
+      ↓
+Data (data/)              ← swap for Supabase when live stock exists
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Key directories:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| Path                   | Holds                                                  |
+| ---------------------- | ------------------------------------------------------ |
+| `src/app`              | Routes only — no business logic                        |
+| `src/components/ui`    | Generic primitives (Button, Badge, SectionHeading)     |
+| `src/components/three` | The WebGL hero — lens geometry, iris, backdrop shader  |
+| `src/features/inquiry` | Request list store + inquiry form                      |
+| `src/services`         | `inquiry.service.ts` — notification + business rules   |
+| `src/lib`              | `site.ts` (copy & contact), validations, logger, utils |
+| `src/data`             | Catalogue: categories + products                       |
+
+Full notes in [`docs/architecture.md`](docs/architecture.md).
+
+---
+
+## Editing content
+
+Almost all copy changes are one of two files:
+
+- **Contact details, nav, brand statements** → `src/lib/site.ts`
+- **Catalogue** → `src/data/categories.ts` and `src/data/products.ts`
+
+Adding a product adds its page, sitemap entry and structured data
+automatically — routes are generated from the data.
+
+---
+
+## Before launch
+
+- [ ] Replace the placeholder contact block in `src/lib/site.ts` with live
+      phone, WhatsApp, email and address
+- [ ] Set `NEXT_PUBLIC_SITE_URL` to the production domain
+- [ ] Configure `RESEND_API_KEY`, `INQUIRY_FROM_EMAIL`,
+      `INQUIRY_NOTIFICATION_EMAIL`
+- [ ] Replace indicative prices and minimum order quantities with live trade
+      rates
+- [ ] Add an Open Graph image at `public/og.png` and reference it in
+      `src/app/layout.tsx`
+- [ ] Confirm every statistic in `src/components/sections/WhySection.tsx` is
+      accurate — they are currently illustrative
+
+`robots.ts` already blocks indexing on any non-production Vercel
+environment, so preview deployments stay out of search.
+
+---
+
+## Brand
+
+Palette, typography and the logo reconstruction are documented in
+[`docs/brand.md`](docs/brand.md). Source brand book imagery lives in
+`brandbook/`.
