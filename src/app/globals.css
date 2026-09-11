@@ -7,31 +7,32 @@
    ============================================================ */
 
 @theme {
-  /* Brand navy — the signage wall / rigid box colour */
-  --color-navy-50: #eef2f8;
-  --color-navy-100: #d8e0ee;
-  --color-navy-200: #b0c0da;
-  --color-navy-300: #7d93b8;
-  --color-navy-400: #4f6b98;
-  --color-navy-500: #2f4a76;
-  --color-navy-600: #1c3055;
-  --color-navy-700: #16294a;
-  --color-navy-800: #10203a;
-  --color-navy-900: #0b1626;
-  --color-navy-950: #060d18;
+  /* Brand navy — sampled from the supplied logo artwork (#0f2741) and the
+     dark lockup ground (#082140). */
+  --color-navy-50: #eef2f7;
+  --color-navy-100: #d5dfea;
+  --color-navy-200: #adbfd4;
+  --color-navy-300: #7a94b4;
+  --color-navy-400: #4c6a91;
+  --color-navy-500: #2a486d;
+  --color-navy-600: #173355;
+  --color-navy-700: #0f2741;
+  --color-navy-800: #082140;
+  --color-navy-900: #06182f;
+  --color-navy-950: #040f1d;
 
-  /* Electric blue — the accent rule under every lockup */
+  /* Electric blue — the accent rule used across the printed collateral */
   --color-accent-400: #60a5fa;
   --color-accent-500: #3b82f6;
   --color-accent-600: #2563eb;
   --color-accent-700: #1d4ed8;
 
-  /* Logo silver / slate — the secondary crescent of the eye mark */
-  --color-silver-100: #e8edf4;
-  --color-silver-200: #cfd8e6;
-  --color-silver-300: #b8c4d6;
-  --color-silver-400: #8fa0bc;
-  --color-silver-500: #6e809e;
+  /* Logo silver — the secondary aperture blade (#c2cbd4 light / #cdd4de dark) */
+  --color-silver-100: #f1f4f8;
+  --color-silver-200: #e2e7ee;
+  --color-silver-300: #cdd4de;
+  --color-silver-400: #c2cbd4;
+  --color-silver-500: #8c99a9;
 
   /* Neutral ground */
   --color-mist-50: #f8fafc;
@@ -56,6 +57,16 @@
   --animate-marquee: marquee 40s linear infinite;
   --animate-shimmer: shimmer 2.4s ease-in-out infinite;
   --animate-fade-in: fade-in 1.2s var(--ease-out-expo) both;
+  --animate-pop: pop 0.28s var(--ease-out-expo) both;
+
+  @keyframes pop {
+    from {
+      transform: scale(0);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
 
   @keyframes fade-in {
     from {
@@ -189,6 +200,111 @@
     black 92%,
     transparent
   );
+}
+
+/* ============================================================
+   Pointer tilt — see components/shared/TiltCard.tsx
+   ============================================================ */
+
+[data-tilt] {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --glare-x: 50%;
+  --glare-y: 50%;
+  transform-style: preserve-3d;
+  perspective: 900px;
+  transform: rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
+  transition: transform 0.35s var(--ease-out-expo);
+}
+
+/* While the pointer is over the card, track it without easing lag. */
+[data-tilt]:hover {
+  transition: transform 0.08s linear;
+}
+
+[data-tilt-glare] {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  background: radial-gradient(
+    420px circle at var(--glare-x) var(--glare-y),
+    rgb(37 99 235 / 0.1),
+    transparent 62%
+  );
+}
+
+[data-tilt]:hover [data-tilt-glare] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tilt] {
+    transform: none !important;
+  }
+}
+
+/* ============================================================
+   Scroll reveals
+
+   Driven by a `data-revealed` attribute that `components/shared/Reveal.tsx`
+   toggles from an IntersectionObserver. Keeping the transition in CSS is why
+   no motion library is needed on pages that only fade content in.
+   ============================================================ */
+
+[data-reveal] {
+  opacity: 0;
+  transition:
+    opacity 0.7s var(--ease-out-expo),
+    transform 0.7s var(--ease-out-expo);
+  will-change: opacity, transform;
+}
+
+[data-reveal="up"] {
+  transform: translateY(24px);
+}
+[data-reveal="left"] {
+  transform: translateX(24px);
+}
+[data-reveal="right"] {
+  transform: translateX(-24px);
+}
+
+[data-reveal][data-revealed],
+[data-stagger][data-revealed] [data-reveal] {
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
+
+/* Sequence direct children of a stagger group */
+[data-stagger] > *:nth-child(2) {
+  transition-delay: 70ms;
+}
+[data-stagger] > *:nth-child(3) {
+  transition-delay: 140ms;
+}
+[data-stagger] > *:nth-child(4) {
+  transition-delay: 210ms;
+}
+[data-stagger] > *:nth-child(5) {
+  transition-delay: 280ms;
+}
+[data-stagger] > *:nth-child(6) {
+  transition-delay: 350ms;
+}
+[data-stagger] > *:nth-child(n + 7) {
+  transition-delay: 420ms;
+}
+
+/* Anything still hidden when motion is reduced must simply be visible. */
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 /* ============================================================

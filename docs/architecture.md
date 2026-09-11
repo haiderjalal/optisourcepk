@@ -74,9 +74,10 @@ first subscribe, and syncs across browser tabs through the `storage` event —
 without a mount effect that writes state. Any client component can call
 `useQuote()` directly; there is no provider to wrap.
 
-Lines are validated on read: anything that no longer resolves to a catalogue
-product is dropped, because the catalogue changes more often than a
-visitor's saved list.
+The store itself is catalogue-free (see _Payload budget_), so a saved line is
+shape-validated on read and resolved later: `useQuoteItems` drops anything
+that no longer matches a product and prunes it from storage, because the
+catalogue changes more often than a visitor's saved list.
 
 ## Validation
 
@@ -116,6 +117,49 @@ do not hear back — rather than being asked to retype everything.
   moving it behind Supabase means rewriting those functions and nothing else.
 - **Filtering** happens in the browser. Correct for a few dozen lines; move
   to `searchParams` plus a server query once the catalogue needs pagination.
+
+## Payload budget
+
+Measured against a production build, gzipped, as served.
+
+| Route          | Initial JS | HTML  |
+| -------------- | ---------- | ----- |
+| `/`            | 203 KB     | 37 KB |
+| `/about`       | 199 KB     | 15 KB |
+| `/catalogue`   | 245 KB     | 27 KB |
+| `/inquiry`     | 249 KB     | 13 KB |
+| product detail | 241 KB     | 20 KB |
+
+Roughly **152 KB of that is React plus the App Router client runtime** — the
+floor for this stack. The application's own code is the remaining ~50 KB.
+Fonts add 79 KB once (two preloaded variable faces, immutable and cached).
+
+Three rules keep it there:
+
+1. **Nothing heavy in the root layout or the header.** The header renders on
+   every page, so anything it imports is site-wide. It therefore uses a
+   passive scroll listener rather than a motion value, CSS rather than a
+   presence library for the mobile sheet, and `useQuote` rather than
+   `useQuoteItems`.
+
+2. **The catalogue never reaches the client as JavaScript.** It used to: the
+   header's badge count pulled `useQuote` → `quoteStore` → `data/products`,
+   shipping all 23 KB of product data to every visitor to render a number.
+   `quoteStore` now imports nothing from `@/data`, and each saved line carries
+   its own MOQ so quantities can still be clamped. Catalogue pages pass
+   products to client components as props, which travel in the RSC payload —
+   not the bundle.
+
+3. **Animation libraries are opt-in per page.** `Reveal`, `Stagger`,
+   `TiltCard`, `CountUp`, `SupplyFlow` and `AddToQuoteButton` are
+   IntersectionObserver plus CSS. `motion` now loads only on `/catalogue`
+   (filter layout animations) and `/inquiry`. The homepage, about,
+   capabilities, contact and bulk-supply ship none of it.
+
+Also split out: `three` and `@react-three/drei` (a 972 KB chunk that loads
+only when the hero scene passes its gates), and the inquiry form with its
+Zod schema and React Hook Form (~100 KB, loaded after the inquiry page
+paints).
 
 ## SEO
 

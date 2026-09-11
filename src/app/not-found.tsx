@@ -12,7 +12,7 @@ export default function NotFound() {
       />
 
       <div className="container-brand relative text-center">
-        <LogoMark className="mx-auto size-16" id="notfound" />
+        <LogoMark tone="inverted" className="mx-auto w-24" />
         <p className="eyebrow text-accent-400 mt-8">Error 404</p>
         <h1 className="mt-5 text-4xl font-bold text-white sm:text-5xl">
           Out of focus.

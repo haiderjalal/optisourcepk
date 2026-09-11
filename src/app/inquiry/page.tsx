@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Clock, Mail, MessageCircle, Phone } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
-import { InquiryForm } from "@/features/inquiry/InquiryForm";
+import { InquiryFormLoader } from "@/features/inquiry/InquiryFormLoader";
 import { RequestList } from "@/features/inquiry/RequestList";
 import { CONTACT } from "@/lib/site";
 
@@ -41,7 +41,7 @@ export default function InquiryPage() {
       <div className="container-brand py-14 lg:py-20">
         <div className="grid gap-10 lg:grid-cols-[1.25fr_1fr] lg:gap-14">
           <div className="order-2 lg:order-1">
-            <InquiryForm />
+            <InquiryFormLoader />
           </div>
 
           <aside className="order-1 space-y-6 lg:order-2">

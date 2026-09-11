@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useSyncExternalStore } from "react";
-import { getProductById } from "@/data/products";
-import type { Product, QuoteLine } from "@/types/catalogue";
+import type { QuoteLine } from "@/types/catalogue";
 import {
   addLine,
   clearLines,
@@ -15,17 +14,10 @@ import {
 
 export { MAX_QUOTE_LINES } from "./quoteStore";
 
-export interface QuoteItem extends QuoteLine {
-  product: Product;
-  lineTotal: number;
-}
-
 export interface QuoteView {
   lines: QuoteLine[];
-  items: QuoteItem[];
   count: number;
-  subtotal: number;
-  add: (productId: string, quantity?: number) => void;
+  add: (productId: string, moq: number, quantity?: number) => void;
   setQuantity: (productId: string, quantity: number) => void;
   remove: (productId: string) => void;
   clear: () => void;
@@ -36,30 +28,20 @@ export interface QuoteView {
 /**
  * Read the request list.
  *
- * There is no context provider: the store is a module singleton, so any
- * client component can subscribe directly without being wrapped.
+ * Catalogue-free on purpose — the header subscribes to this on every page, so
+ * anything imported here ships site-wide. Use `useQuoteItems` when you need
+ * resolved product detail.
+ *
+ * There is no context provider: the store is a module singleton, so any client
+ * component can subscribe directly without being wrapped.
  */
 export function useQuote(): QuoteView {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  return useMemo<QuoteView>(() => {
-    const items = state.lines.flatMap<QuoteItem>((line) => {
-      const product = getProductById(line.productId);
-      if (!product) return [];
-      return [
-        {
-          ...line,
-          product,
-          lineTotal: product.indicativePrice * line.quantity,
-        },
-      ];
-    });
-
-    return {
+  return useMemo<QuoteView>(
+    () => ({
       lines: state.lines,
-      items,
-      count: items.length,
-      subtotal: items.reduce((total, item) => total + item.lineTotal, 0),
+      count: state.lines.length,
       add: addLine,
       setQuantity: setLineQuantity,
       remove: removeLine,
@@ -67,6 +49,7 @@ export function useQuote(): QuoteView {
       has: (productId) =>
         state.lines.some((line) => line.productId === productId),
       hydrated: state.hydrated,
-    };
-  }, [state]);
+    }),
+    [state],
+  );
 }

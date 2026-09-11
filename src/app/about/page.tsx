@@ -63,7 +63,7 @@ export default function AboutPage() {
                 aria-hidden
               />
               <div className="relative flex flex-col items-start">
-                <LogoMark className="size-20" id="about" />
+                <LogoMark tone="inverted" className="w-28" />
                 <p className="font-display mt-8 text-2xl leading-tight font-bold text-white">
                   Better optics,
                   <br />

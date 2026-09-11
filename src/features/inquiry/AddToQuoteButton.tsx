@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Plus } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useQuote } from "./useQuote";
-import type { Product } from "@/types/catalogue";
 
 /**
  * Adds a product to the visitor's request list at its minimum order
  * quantity. Confirms inline for a beat rather than firing a toast — the
  * feedback belongs where the click happened.
+ *
+ * The swap is a CSS cross-fade: this button renders on every catalogue card,
+ * so it must not drag an animation library onto the page.
  */
 export function AddToQuoteButton({
   product,
@@ -20,7 +22,8 @@ export function AddToQuoteButton({
   className,
   label = "Add to request",
 }: {
-  product: Product;
+  /** Only what the button needs — passing the whole record bloats the payload. */
+  product: { id: string; name: string; moq: number };
   quantity?: number;
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
@@ -29,11 +32,15 @@ export function AddToQuoteButton({
 }) {
   const { add } = useQuote();
   const [justAdded, setJustAdded] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
 
   function handleAdd() {
-    add(product.id, quantity);
+    add(product.id, product.moq, quantity);
     setJustAdded(true);
-    window.setTimeout(() => setJustAdded(false), 1800);
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setJustAdded(false), 1800);
   }
 
   return (
@@ -45,33 +52,29 @@ export function AddToQuoteButton({
       className={className}
       aria-label={`Add ${product.name} to your request list`}
     >
-      <AnimatePresence mode="wait" initial={false}>
-        {justAdded ? (
-          <motion.span
-            key="added"
-            className="flex items-center gap-2"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-          >
-            <Check className="size-4" aria-hidden />
-            Added
-          </motion.span>
-        ) : (
-          <motion.span
-            key="idle"
-            className="flex items-center gap-2"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-          >
-            <Plus className="size-4" aria-hidden />
-            {label}
-          </motion.span>
-        )}
-      </AnimatePresence>
+      {/* Both labels sit in the same grid cell so the button keeps a stable
+          width through the swap. */}
+      <span className="grid place-items-center">
+        <span
+          className={cn(
+            "col-start-1 row-start-1 flex items-center gap-2 transition-opacity duration-150",
+            justAdded ? "opacity-0" : "opacity-100",
+          )}
+        >
+          <Plus className="size-4" aria-hidden />
+          {label}
+        </span>
+        <span
+          aria-hidden={!justAdded}
+          className={cn(
+            "col-start-1 row-start-1 flex items-center gap-2 transition-opacity duration-150",
+            justAdded ? "opacity-100" : "opacity-0",
+          )}
+        >
+          <Check className="size-4" aria-hidden />
+          Added
+        </span>
+      </span>
     </Button>
   );
 }

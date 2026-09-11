@@ -3,12 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  AnimatePresence,
-  motion,
-  useMotionValueEvent,
-  useScroll,
-} from "motion/react";
 import { ArrowRight, Menu, Phone, FileText, X } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { ButtonLink } from "@/components/ui/button";
@@ -19,7 +13,6 @@ import { cn } from "@/lib/utils";
 export function Header() {
   const pathname = usePathname();
   const { count, hydrated } = useQuote();
-  const { scrollY } = useScroll();
   const [condensed, setCondensed] = useState(false);
 
   // The sheet remembers which route it was opened on, so a navigation closes
@@ -30,9 +23,14 @@ export function Header() {
   const openMenu = () => setMenu({ open: true, route: pathname });
   const closeMenu = () => setMenu({ open: false, route: pathname });
 
-  useMotionValueEvent(scrollY, "change", (value) => {
-    setCondensed(value > 24);
-  });
+  // A passive scroll listener rather than a motion value: the header is on
+  // every page, so importing an animation library here would ship it site-wide.
+  useEffect(() => {
+    const onScroll = () => setCondensed(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   // Lock the page behind the sheet.
   useEffect(() => {
@@ -88,7 +86,7 @@ export function Header() {
             className="shrink-0"
             aria-label={`${SITE.name} — home`}
           >
-            <Logo id="header" />
+            <Logo />
           </Link>
 
           <nav
@@ -109,10 +107,9 @@ export function Header() {
               >
                 {link.label}
                 {isActive(link.href) && (
-                  <motion.span
-                    layoutId="nav-active"
+                  <span
                     className="bg-accent-600 absolute inset-x-2.5 -bottom-0.5 h-0.5 rounded-full xl:inset-x-3.5"
-                    transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    aria-hidden
                   />
                 )}
               </Link>
@@ -132,14 +129,13 @@ export function Header() {
                   : "Request list"}
               </span>
               {hydrated && count > 0 && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="bg-accent-600 absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full text-[0.625rem] font-bold text-white"
+                <span
+                  key={count}
+                  className="bg-accent-600 animate-pop absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full text-[0.625rem] font-bold text-white"
                   aria-hidden
                 >
                   {count}
-                </motion.span>
+                </span>
               )}
             </Link>
 
@@ -168,27 +164,25 @@ export function Header() {
         </div>
       </div>
 
-      <AnimatePresence>
-        {menuOpen && <MobileMenu onClose={closeMenu} />}
-      </AnimatePresence>
+      <MobileMenu open={menuOpen} onClose={closeMenu} />
     </header>
   );
 }
 
-function MobileMenu({ onClose }: { onClose: () => void }) {
+function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
-    <motion.div
-      className="bg-navy-900 fixed inset-0 z-50 lg:hidden"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.22 }}
+    <div
+      data-open={open ? "" : undefined}
+      // Kept mounted and hidden so the fade works both ways without an
+      // presence library; `inert` keeps it out of the tab order while closed.
+      inert={!open}
+      className="bg-navy-900 invisible fixed inset-0 z-50 opacity-0 transition-[opacity,visibility] duration-200 data-open:visible data-open:opacity-100 lg:hidden"
     >
       <div className="grid-blueprint absolute inset-0 opacity-30" aria-hidden />
 
       <div className="relative flex h-full flex-col">
         <div className="container-brand flex h-16 items-center justify-between">
-          <Logo inverted compact id="menu" />
+          <Logo inverted compact />
           <button
             type="button"
             onClick={onClose}
@@ -203,20 +197,15 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
           className="container-brand flex flex-1 flex-col justify-center gap-1"
           aria-label="Mobile"
         >
-          {PRIMARY_NAV.map((link, index) => (
-            <motion.div
+          {PRIMARY_NAV.map((link) => (
+            <Link
               key={link.href}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.04 * index + 0.06, duration: 0.4 }}
+              href={link.href}
+              onClick={onClose}
+              className="font-display block border-b border-white/8 py-4 text-2xl font-semibold text-white"
             >
-              <Link
-                href={link.href}
-                className="font-display block border-b border-white/8 py-4 text-2xl font-semibold text-white"
-              >
-                {link.label}
-              </Link>
-            </motion.div>
+              {link.label}
+            </Link>
           ))}
         </nav>
 
@@ -234,6 +223,6 @@ function MobileMenu({ onClose }: { onClose: () => void }) {
           </a>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

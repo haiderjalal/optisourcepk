@@ -5,11 +5,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { ProductGlyph } from "@/components/shared/ProductGlyph";
 import { ButtonLink } from "@/components/ui/button";
-import { useQuote } from "./useQuote";
+import { useQuoteItems } from "./useQuoteItems";
 import { formatPKR } from "@/lib/utils";
 
 export function RequestList() {
-  const { items, subtotal, setQuantity, remove, clear, hydrated } = useQuote();
+  const { items, subtotal, setQuantity, remove, clear, hydrated } =
+    useQuoteItems();
 
   if (!hydrated) {
     return (

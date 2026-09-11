@@ -1,113 +1,119 @@
 "use client";
 
-import { motion, useReducedMotion, type Variants } from "motion/react";
+import { useCallback, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
-const DISTANCE = 24;
-
 /**
- * Scroll-triggered entrance. One component so every reveal on the site
- * shares an easing curve and distance — and so `prefers-reduced-motion`
- * is honoured in exactly one place.
+ * Scroll-triggered entrances.
+ *
+ * Deliberately IntersectionObserver + CSS rather than a motion library: these
+ * are used on nearly every page, so anything imported here ships site-wide.
+ * The components only toggle a `data-revealed` attribute; the transition
+ * itself lives in `globals.css`, where `prefers-reduced-motion` already
+ * neutralises it.
  */
+function useRevealed(): {
+  ref: (node: HTMLElement | null) => void;
+  revealed: boolean;
+} {
+  const [revealed, setRevealed] = useState(false);
+  const observer = useRef<IntersectionObserver | null>(null);
+
+  // A callback ref rather than an object ref: it types cleanly across every
+  // element the `as` prop allows, and attaches the moment the node exists.
+  const ref = useCallback((node: HTMLElement | null) => {
+    observer.current?.disconnect();
+    observer.current = null;
+    if (!node) return;
+
+    // No observer (a crawler, or a very old browser) — show it immediately.
+    if (typeof IntersectionObserver === "undefined") {
+      setRevealed(true);
+      return;
+    }
+
+    const next = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setRevealed(true);
+        next.disconnect();
+      },
+      { rootMargin: "0px 0px -80px 0px" },
+    );
+    next.observe(node);
+    observer.current = next;
+  }, []);
+
+  return { ref, revealed };
+}
+
+type RevealTag = "div" | "li" | "section" | "span";
+
 export function Reveal({
   children,
   className,
   delay = 0,
   direction = "up",
-  as = "div",
+  as: Tag = "div",
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Seconds. */
   delay?: number;
   direction?: "up" | "left" | "right" | "none";
-  as?: "div" | "li" | "section" | "span";
+  as?: RevealTag;
 }) {
-  const reduced = useReducedMotion();
-  const MotionTag = motion[as];
-
-  const offset = reduced
-    ? {}
-    : direction === "up"
-      ? { y: DISTANCE }
-      : direction === "left"
-        ? { x: DISTANCE }
-        : direction === "right"
-          ? { x: -DISTANCE }
-          : {};
+  const { ref, revealed } = useRevealed();
 
   return (
-    <MotionTag
+    <Tag
+      ref={ref}
+      data-reveal={direction}
+      data-revealed={revealed ? "" : undefined}
       className={cn(className)}
-      initial={{ opacity: 0, ...offset }}
-      whileInView={{ opacity: 1, x: 0, y: 0 }}
-      viewport={{ once: true, margin: "-80px" }}
-      transition={{
-        duration: reduced ? 0 : 0.7,
-        delay: reduced ? 0 : delay,
-        ease: [0.16, 1, 0.3, 1],
-      }}
+      style={delay ? { transitionDelay: `${delay}s` } : undefined}
     >
       {children}
-    </MotionTag>
+    </Tag>
   );
 }
 
-/** Staggers direct `Reveal`-less children. Pair with `StaggerItem`. */
-const containerVariants: Variants = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } },
-};
-
-const itemVariants: Variants = {
-  hidden: { opacity: 0, y: DISTANCE },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
-  },
-};
-
+/** Reveals its direct children in sequence. Pair with `StaggerItem`. */
 export function Stagger({
   children,
   className,
-  as = "div",
+  as: Tag = "div",
 }: {
   children: React.ReactNode;
   className?: string;
   as?: "div" | "ul";
 }) {
-  const MotionTag = motion[as];
+  const { ref, revealed } = useRevealed();
+
   return (
-    <MotionTag
+    <Tag
+      ref={ref}
+      data-stagger=""
+      data-revealed={revealed ? "" : undefined}
       className={cn(className)}
-      variants={containerVariants}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, margin: "-80px" }}
     >
       {children}
-    </MotionTag>
+    </Tag>
   );
 }
 
 export function StaggerItem({
   children,
   className,
-  as = "div",
+  as: Tag = "div",
 }: {
   children: React.ReactNode;
   className?: string;
   as?: "div" | "li";
 }) {
-  const reduced = useReducedMotion();
-  const MotionTag = motion[as];
   return (
-    <MotionTag
-      className={cn(className)}
-      variants={reduced ? undefined : itemVariants}
-    >
+    <Tag data-reveal="up" className={cn(className)}>
       {children}
-    </MotionTag>
+    </Tag>
   );
 }

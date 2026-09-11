@@ -6,7 +6,7 @@ Everything here was derived from the OptiSource PK brand book imagery in
 ## Logotype
 
 `OPTISOURCE` in bold with `PK` set in the logo silver, with the descriptor
-`THE OPTICAL SUPPLY` beneath in wide-tracked uppercase, and the electric-blue
+`WHOLESALE OPTICS` beneath in wide-tracked uppercase, and the rule
 rule under the lockup.
 
 Implemented in `src/components/shared/Logo.tsx` as two components:
@@ -17,9 +17,27 @@ Implemented in `src/components/shared/Logo.tsx` as two components:
 
 ### The mark
 
-Two interlocking crescents spiralling around a central iris, tilted -28°.
-Drawn as vector geometry on a 100×100 grid rather than shipped as a raster,
-so it stays crisp at every size and inherits `currentColor` in `mono` tone.
+Two interlocking aperture blades around a solid pupil.
+
+`src/components/shared/LogoMark.tsx` holds paths **vector-traced from the
+supplied artwork** (`brandbook/logo.jpeg`) rather than a reconstruction, so
+the silhouette is the real mark. It is inline SVG — no network request, crisp
+at any size, and recolourable per ground.
+
+The mark is **1.52 : 1**, not square. Always size it by width (`w-11`,
+`w-24`); `size-*` will letterbox it.
+
+Three tones:
+
+| `tone`     | Use on            | Primary blade + pupil | Secondary blade |
+| ---------- | ----------------- | --------------------- | --------------- |
+| `colour`   | light grounds     | `#0f2741`             | `#c2cbd4`       |
+| `inverted` | navy grounds      | `#ffffff`             | `#cdd4de`       |
+| `mono`     | single-colour use | `currentColor`        | `currentColor`  |
+
+To re-trace after an artwork change: threshold the JPEG into per-colour masks
+with PIL, run each through `potrace` (2× upscale, `optTolerance ~1.4`,
+`turdSize ~200`), then normalise the coordinates into a `0 0 100 65.79` box.
 
 ## Palette
 

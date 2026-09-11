@@ -1,7 +1,3 @@
-"use client";
-
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
 import {
   ClipboardCheck,
   PackageCheck,
@@ -9,6 +5,7 @@ import {
   Truck,
   type LucideIcon,
 } from "lucide-react";
+import { Reveal, Stagger, StaggerItem } from "@/components/shared/Reveal";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 interface Step {
@@ -51,15 +48,6 @@ const STEPS: Step[] = [
 ];
 
 export function SupplyFlow() {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start 75%", "end 55%"],
-  });
-
-  // The progress rail draws itself as the section passes through the viewport.
-  const railScale = useTransform(scrollYProgress, [0, 1], [0, 1]);
-
   return (
     <section className="bg-navy-900 relative overflow-hidden py-20 lg:py-28">
       <div className="grid-blueprint absolute inset-0 opacity-20" aria-hidden />
@@ -68,7 +56,7 @@ export function SupplyFlow() {
         aria-hidden
       />
 
-      <div className="container-brand relative" ref={ref}>
+      <div className="container-brand relative">
         <SectionHeading
           inverted
           align="center"
@@ -78,39 +66,27 @@ export function SupplyFlow() {
         />
 
         <div className="relative mt-16">
-          {/* Rail — horizontal on desktop, vertical on mobile */}
-          <div
+          {/* Rail — draws itself once the section enters view. Horizontal on
+              desktop, vertical on mobile. */}
+          <Reveal
+            direction="none"
             className="absolute top-7 right-0 left-0 hidden h-px bg-white/10 lg:block"
-            aria-hidden
           >
-            <motion.div
-              className="from-accent-600 to-accent-400 h-px origin-left bg-gradient-to-r"
-              style={{ scaleX: railScale }}
-            />
-          </div>
-          <div
+            <span className="from-accent-600 to-accent-400 block h-px origin-left scale-x-0 bg-gradient-to-r transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] [[data-revealed]>&]:scale-x-100" />
+          </Reveal>
+          <Reveal
+            direction="none"
             className="absolute top-0 bottom-0 left-7 w-px bg-white/10 lg:hidden"
-            aria-hidden
           >
-            <motion.div
-              className="from-accent-600 to-accent-400 w-px origin-top bg-gradient-to-b"
-              style={{ scaleY: railScale }}
-            />
-          </div>
+            <span className="from-accent-600 to-accent-400 block h-full w-px origin-top scale-y-0 bg-gradient-to-b transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] [[data-revealed]>&]:scale-y-100" />
+          </Reveal>
 
-          <ol className="grid gap-10 lg:grid-cols-4 lg:gap-8">
-            {STEPS.map(({ icon: Icon, step, title, detail }, index) => (
-              <motion.li
+          <Stagger as="ul" className="grid gap-10 lg:grid-cols-4 lg:gap-8">
+            {STEPS.map(({ icon: Icon, step, title, detail }) => (
+              <StaggerItem
+                as="li"
                 key={step}
                 className="relative flex gap-5 lg:block"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{
-                  duration: 0.6,
-                  delay: index * 0.1,
-                  ease: [0.16, 1, 0.3, 1],
-                }}
               >
                 <span className="bg-navy-800 relative z-10 grid size-14 shrink-0 place-items-center rounded-full ring-1 ring-white/12 ring-inset">
                   <Icon className="text-accent-400 size-5" aria-hidden />
@@ -127,9 +103,9 @@ export function SupplyFlow() {
                     {detail}
                   </p>
                 </div>
-              </motion.li>
+              </StaggerItem>
             ))}
-          </ol>
+          </Stagger>
         </div>
       </div>
     </section>

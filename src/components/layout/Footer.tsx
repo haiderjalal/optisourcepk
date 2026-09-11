@@ -57,7 +57,7 @@ export function Footer() {
         {/* Directory */}
         <div className="container-brand grid gap-12 py-14 lg:grid-cols-[1.4fr_repeat(3,1fr)] lg:py-16">
           <div>
-            <Logo inverted id="footer" />
+            <Logo inverted />
             <p className="text-silver-400 mt-6 max-w-xs text-sm leading-relaxed">
               {SITE.description}
             </p>

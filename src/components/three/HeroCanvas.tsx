@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
-import { useReducedMotion } from "motion/react";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 const HeroScene = dynamic(() => import("./HeroScene"), { ssr: false });
 
@@ -25,7 +25,7 @@ function supportsWebGL(): boolean {
  * composition in its own right — never an empty box.
  */
 export function HeroCanvas() {
-  const reduced = useReducedMotion();
+  const reduced = usePrefersReducedMotion();
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {

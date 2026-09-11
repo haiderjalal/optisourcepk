@@ -1,6 +1,6 @@
 # OptiSource PK
 
-Wholesale optical supply website for **OptiSource PK — The Optical Supply**.
+Wholesale optical supply website for **OptiSource PK — Wholesale Optics**.
 A lead-generation site: visitors browse the trade catalogue, build a request
 list, and submit a trade inquiry. **No payment is taken anywhere on the site.**
 

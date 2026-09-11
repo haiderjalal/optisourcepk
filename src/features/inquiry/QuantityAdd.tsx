@@ -20,7 +20,7 @@ export function QuantityAdd({ product }: { product: Product }) {
   const step = product.moq;
 
   function handleAdd() {
-    add(product.id, quantity);
+    add(product.id, product.moq, quantity);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 2600);
   }

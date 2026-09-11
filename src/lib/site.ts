@@ -6,8 +6,9 @@
 
 export const SITE = {
   name: "OptiSource PK",
-  legalName: "OptiSource PK — The Optical Supply",
-  descriptor: "The Optical Supply",
+  legalName: "OptiSource PK — Wholesale Optics",
+  /** The descriptor line in the logo lockup. */
+  descriptor: "Wholesale Optics",
   tagline: "Your Partner in Clear Vision",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://optisource.pk",
   description:

@@ -6,6 +6,9 @@ import { SmoothScroll } from "@/components/layout/SmoothScroll";
 import { CONTACT, SITE } from "@/lib/site";
 import "./globals.css";
 
+// Both are served as variable fonts (~79 KB total, preloaded and immutable).
+// Pinning `weight` does not shrink them — Google returns the variable file
+// regardless — and would risk synthetic bold, so the full axis is kept.
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],

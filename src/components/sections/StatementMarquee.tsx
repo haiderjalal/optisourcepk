@@ -23,7 +23,7 @@ export function StatementMarquee() {
               <span className="eyebrow text-navy-400 whitespace-nowrap">
                 {statement}
               </span>
-              <LogoMark className="size-4 opacity-40" id={`mq-${index}`} />
+              <LogoMark className="w-5 opacity-40" />
             </div>
           ))}
         </div>

@@ -1,7 +1,6 @@
-import { getProductById } from "@/data/products";
 import type { QuoteLine } from "@/types/catalogue";
 
-const STORAGE_KEY = "optisource.quote.v1";
+const STORAGE_KEY = "optisource.quote.v2";
 
 /** Guard rail so a runaway loop cannot build an un-quotable request. */
 export const MAX_QUOTE_LINES = 40;
@@ -19,6 +18,12 @@ export interface QuoteState {
  * server snapshot (so hydration never mismatches), reads storage exactly once
  * on first subscribe, and keeps multiple tabs in step through the `storage`
  * event — all without a mount effect that writes state.
+ *
+ * This module deliberately imports NOTHING from `@/data`. The header reads it
+ * on every page just to render a badge count, so pulling the catalogue in here
+ * would ship the whole product list to every visitor. Each line therefore
+ * carries its own minimum order quantity, captured when it was added, and
+ * catalogue resolution lives in `useQuoteItems`.
  */
 const SERVER_STATE: QuoteState = { lines: [], hydrated: false };
 
@@ -34,25 +39,26 @@ function commit(lines: QuoteLine[]): void {
   notify();
 }
 
+function isLine(value: unknown): value is QuoteLine {
+  if (typeof value !== "object" || value === null) return false;
+  const line = value as QuoteLine;
+  return (
+    typeof line.productId === "string" &&
+    line.productId.length > 0 &&
+    Number.isFinite(line.quantity) &&
+    line.quantity > 0 &&
+    Number.isFinite(line.moq) &&
+    line.moq > 0
+  );
+}
+
 function read(): QuoteLine[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-
-    // Drop anything that no longer resolves to a catalogue product — the
-    // catalogue changes far more often than a visitor's saved request.
-    return parsed
-      .filter(
-        (line): line is QuoteLine =>
-          typeof line === "object" &&
-          line !== null &&
-          typeof (line as QuoteLine).productId === "string" &&
-          Number.isFinite((line as QuoteLine).quantity),
-      )
-      .filter((line) => Boolean(getProductById(line.productId)))
-      .slice(0, MAX_QUOTE_LINES);
+    return parsed.filter(isLine).slice(0, MAX_QUOTE_LINES);
   } catch {
     return [];
   }
@@ -105,11 +111,8 @@ function write(next: QuoteLine[]): void {
   commit(next);
 }
 
-export function addLine(productId: string, quantity?: number): void {
-  const product = getProductById(productId);
-  if (!product) return;
-
-  const requested = quantity ?? product.moq;
+export function addLine(productId: string, moq: number, quantity = moq): void {
+  const requested = Math.max(moq, Math.round(quantity));
   const existing = state.lines.find((line) => line.productId === productId);
 
   if (existing) {
@@ -124,19 +127,16 @@ export function addLine(productId: string, quantity?: number): void {
   }
 
   if (state.lines.length >= MAX_QUOTE_LINES) return;
-  write([...state.lines, { productId, quantity: requested }]);
+  write([...state.lines, { productId, quantity: requested, moq }]);
 }
 
 export function setLineQuantity(productId: string, quantity: number): void {
-  const product = getProductById(productId);
-  if (!product) return;
-
-  // Never let a line fall below the minimum order quantity we can quote.
-  const clamped = Math.max(product.moq, Math.round(quantity));
-
   write(
     state.lines.map((line) =>
-      line.productId === productId ? { ...line, quantity: clamped } : line,
+      line.productId === productId
+        ? // Never let a line fall below the minimum we can quote against.
+          { ...line, quantity: Math.max(line.moq, Math.round(quantity)) }
+        : line,
     ),
   );
 }
@@ -147,4 +147,14 @@ export function removeLine(productId: string): void {
 
 export function clearLines(): void {
   write([]);
+}
+
+/**
+ * Drop lines whose product no longer exists. Called by the resolver, which is
+ * the only place that knows the live catalogue — the list self-heals the
+ * first time the visitor opens their request.
+ */
+export function pruneLines(validIds: ReadonlySet<string>): void {
+  const kept = state.lines.filter((line) => validIds.has(line.productId));
+  if (kept.length !== state.lines.length) write(kept);
 }

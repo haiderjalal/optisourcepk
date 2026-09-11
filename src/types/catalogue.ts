@@ -46,4 +46,10 @@ export interface Product {
 export interface QuoteLine {
   productId: string;
   quantity: number;
+  /**
+   * Minimum order quantity, copied onto the line when it is added.
+   * Lets the request-list store clamp quantities without importing the
+   * catalogue — see `features/inquiry/quoteStore.ts`.
+   */
+  moq: number;
 }

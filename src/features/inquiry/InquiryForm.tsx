@@ -13,7 +13,7 @@ import {
   inquirySchema,
   type InquiryInput,
 } from "@/lib/validations/inquiry";
-import { useQuote } from "./useQuote";
+import { useQuoteItems } from "./useQuoteItems";
 import type { ApiResponse } from "@/types/api";
 
 type Status =
@@ -23,7 +23,7 @@ type Status =
   | { kind: "failed"; message: string };
 
 export function InquiryForm() {
-  const { lines, count, clear } = useQuote();
+  const { lines, count, clear } = useQuoteItems();
   const [status, setStatus] = useState<Status>({ kind: "idle" });
   const formId = useId();
 

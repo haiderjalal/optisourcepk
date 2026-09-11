@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactLenis } from "lenis/react";
-import { useReducedMotion } from "motion/react";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 /**
  * Site-wide inertial scrolling.
@@ -11,7 +11,7 @@ import { useReducedMotion } from "motion/react";
  * working. Disabled outright when the visitor asks for reduced motion.
  */
 export function SmoothScroll({ children }: { children: React.ReactNode }) {
-  const reduced = useReducedMotion();
+  const reduced = usePrefersReducedMotion();
 
   if (reduced) return <>{children}</>;
 
