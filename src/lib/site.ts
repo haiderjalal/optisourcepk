@@ -10,25 +10,25 @@ export const SITE = {
   /** The descriptor line in the logo lockup. */
   descriptor: "Wholesale Optics",
   tagline: "Your Partner in Clear Vision",
-  url: process.env.NEXT_PUBLIC_SITE_URL ?? "https://optisource.pk",
+  url: process.env.NEXT_PUBLIC_SITE_URL?.trim() || "https://optisource.pk",
   description:
     "Pakistan's wholesale optical supply partner. Lenses, frames, accessories, lab supplies and vision-care essentials — supplied in bulk to optical practices, labs and retailers nationwide.",
   locale: "en_PK",
 } as const;
 
 export const CONTACT = {
-  phone: "+92 42 3456 7890",
-  phoneHref: "tel:+924234567890",
-  whatsapp: "+92 300 1234567",
-  whatsappHref: "https://wa.me/923001234567",
-  email: "info@optisource.pk",
-  emailHref: "mailto:info@optisource.pk",
+  phone: "+92 51 232 4512",
+  phoneHref: "tel:+92512324512",
+  whatsapp: "+92 325 3965832",
+  whatsappHref: "https://wa.me/923253965832",
+  email: "info@optisourcepk.com",
+  emailHref: "mailto:info@optisourcepk.com",
   address: {
-    line1: "123 Optical Trade Centre",
-    city: "Lahore",
+    line1: "Shop 2 & 3 Basement, Nawaz Plaza, Jehangir Market, G-9/2",
+    city: "Islamabad",
     country: "Pakistan",
   },
-  hours: "Mon – Sat · 09:00 – 18:00 PKT",
+  hours: "Mon – Sat · 10:00 – 20:00 PKT",
 } as const;
 
 /** The four-word pillars printed on the brand book signage. */

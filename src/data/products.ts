@@ -102,7 +102,7 @@ export const PRODUCTS: Product[] = [
     name: "Photochromic 1.56 Grey",
     category: "lenses",
     range: "Photochromic",
-    tagline: "Fades back fast in Lahore heat.",
+    tagline: "Fades back fast in Islamabad heat.",
     description:
       "Grey photochromic with a fade-back profile tuned for high ambient temperature, where slower formulations stay dark indoors and frustrate patients.",
     specs: [

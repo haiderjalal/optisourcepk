@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
-import { SmoothScroll } from "@/components/layout/SmoothScroll";
 import { CONTACT, SITE } from "@/lib/site";
 import "./globals.css";
 
@@ -33,7 +32,7 @@ export const metadata: Metadata = {
     "wholesale optical supply Pakistan",
     "ophthalmic lenses wholesale",
     "optical frames bulk supplier",
-    "optical lab supplies Lahore",
+    "optical lab supplies Islamabad",
     "optometric equipment Pakistan",
     "frame parts and tools",
     "B2B optical distributor",
@@ -110,13 +109,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <SmoothScroll>
-          <Header />
-          <main id="main" className="flex-1">
-            {children}
-          </main>
-          <Footer />
-        </SmoothScroll>
+        <Header />
+        <main id="main" className="flex-1">
+          {children}
+        </main>
+        <Footer />
       </body>
     </html>
   );

@@ -25,7 +25,7 @@ Accepts a trade inquiry. Public, rate limited, no authentication.
   "businessName": "Vision Care Associates",
   "email": "ayesha@example.pk",
   "phone": "0300 1234567",
-  "city": "Lahore",
+  "city": "Islamabad",
   "businessType": "practice", // practice | retailer | lab | hospital | distributor | other
   "notes": "Need progressive 1.60 in volume.",
   "lines": [{ "productId": "lns-160-prog", "quantity": 40 }],
