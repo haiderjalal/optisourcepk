@@ -1,12 +1,13 @@
 import type { CategorySlug, Product } from "@/types/catalogue";
 
 /**
- * Indicative trade catalogue.
+ * Trade catalogue.
  *
- * Prices are indicative trade rates in PKR and are confirmed on a written
- * quotation — this site does not transact. Move this array behind a CMS or
- * Supabase table when live stock data becomes available; every consumer
- * already reads it through the accessors below.
+ * Deliberately carries no pricing and no minimum order quantity: the site
+ * publishes what we supply, and the trade desk quotes both against the
+ * customer's actual volume. Move this array behind a CMS or Supabase table
+ * when live stock data becomes available; every consumer already reads it
+ * through the accessors below.
  */
 export const PRODUCTS: Product[] = [
   // ── Ophthalmic Lenses ───────────────────────────────────────────────
@@ -27,9 +28,7 @@ export const PRODUCTS: Product[] = [
       { label: "Diameter", value: "65 / 70 mm" },
       { label: "Abbe value", value: "38" },
     ],
-    moq: 50,
     unit: "pairs",
-    indicativePrice: 950,
     featured: true,
     leadTime: "Ex-stock · 24–48 hrs",
   },
@@ -49,9 +48,7 @@ export const PRODUCTS: Product[] = [
       { label: "Power range", value: "-6.00 to +4.00 DS" },
       { label: "Warranty", value: "12 months against delamination" },
     ],
-    moq: 50,
     unit: "pairs",
-    indicativePrice: 1270,
     leadTime: "Ex-stock · 24–48 hrs",
   },
   {
@@ -70,9 +67,7 @@ export const PRODUCTS: Product[] = [
       { label: "Addition", value: "+0.75 to +3.50" },
       { label: "Coating", value: "HMC + hydrophobic" },
     ],
-    moq: 20,
     unit: "pairs",
-    indicativePrice: 2450,
     featured: true,
     leadTime: "Rx lab · 4–6 working days",
   },
@@ -91,9 +86,7 @@ export const PRODUCTS: Product[] = [
       { label: "Addition", value: "+0.75 to +3.00" },
       { label: "Coating", value: "Hard coat" },
     ],
-    moq: 50,
     unit: "pairs",
-    indicativePrice: 1180,
     leadTime: "Ex-stock · 24–48 hrs",
   },
   {
@@ -112,9 +105,7 @@ export const PRODUCTS: Product[] = [
       { label: "Fade-back", value: "~5 min to 70%" },
       { label: "UV", value: "UV400" },
     ],
-    moq: 30,
     unit: "pairs",
-    indicativePrice: 2150,
     leadTime: "Ex-stock · 48 hrs",
   },
   {
@@ -132,9 +123,7 @@ export const PRODUCTS: Product[] = [
       { label: "Residual reflex", value: "Light blue" },
       { label: "Base tint", value: "Clear" },
     ],
-    moq: 50,
     unit: "pairs",
-    indicativePrice: 1690,
     featured: true,
     leadTime: "Ex-stock · 24–48 hrs",
   },
@@ -156,9 +145,7 @@ export const PRODUCTS: Product[] = [
       { label: "Carton mix", value: "6 shapes × 4 colours" },
       { label: "Supplied with", value: "Demo lenses, hang tag" },
     ],
-    moq: 24,
     unit: "pieces",
-    indicativePrice: 1250,
     featured: true,
     leadTime: "Ex-stock · 3–5 working days",
   },
@@ -178,9 +165,7 @@ export const PRODUCTS: Product[] = [
       { label: "Finish", value: "IP plated, nickel-free" },
       { label: "Sizes", value: "52-18 / 54-18" },
     ],
-    moq: 24,
     unit: "pieces",
-    indicativePrice: 1480,
     leadTime: "Ex-stock · 3–5 working days",
   },
   {
@@ -198,9 +183,7 @@ export const PRODUCTS: Product[] = [
       { label: "Weight", value: "11 g" },
       { label: "Hardware", value: "Bushes + screws included" },
     ],
-    moq: 12,
     unit: "pieces",
-    indicativePrice: 2950,
     leadTime: "Ex-stock · 5 working days",
   },
   {
@@ -219,9 +202,7 @@ export const PRODUCTS: Product[] = [
       { label: "Sizes", value: "44-16 / 46-16 / 48-17" },
       { label: "Strap", value: "Silicone head strap included" },
     ],
-    moq: 24,
     unit: "pieces",
-    indicativePrice: 990,
     leadTime: "Ex-stock · 3–5 working days",
   },
   {
@@ -239,9 +220,7 @@ export const PRODUCTS: Product[] = [
       { label: "Carton mix", value: "5 shapes × 3 colours" },
       { label: "Supplied with", value: "Case, cloth, retail tag" },
     ],
-    moq: 24,
     unit: "pieces",
-    indicativePrice: 1650,
     leadTime: "Ex-stock · 3–5 working days",
   },
 
@@ -261,9 +240,7 @@ export const PRODUCTS: Product[] = [
       { label: "Colours", value: "6 stock colours" },
       { label: "Branding", value: "Foil block from 250 units" },
     ],
-    moq: 100,
     unit: "pieces",
-    indicativePrice: 210,
     leadTime: "Ex-stock · 48 hrs",
   },
   {
@@ -281,9 +258,7 @@ export const PRODUCTS: Product[] = [
       { label: "Coating safe", value: "AR, HMC, hydrophobic" },
       { label: "Refill", value: "5 L drum available" },
     ],
-    moq: 200,
     unit: "bottles",
-    indicativePrice: 180,
     featured: true,
     leadTime: "Ex-stock · 48 hrs",
   },
@@ -302,9 +277,7 @@ export const PRODUCTS: Product[] = [
       { label: "Edge", value: "Pinked" },
       { label: "Print", value: "Full-colour, from 500 units" },
     ],
-    moq: 250,
     unit: "pieces",
-    indicativePrice: 95,
     leadTime: "Ex-stock · 48 hrs",
   },
   {
@@ -321,9 +294,7 @@ export const PRODUCTS: Product[] = [
       { label: "Material", value: "Medical-grade silicone" },
       { label: "Colours", value: "8 stock colours" },
     ],
-    moq: 200,
     unit: "pieces",
-    indicativePrice: 120,
     leadTime: "Ex-stock · 48 hrs",
   },
   {
@@ -341,9 +312,7 @@ export const PRODUCTS: Product[] = [
       { label: "Weighting", value: "Bias to +1.50 – +2.50" },
       { label: "Supplied with", value: "Spinner, price tags" },
     ],
-    moq: 1,
     unit: "packs",
-    indicativePrice: 19800,
     leadTime: "Ex-stock · 3 working days",
   },
 
@@ -363,9 +332,7 @@ export const PRODUCTS: Product[] = [
       { label: "Adhesive", value: "High-tack, residue-free" },
       { label: "Compatible", value: "Most automatic edgers" },
     ],
-    moq: 5,
     unit: "packs",
-    indicativePrice: 3400,
     leadTime: "Ex-stock · 3 working days",
   },
   {
@@ -383,9 +350,7 @@ export const PRODUCTS: Product[] = [
       { label: "Substrate", value: "Resin, poly, glass" },
       { label: "Expected life", value: "≈ 12,000 lenses" },
     ],
-    moq: 1,
     unit: "pieces",
-    indicativePrice: 42000,
     leadTime: "Indent · 2–3 weeks",
   },
   {
@@ -403,9 +368,7 @@ export const PRODUCTS: Product[] = [
       { label: "Substrate", value: "CR-39, 1.56, 1.60" },
       { label: "Documentation", value: "Dwell-time chart included" },
     ],
-    moq: 1,
     unit: "sets",
-    indicativePrice: 28500,
     leadTime: "Ex-stock · 5 working days",
   },
   {
@@ -423,9 +386,7 @@ export const PRODUCTS: Product[] = [
       { label: "Substrate", value: "CR-39, 1.56" },
       { label: "Handling", value: "SDS supplied with every drum" },
     ],
-    moq: 2,
     unit: "drums",
-    indicativePrice: 8900,
     leadTime: "Ex-stock · 5 working days",
   },
   {
@@ -442,9 +403,7 @@ export const PRODUCTS: Product[] = [
       { label: "Particle size", value: "1.0 µm ±0.2" },
       { label: "Certification", value: "Per-batch particle-size report" },
     ],
-    moq: 1,
     unit: "drums",
-    indicativePrice: 15600,
     leadTime: "Indent · 2 weeks",
   },
 
@@ -464,9 +423,7 @@ export const PRODUCTS: Product[] = [
       { label: "Pack", value: "500 pairs, compartment box" },
       { label: "Material", value: "Medical-grade silicone" },
     ],
-    moq: 2,
     unit: "boxes",
-    indicativePrice: 4200,
     featured: true,
     leadTime: "Ex-stock · 48 hrs",
   },
@@ -485,9 +442,7 @@ export const PRODUCTS: Product[] = [
       { label: "Material", value: "Stainless, nickel-free" },
       { label: "Pack", value: "1,000 pcs, indexed case" },
     ],
-    moq: 2,
     unit: "cases",
-    indicativePrice: 3100,
     leadTime: "Ex-stock · 48 hrs",
   },
   {
@@ -504,9 +459,7 @@ export const PRODUCTS: Product[] = [
       { label: "Materials", value: "Acetate, silicone" },
       { label: "Pack", value: "200 pairs" },
     ],
-    moq: 2,
     unit: "boxes",
-    indicativePrice: 2600,
     leadTime: "Ex-stock · 48 hrs",
   },
   {
@@ -523,9 +476,7 @@ export const PRODUCTS: Product[] = [
       { label: "Pliers", value: "Nylon-jaw, box-joint" },
       { label: "Case", value: "Canvas roll" },
     ],
-    moq: 1,
     unit: "kits",
-    indicativePrice: 11400,
     leadTime: "Ex-stock · 5 working days",
   },
 
@@ -546,9 +497,7 @@ export const PRODUCTS: Product[] = [
       { label: "Cylinder", value: "±0.25 to ±6.00 D" },
       { label: "Certification", value: "Calibration certificate" },
     ],
-    moq: 1,
     unit: "sets",
-    indicativePrice: 68000,
     featured: true,
     leadTime: "Indent · 3–4 weeks",
   },
@@ -567,9 +516,7 @@ export const PRODUCTS: Product[] = [
       { label: "Control", value: "IR remote" },
       { label: "Power", value: "220 V AC" },
     ],
-    moq: 1,
     unit: "pieces",
-    indicativePrice: 34500,
     leadTime: "Indent · 2–3 weeks",
   },
   {
@@ -586,9 +533,7 @@ export const PRODUCTS: Product[] = [
       { label: "Types", value: "Plain, multi-pinhole, Maddox" },
       { label: "Material", value: "ABS with matte finish" },
     ],
-    moq: 5,
     unit: "sets",
-    indicativePrice: 2400,
     leadTime: "Ex-stock · 5 working days",
   },
   {
@@ -606,9 +551,7 @@ export const PRODUCTS: Product[] = [
       { label: "Testing", value: "Leak-tested per batch" },
       { label: "Branding", value: "Pad print from 1,000 units" },
     ],
-    moq: 2,
     unit: "cartons",
-    indicativePrice: 7200,
     leadTime: "Ex-stock · 48 hrs",
   },
   {
@@ -625,9 +568,7 @@ export const PRODUCTS: Product[] = [
       { label: "Material", value: "Perforated clear PVC" },
       { label: "Supplied with", value: "Hypoallergenic tape" },
     ],
-    moq: 5,
     unit: "packs",
-    indicativePrice: 3800,
     leadTime: "Ex-stock · 5 working days",
   },
 ];

@@ -9,13 +9,12 @@ import { CATEGORIES } from "@/data/categories";
 import { cn } from "@/lib/utils";
 import type { CategorySlug, Product } from "@/types/catalogue";
 
-type SortKey = "featured" | "price-asc" | "price-desc" | "moq-asc";
+type SortKey = "featured" | "name-asc" | "stock-first";
 
 const SORTS: { key: SortKey; label: string }[] = [
   { key: "featured", label: "Most requested" },
-  { key: "price-asc", label: "Price: low to high" },
-  { key: "price-desc", label: "Price: high to low" },
-  { key: "moq-asc", label: "Lowest minimum order" },
+  { key: "stock-first", label: "Ex-stock first" },
+  { key: "name-asc", label: "Name A–Z" },
 ];
 
 /**
@@ -55,14 +54,15 @@ export function CatalogueBrowser({
       );
     });
 
+    const exStock = (product: Product) =>
+      Number(product.leadTime.startsWith("Ex-stock"));
+
     return [...filtered].sort((a, b) => {
       switch (sort) {
-        case "price-asc":
-          return a.indicativePrice - b.indicativePrice;
-        case "price-desc":
-          return b.indicativePrice - a.indicativePrice;
-        case "moq-asc":
-          return a.moq - b.moq;
+        case "name-asc":
+          return a.name.localeCompare(b.name);
+        case "stock-first":
+          return exStock(b) - exStock(a) || a.name.localeCompare(b.name);
         default:
           return Number(Boolean(b.featured)) - Number(Boolean(a.featured));
       }

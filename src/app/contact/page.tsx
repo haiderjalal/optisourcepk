@@ -56,14 +56,14 @@ const FAQS = [
       "No. This site does not take payment. You build a request list, we send a written quotation, and settlement is arranged directly once you approve it.",
   },
   {
-    question: "Are the prices on the catalogue final?",
+    question: "Why are there no prices on the catalogue?",
     answer:
-      "They are indicative trade rates. Final pricing depends on volume, tier and current landed cost, and is confirmed on the quotation we send back.",
+      "Trade pricing depends on volume, account tier and current landed cost, so a published figure would be wrong for most customers. Send us a request list and we quote in writing, usually within one working day.",
   },
   {
     question: "What is the minimum order?",
     answer:
-      "Each line carries its own minimum order quantity, shown on the product. There is no overall minimum order value for an approved trade account.",
+      "It varies by line, and we confirm it on the quotation alongside the price. There is no overall minimum order value for an approved trade account — ask for what you need and we will tell you where the break quantities fall.",
   },
   {
     question: "How quickly will I hear back?",

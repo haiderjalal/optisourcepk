@@ -145,10 +145,9 @@ Three rules keep it there:
 2. **The catalogue never reaches the client as JavaScript.** It used to: the
    header's badge count pulled `useQuote` → `quoteStore` → `data/products`,
    shipping all 23 KB of product data to every visitor to render a number.
-   `quoteStore` now imports nothing from `@/data`, and each saved line carries
-   its own MOQ so quantities can still be clamped. Catalogue pages pass
-   products to client components as props, which travel in the RSC payload —
-   not the bundle.
+   `quoteStore` now imports nothing from `@/data` — a saved line is just a
+   product id and a quantity. Catalogue pages pass products to client
+   components as props, which travel in the RSC payload — not the bundle.
 
 3. **Animation libraries are opt-in per page.** `Reveal`, `Stagger`,
    `TiltCard`, `CountUp`, `SupplyFlow` and `AddToQuoteButton` are
@@ -160,6 +159,26 @@ Also split out: `three` and `@react-three/drei` (a 972 KB chunk that loads
 only when the hero scene passes its gates), and the inquiry form with its
 Zod schema and React Hook Form (~100 KB, loaded after the inquiry page
 paints).
+
+## Pricing and order quantities
+
+The catalogue publishes **neither unit prices nor minimum order quantities**,
+by decision. Trade pricing moves with volume, account tier and landed cost, so
+any published figure would be wrong for most customers.
+
+That decision is enforced end to end, not just hidden in the UI:
+
+- `Product` carries no `indicativePrice` and no `moq` — there is no stale
+  number to leak.
+- The request list is a product id plus a quantity. Quantities are a plain
+  count from 1, with no minimum to clamp against.
+- `Product` structured data emits an `Offer` with availability and seller but
+  **no `price`** — advertising a figure the page does not show would be
+  misleading, and would risk a Google rich-result mismatch.
+- The trade-desk notification lists lines and requested quantities only.
+
+Lead time (ex-stock vs indent) and the unit a line is counted in are still
+published — those are facts about supply, not commercial terms.
 
 ## SEO
 

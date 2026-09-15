@@ -1,6 +1,7 @@
 import type { QuoteLine } from "@/types/catalogue";
 
-const STORAGE_KEY = "optisource.quote.v2";
+// v3: lines no longer carry a minimum order quantity.
+const STORAGE_KEY = "optisource.quote.v3";
 
 /** Guard rail so a runaway loop cannot build an un-quotable request. */
 export const MAX_QUOTE_LINES = 40;
@@ -21,9 +22,8 @@ export interface QuoteState {
  *
  * This module deliberately imports NOTHING from `@/data`. The header reads it
  * on every page just to render a badge count, so pulling the catalogue in here
- * would ship the whole product list to every visitor. Each line therefore
- * carries its own minimum order quantity, captured when it was added, and
- * catalogue resolution lives in `useQuoteItems`.
+ * would ship the whole product list to every visitor. Catalogue resolution
+ * lives in `useQuoteItems`.
  */
 const SERVER_STATE: QuoteState = { lines: [], hydrated: false };
 
@@ -46,9 +46,7 @@ function isLine(value: unknown): value is QuoteLine {
     typeof line.productId === "string" &&
     line.productId.length > 0 &&
     Number.isFinite(line.quantity) &&
-    line.quantity > 0 &&
-    Number.isFinite(line.moq) &&
-    line.moq > 0
+    line.quantity > 0
   );
 }
 
@@ -111,8 +109,8 @@ function write(next: QuoteLine[]): void {
   commit(next);
 }
 
-export function addLine(productId: string, moq: number, quantity = moq): void {
-  const requested = Math.max(moq, Math.round(quantity));
+export function addLine(productId: string, quantity = 1): void {
+  const requested = Math.max(1, Math.round(quantity));
   const existing = state.lines.find((line) => line.productId === productId);
 
   if (existing) {
@@ -127,15 +125,14 @@ export function addLine(productId: string, moq: number, quantity = moq): void {
   }
 
   if (state.lines.length >= MAX_QUOTE_LINES) return;
-  write([...state.lines, { productId, quantity: requested, moq }]);
+  write([...state.lines, { productId, quantity: requested }]);
 }
 
 export function setLineQuantity(productId: string, quantity: number): void {
   write(
     state.lines.map((line) =>
       line.productId === productId
-        ? // Never let a line fall below the minimum we can quote against.
-          { ...line, quantity: Math.max(line.moq, Math.round(quantity)) }
+        ? { ...line, quantity: Math.max(1, Math.round(quantity)) }
         : line,
     ),
   );
