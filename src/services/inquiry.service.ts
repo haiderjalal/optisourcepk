@@ -1,7 +1,6 @@
 import { getProductById } from "@/data/products";
 import { logger } from "@/lib/logger";
 import { CONTACT, SITE } from "@/lib/site";
-import { formatPKR } from "@/lib/utils";
 import type { InquiryPayload } from "@/lib/validations/inquiry";
 
 export interface ResolvedLine {
@@ -10,14 +9,11 @@ export interface ResolvedLine {
   range: string;
   quantity: number;
   unit: string;
-  unitPrice: number;
-  lineTotal: number;
 }
 
 export interface InquiryResult {
   reference: string;
   lineCount: number;
-  indicativeTotal: number;
   /** False when notification delivery failed but the inquiry was accepted. */
   notified: boolean;
 }
@@ -42,8 +38,6 @@ function resolveLines(payload: InquiryPayload): ResolvedLine[] {
         range: product.range,
         quantity: line.quantity,
         unit: product.unit,
-        unitPrice: product.indicativePrice,
-        lineTotal: product.indicativePrice * line.quantity,
       },
     ];
   });
@@ -72,7 +66,6 @@ function buildEmailHtml(
   payload: InquiryPayload,
   lines: ResolvedLine[],
   reference: string,
-  indicativeTotal: number,
 ): string {
   const rows = lines
     .map(
@@ -84,9 +77,6 @@ function buildEmailHtml(
           </td>
           <td style="padding:8px 12px;border-bottom:1px solid #e6ebf2;text-align:right">
             ${line.quantity} ${escapeHtml(line.unit)}
-          </td>
-          <td style="padding:8px 12px;border-bottom:1px solid #e6ebf2;text-align:right">
-            ${formatPKR(line.lineTotal)}
           </td>
         </tr>`,
     )
@@ -114,17 +104,10 @@ function buildEmailHtml(
              <thead>
                <tr style="background:#f1f4f8">
                  <th align="left" style="padding:8px 12px">Line</th>
-                 <th align="right" style="padding:8px 12px">Qty</th>
-                 <th align="right" style="padding:8px 12px">Indicative</th>
+                 <th align="right" style="padding:8px 12px">Qty requested</th>
                </tr>
              </thead>
              <tbody>${rows}</tbody>
-             <tfoot>
-               <tr>
-                 <td colspan="2" style="padding:10px 12px;text-align:right;font-weight:600">Indicative total</td>
-                 <td style="padding:10px 12px;text-align:right;font-weight:600">${formatPKR(indicativeTotal)}</td>
-               </tr>
-             </tfoot>
            </table>`
         : `<p style="color:#6e809e">No catalogue lines attached — general inquiry.</p>`
     }
@@ -137,7 +120,8 @@ function buildEmailHtml(
     }
 
     <p style="margin-top:28px;color:#6e809e;font-size:12px">
-      Sent from ${SITE.url}. Indicative totals are not a quotation.
+      Sent from ${SITE.url}. Quantities are what the customer asked for —
+      confirm pricing and order minimums on the quotation.
     </p>
   </div>`;
 }
@@ -152,7 +136,6 @@ async function notify(
   payload: InquiryPayload,
   lines: ResolvedLine[],
   reference: string,
-  indicativeTotal: number,
 ): Promise<boolean> {
   const apiKey = process.env.RESEND_API_KEY;
   const to = process.env.INQUIRY_NOTIFICATION_EMAIL ?? CONTACT.email;
@@ -182,7 +165,7 @@ async function notify(
         to,
         reply_to: payload.email,
         subject: `Trade inquiry ${reference} — ${clean(payload.businessName)}`,
-        html: buildEmailHtml(payload, lines, reference, indicativeTotal),
+        html: buildEmailHtml(payload, lines, reference),
       }),
     });
 
@@ -216,22 +199,15 @@ export async function submitInquiry(
 ): Promise<InquiryResult> {
   const reference = buildReference();
   const lines = resolveLines(payload);
-  const indicativeTotal = lines.reduce((sum, line) => sum + line.lineTotal, 0);
 
   logger.info("Trade inquiry received", {
     reference,
     businessType: payload.businessType,
     city: clean(payload.city),
     lineCount: lines.length,
-    indicativeTotal,
   });
 
-  const notified = await notify(payload, lines, reference, indicativeTotal);
+  const notified = await notify(payload, lines, reference);
 
-  return {
-    reference,
-    lineCount: lines.length,
-    indicativeTotal,
-    notified,
-  };
+  return { reference, lineCount: lines.length, notified };
 }

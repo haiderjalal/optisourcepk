@@ -8,12 +8,10 @@ import { useQuote, type QuoteView } from "./useQuote";
 
 export interface QuoteItem extends QuoteLine {
   product: Product;
-  lineTotal: number;
 }
 
 export interface QuoteItemsView extends QuoteView {
   items: QuoteItem[];
-  subtotal: number;
 }
 
 /**
@@ -29,13 +27,7 @@ export function useQuoteItems(): QuoteItemsView {
     const items = quote.lines.flatMap<QuoteItem>((line) => {
       const product = getProductById(line.productId);
       if (!product) return [];
-      return [
-        {
-          ...line,
-          product,
-          lineTotal: product.indicativePrice * line.quantity,
-        },
-      ];
+      return [{ ...line, product }];
     });
 
     // Self-heal a saved list that references products we no longer carry.
@@ -43,11 +35,6 @@ export function useQuoteItems(): QuoteItemsView {
       pruneLines(new Set(PRODUCTS.map((product) => product.id)));
     }
 
-    return {
-      ...quote,
-      items,
-      count: items.length,
-      subtotal: items.reduce((total, item) => total + item.lineTotal, 0),
-    };
+    return { ...quote, items, count: items.length };
   }, [quote]);
 }

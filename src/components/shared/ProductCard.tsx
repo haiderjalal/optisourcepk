@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ProductGlyph } from "@/components/shared/ProductGlyph";
 import { AddToQuoteButton } from "@/features/inquiry/AddToQuoteButton";
-import { formatPKR } from "@/lib/utils";
 import type { Product } from "@/types/catalogue";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -42,21 +41,15 @@ export function ProductCard({ product }: { product: Product }) {
 
         <dl className="border-navy-100 mt-4 grid grid-cols-2 gap-3 border-t pt-4 text-xs">
           <div>
-            <dt className="text-navy-300">Indicative</dt>
-            <dd className="font-display text-navy-700 mt-0.5 text-sm font-semibold">
-              {formatPKR(product.indicativePrice)}
-              <span className="text-navy-400 ml-1 text-[0.6875rem] font-normal">
-                / unit
-              </span>
+            <dt className="text-navy-300">Lead time</dt>
+            <dd className="text-navy-700 mt-0.5 text-sm font-semibold">
+              {product.leadTime.replace(/^(Ex-stock|Rx lab|Indent) · /, "")}
             </dd>
           </div>
           <div>
-            <dt className="text-navy-300">Min. order</dt>
-            <dd className="font-display text-navy-700 mt-0.5 text-sm font-semibold">
-              {product.moq}{" "}
-              <span className="text-navy-400 text-[0.6875rem] font-normal">
-                {product.unit}
-              </span>
+            <dt className="text-navy-300">Supplied in</dt>
+            <dd className="text-navy-700 mt-0.5 text-sm font-semibold capitalize">
+              {product.unit}
             </dd>
           </div>
         </dl>

@@ -15,7 +15,6 @@ import {
   getRelatedProducts,
 } from "@/data/products";
 import { CONTACT, SITE } from "@/lib/site";
-import { formatPKR } from "@/lib/utils";
 
 export function generateStaticParams() {
   return PRODUCTS.map((product) => ({
@@ -67,19 +66,14 @@ export default async function ProductPage({
     category: category.name,
     sku: product.id,
     brand: { "@type": "Brand", name: SITE.name },
+    // Quotation-only: no price is published, so the offer carries
+    // availability and seller but deliberately no price. Advertising a
+    // figure here that the page does not show would be misleading.
     offers: {
       "@type": "Offer",
-      priceCurrency: "PKR",
-      price: product.indicativePrice,
-      // Quotation-only: the site never transacts.
       availability: exStock
         ? "https://schema.org/InStock"
         : "https://schema.org/PreOrder",
-      eligibleQuantity: {
-        "@type": "QuantitativeValue",
-        minValue: product.moq,
-        unitText: product.unit,
-      },
       seller: { "@type": "Organization", name: SITE.legalName },
       url: `${SITE.url}/catalogue/${product.category}/${product.slug}`,
     },
@@ -162,32 +156,29 @@ export default async function ProductPage({
             <dl className="rounded-card border-navy-100 mt-8 grid grid-cols-3 gap-4 border bg-white p-5">
               <div>
                 <dt className="text-navy-400 flex items-center gap-1.5 text-xs">
-                  <Layers className="size-3.5" aria-hidden />
-                  Indicative
-                </dt>
-                <dd className="font-display text-navy-700 mt-1.5 text-lg font-bold">
-                  {formatPKR(product.indicativePrice)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-navy-400 flex items-center gap-1.5 text-xs">
-                  <ShieldCheck className="size-3.5" aria-hidden />
-                  Min. order
-                </dt>
-                <dd className="font-display text-navy-700 mt-1.5 text-lg font-bold">
-                  {product.moq}{" "}
-                  <span className="text-navy-400 text-sm font-normal">
-                    {product.unit}
-                  </span>
-                </dd>
-              </div>
-              <div>
-                <dt className="text-navy-400 flex items-center gap-1.5 text-xs">
                   <Clock className="size-3.5" aria-hidden />
                   Lead time
                 </dt>
                 <dd className="text-navy-700 mt-1.5 text-sm font-semibold">
                   {product.leadTime}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-navy-400 flex items-center gap-1.5 text-xs">
+                  <Layers className="size-3.5" aria-hidden />
+                  Supplied in
+                </dt>
+                <dd className="text-navy-700 mt-1.5 text-sm font-semibold capitalize">
+                  {product.unit}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-navy-400 flex items-center gap-1.5 text-xs">
+                  <ShieldCheck className="size-3.5" aria-hidden />
+                  Range
+                </dt>
+                <dd className="text-navy-700 mt-1.5 text-sm font-semibold">
+                  {product.range}
                 </dd>
               </div>
             </dl>
@@ -197,9 +188,8 @@ export default async function ProductPage({
             </div>
 
             <p className="text-navy-400 mt-5 text-xs leading-relaxed">
-              Pricing shown is an indicative trade rate and is confirmed on a
-              written quotation. Volume pricing applies above the minimum order.
-              Need something not listed?{" "}
+              Pricing and order quantities are confirmed on a written quotation,
+              against the volume you actually need. Need something not listed?{" "}
               <a
                 href={CONTACT.emailHref}
                 className="text-accent-700 font-medium underline underline-offset-2"

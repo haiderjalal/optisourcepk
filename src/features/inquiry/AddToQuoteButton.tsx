@@ -7,9 +7,8 @@ import { cn } from "@/lib/utils";
 import { useQuote } from "./useQuote";
 
 /**
- * Adds a product to the visitor's request list at its minimum order
- * quantity. Confirms inline for a beat rather than firing a toast — the
- * feedback belongs where the click happened.
+ * Adds a product to the visitor's request list. Confirms inline for a beat
+ * rather than firing a toast — the feedback belongs where the click happened.
  *
  * The swap is a CSS cross-fade: this button renders on every catalogue card,
  * so it must not drag an animation library onto the page.
@@ -23,7 +22,7 @@ export function AddToQuoteButton({
   label = "Add to request",
 }: {
   /** Only what the button needs — passing the whole record bloats the payload. */
-  product: { id: string; name: string; moq: number };
+  product: { id: string; name: string };
   quantity?: number;
   variant?: ButtonProps["variant"];
   size?: ButtonProps["size"];
@@ -37,7 +36,7 @@ export function AddToQuoteButton({
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   function handleAdd() {
-    add(product.id, product.moq, quantity);
+    add(product.id, quantity);
     setJustAdded(true);
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setJustAdded(false), 1800);

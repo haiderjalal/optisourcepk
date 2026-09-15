@@ -6,11 +6,9 @@ import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { ProductGlyph } from "@/components/shared/ProductGlyph";
 import { ButtonLink } from "@/components/ui/button";
 import { useQuoteItems } from "./useQuoteItems";
-import { formatPKR } from "@/lib/utils";
 
 export function RequestList() {
-  const { items, subtotal, setQuantity, remove, clear, hydrated } =
-    useQuoteItems();
+  const { items, setQuantity, remove, clear, hydrated } = useQuoteItems();
 
   if (!hydrated) {
     return (
@@ -94,10 +92,8 @@ export function RequestList() {
                       {item.product.name}
                     </Link>
                   </h3>
-                  <p className="text-navy-400 mt-1 text-xs">
-                    {formatPKR(item.product.indicativePrice)} per{" "}
-                    {item.product.unit.replace(/s$/, "")} · min{" "}
-                    {item.product.moq}
+                  <p className="text-navy-400 mt-1 text-xs capitalize">
+                    {item.product.unit}
                   </p>
 
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
@@ -105,12 +101,9 @@ export function RequestList() {
                       <button
                         type="button"
                         onClick={() =>
-                          setQuantity(
-                            item.productId,
-                            item.quantity - item.product.moq,
-                          )
+                          setQuantity(item.productId, item.quantity - 1)
                         }
-                        disabled={item.quantity <= item.product.moq}
+                        disabled={item.quantity <= 1}
                         className="text-navy-500 hover:text-navy-700 grid size-8 place-items-center rounded-full transition-colors disabled:opacity-35"
                         aria-label={`Decrease ${item.product.name}`}
                       >
@@ -122,10 +115,7 @@ export function RequestList() {
                       <button
                         type="button"
                         onClick={() =>
-                          setQuantity(
-                            item.productId,
-                            item.quantity + item.product.moq,
-                          )
+                          setQuantity(item.productId, item.quantity + 1)
                         }
                         className="text-navy-500 hover:text-navy-700 grid size-8 place-items-center rounded-full transition-colors"
                         aria-label={`Increase ${item.product.name}`}
@@ -135,9 +125,6 @@ export function RequestList() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="font-display text-sm font-semibold tabular-nums">
-                        {formatPKR(item.lineTotal)}
-                      </span>
                       <button
                         type="button"
                         onClick={() => remove(item.productId)}
@@ -156,15 +143,10 @@ export function RequestList() {
       </ul>
 
       <div className="border-navy-100 border-t bg-mist-50 px-5 py-4">
-        <div className="flex items-baseline justify-between">
-          <span className="text-navy-500 text-sm">Indicative total</span>
-          <span className="font-display text-xl font-bold tabular-nums">
-            {formatPKR(subtotal)}
-          </span>
-        </div>
-        <p className="text-navy-400 mt-2 text-xs leading-relaxed">
-          Indicative only. Sales tax, volume discounts and freight are applied
-          on the written quotation we send back.
+        <p className="text-navy-400 text-xs leading-relaxed">
+          Quantities are a starting point — tell us in the notes if they are
+          flexible. Pricing, order minimums, sales tax and freight all come back
+          on the written quotation.
         </p>
       </div>
     </div>

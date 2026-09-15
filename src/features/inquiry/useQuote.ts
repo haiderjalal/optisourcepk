@@ -17,7 +17,7 @@ export { MAX_QUOTE_LINES } from "./quoteStore";
 export interface QuoteView {
   lines: QuoteLine[];
   count: number;
-  add: (productId: string, moq: number, quantity?: number) => void;
+  add: (productId: string, quantity?: number) => void;
   setQuantity: (productId: string, quantity: number) => void;
   remove: (productId: string) => void;
   clear: () => void;

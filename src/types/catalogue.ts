@@ -33,12 +33,8 @@ export interface Product {
   description: string;
   /** Spec sheet rows — label/value pairs. */
   specs: { label: string; value: string }[];
-  /** Smallest quantity OptiSource will quote against. */
-  moq: number;
-  /** Unit of the MOQ, e.g. "pairs", "pieces", "litres". */
+  /** What the line is counted in, e.g. "pairs", "pieces", "litres". */
   unit: string;
-  /** Indicative trade unit price in PKR. Quotations are confirmed manually. */
-  indicativePrice: number;
   featured?: boolean;
   leadTime: string;
 }
@@ -46,10 +42,4 @@ export interface Product {
 export interface QuoteLine {
   productId: string;
   quantity: number;
-  /**
-   * Minimum order quantity, copied onto the line when it is added.
-   * Lets the request-list store clamp quantities without importing the
-   * catalogue — see `features/inquiry/quoteStore.ts`.
-   */
-  moq: number;
 }

@@ -102,8 +102,6 @@ automatically — routes are generated from the data.
 - [ ] Set `NEXT_PUBLIC_SITE_URL` to the production domain
 - [ ] Configure `RESEND_API_KEY`, `INQUIRY_FROM_EMAIL`,
       `INQUIRY_NOTIFICATION_EMAIL`
-- [ ] Replace indicative prices and minimum order quantities with live trade
-      rates
 - [ ] Add an Open Graph image at `public/og.png` and reference it in
       `src/app/layout.tsx`
 - [ ] Confirm every statistic in `src/components/sections/WhySection.tsx` is

@@ -37,8 +37,8 @@ export function FeaturedProducts() {
       </Stagger>
 
       <p className="text-navy-400 mt-8 text-xs">
-        Prices shown are indicative trade rates and are confirmed on a written
-        quotation. This site does not take payment.
+        Trade pricing and order quantities are confirmed on a written quotation.
+        This site does not take payment.
       </p>
     </section>
   );
