@@ -92,7 +92,7 @@ const LOGISTICS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Warehouse,
     title: "Held, not ordered in",
-    body: "Fast-moving lines sit in Lahore under bin location. If a line is marked ex-stock, it is on the shelf when you ring — not on a purchase order.",
+    body: "Fast-moving lines sit in Islamabad under bin location. If a line is marked ex-stock, it is on the shelf when you ring — not on a purchase order.",
   },
   {
     icon: Truck,

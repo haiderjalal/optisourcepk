@@ -72,13 +72,13 @@ export function SupplyFlow() {
             direction="none"
             className="absolute top-7 right-0 left-0 hidden h-px bg-white/10 lg:block"
           >
-            <span className="from-accent-600 to-accent-400 block h-px origin-left scale-x-0 bg-gradient-to-r transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] [[data-revealed]>&]:scale-x-100" />
+            <span className="from-accent-600 to-accent-400 block h-px bg-gradient-to-r" />
           </Reveal>
           <Reveal
             direction="none"
             className="absolute top-0 bottom-0 left-7 w-px bg-white/10 lg:hidden"
           >
-            <span className="from-accent-600 to-accent-400 block h-full w-px origin-top scale-y-0 bg-gradient-to-b transition-transform duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] [[data-revealed]>&]:scale-y-100" />
+            <span className="from-accent-600 to-accent-400 block h-full w-px bg-gradient-to-b" />
           </Reveal>
 
           <Stagger as="ul" className="grid gap-10 lg:grid-cols-4 lg:gap-8">

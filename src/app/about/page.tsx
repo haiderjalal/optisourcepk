@@ -9,7 +9,7 @@ import { CONTACT, SITE } from "@/lib/site";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "OptiSource PK is a wholesale optical supplier based in Lahore, supplying lenses, frames, accessories, lab consumables and optometric equipment to the Pakistani optical trade.",
+    "OptiSource PK is a wholesale optical supplier based in Islamabad, supplying lenses, frames, accessories, lab consumables and optometric equipment to the Pakistani optical trade.",
   alternates: { canonical: "/about" },
   openGraph: {
     title: "About · OptiSource PK",
@@ -45,7 +45,7 @@ export default function AboutPage() {
       <PageHeader
         eyebrow="About"
         title="Your partner in clear vision."
-        lede="OptiSource PK supplies the optical trade across Pakistan — lenses, frames, accessories, lab consumables and exam-room equipment, held in depth and shipped from Lahore."
+        lede="OptiSource PK supplies the optical trade across Pakistan — lenses, frames, accessories, lab consumables and exam-room equipment, held in depth and shipped from Islamabad."
         crumbs={[{ label: "About" }]}
       />
 
@@ -140,7 +140,7 @@ export default function AboutPage() {
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
           <SectionHeading
             eyebrow="Where we are"
-            title="Lahore, shipping nationwide."
+            title="Islamabad, shipping nationwide."
             lede="Our warehouse and trade desk sit together, which is why the person who answers the phone can tell you whether a line is physically on the shelf."
           />
 

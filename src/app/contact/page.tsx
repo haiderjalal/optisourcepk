@@ -9,7 +9,7 @@ import { CONTACT, SITE } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Contact",
   description:
-    "Contact OptiSource PK's trade desk in Lahore by phone, WhatsApp or email. Trade inquiries answered within one working day.",
+    "Contact OptiSource PK's trade desk in Islamabad by phone, WhatsApp or email. Trade inquiries answered within one working day.",
   alternates: { canonical: "/contact" },
   openGraph: {
     title: "Contact · OptiSource PK",

@@ -9,7 +9,7 @@ const STATS: {
   label: string;
   decimals?: number;
 }[] = [
-  { value: 1800, suffix: "+", label: "SKUs held in Lahore" },
+  { value: 1800, suffix: "+", label: "SKUs held in Islamabad" },
   { value: 48, suffix: " hrs", label: "Typical stock dispatch" },
   { value: 12, suffix: " mo", label: "Coating warranty" },
   { value: 99.2, suffix: "%", label: "Order-accuracy rate", decimals: 1 },

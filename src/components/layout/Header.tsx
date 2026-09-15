@@ -1,57 +1,14 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { ArrowRight, Menu, Phone, FileText, X } from "lucide-react";
+import { ArrowRight, FileText, Menu, Phone } from "lucide-react";
 import { Logo } from "@/components/shared/Logo";
 import { ButtonLink } from "@/components/ui/button";
-import { useQuote } from "@/features/inquiry/useQuote";
 import { CONTACT, PRIMARY_NAV, SITE } from "@/lib/site";
-import { cn } from "@/lib/utils";
 
 export function Header() {
-  const pathname = usePathname();
-  const { count, hydrated } = useQuote();
-  const [condensed, setCondensed] = useState(false);
-
-  // The sheet remembers which route it was opened on, so a navigation closes
-  // it during render — no effect, and no flash of an open menu on the new page.
-  const [menu, setMenu] = useState({ open: false, route: pathname });
-  const menuOpen = menu.open && menu.route === pathname;
-
-  const openMenu = () => setMenu({ open: true, route: pathname });
-  const closeMenu = () => setMenu({ open: false, route: pathname });
-
-  // A passive scroll listener rather than a motion value: the header is on
-  // every page, so importing an animation library here would ship it site-wide.
-  useEffect(() => {
-    const onScroll = () => setCondensed(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // Lock the page behind the sheet.
-  useEffect(() => {
-    document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [menuOpen]);
-
-  const isActive = (href: string) =>
-    href === "/" ? pathname === "/" : pathname.startsWith(href);
-
   return (
-    <header className="sticky top-0 z-50">
+    <header className="sticky top-0 z-50 bg-white/92 backdrop-blur-xl">
       {/* Trade strip — the tagline line that sits above every brand lockup */}
-      <div
-        className={cn(
-          "bg-navy-900 text-silver-300 hidden transition-[height,opacity] duration-300 md:block",
-          condensed ? "h-0 overflow-hidden opacity-0" : "h-9 opacity-100",
-        )}
-      >
+      <div className="bg-navy-900 text-silver-300 hidden h-9 md:block">
         <div className="container-brand flex h-9 items-center justify-between">
           <p className="eyebrow text-silver-400 text-[0.625rem]">
             {SITE.tagline}
@@ -72,14 +29,7 @@ export function Header() {
         </div>
       </div>
 
-      <div
-        className={cn(
-          "border-b backdrop-blur-xl transition-[background-color,border-color,box-shadow] duration-300",
-          condensed
-            ? "border-navy-100 bg-white/88 shadow-[0_1px_24px_-8px_rgb(16_32_58/0.24)]"
-            : "border-transparent bg-white/72",
-        )}
-      >
+      <div className="border-navy-100 border-b shadow-[0_1px_24px_-8px_rgb(16_32_58/0.18)]">
         <div className="container-brand flex h-16 items-center justify-between gap-3 lg:h-[4.5rem] xl:gap-6">
           <Link
             href="/"
@@ -97,21 +47,9 @@ export function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                aria-current={isActive(link.href) ? "page" : undefined}
-                className={cn(
-                  "relative rounded-full px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors xl:px-3.5",
-                  isActive(link.href)
-                    ? "text-navy-700"
-                    : "text-navy-500 hover:text-navy-700",
-                )}
+                className="text-navy-500 hover:text-navy-700 rounded-full px-2.5 py-2 text-sm font-medium whitespace-nowrap transition-colors xl:px-3.5"
               >
                 {link.label}
-                {isActive(link.href) && (
-                  <span
-                    className="bg-accent-600 absolute inset-x-2.5 -bottom-0.5 h-0.5 rounded-full xl:inset-x-3.5"
-                    aria-hidden
-                  />
-                )}
               </Link>
             ))}
           </nav>
@@ -123,20 +61,7 @@ export function Header() {
             >
               <FileText className="size-[1.05rem]" aria-hidden />
               <span className="hidden xl:inline">Request list</span>
-              <span className="sr-only">
-                {hydrated
-                  ? `${count} items in your request list`
-                  : "Request list"}
-              </span>
-              {hydrated && count > 0 && (
-                <span
-                  key={count}
-                  className="bg-accent-600 animate-pop absolute -top-0.5 -right-0.5 grid size-5 place-items-center rounded-full text-[0.625rem] font-bold text-white"
-                  aria-hidden
-                >
-                  {count}
-                </span>
-              )}
+              <span className="sr-only">Request list</span>
             </Link>
 
             <ButtonLink
@@ -151,78 +76,51 @@ export function Header() {
               />
             </ButtonLink>
 
-            <button
-              type="button"
-              onClick={openMenu}
-              className="text-navy-600 hover:bg-navy-50 grid size-10 place-items-center rounded-full transition-colors lg:hidden"
-              aria-label="Open menu"
-              aria-expanded={menuOpen}
-            >
-              <Menu className="size-5" aria-hidden />
-            </button>
+            <MobileMenu />
           </div>
         </div>
       </div>
-
-      <MobileMenu open={menuOpen} onClose={closeMenu} />
     </header>
   );
 }
 
-function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
+function MobileMenu() {
   return (
-    <div
-      data-open={open ? "" : undefined}
-      // Kept mounted and hidden so the fade works both ways without an
-      // presence library; `inert` keeps it out of the tab order while closed.
-      inert={!open}
-      className="bg-navy-900 invisible fixed inset-0 z-50 opacity-0 transition-[opacity,visibility] duration-200 data-open:visible data-open:opacity-100 lg:hidden"
-    >
-      <div className="grid-blueprint absolute inset-0 opacity-30" aria-hidden />
+    <details className="group relative lg:hidden">
+      <summary
+        className="text-navy-600 hover:bg-navy-50 grid size-10 cursor-pointer list-none place-items-center rounded-full transition-colors [&::-webkit-details-marker]:hidden"
+        aria-label="Toggle navigation menu"
+      >
+        <Menu className="size-5" aria-hidden />
+      </summary>
 
-      <div className="relative flex h-full flex-col">
-        <div className="container-brand flex h-16 items-center justify-between">
-          <Logo inverted compact />
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-silver-200 grid size-10 place-items-center rounded-full transition-colors hover:bg-white/10"
-            aria-label="Close menu"
-          >
-            <X className="size-5" aria-hidden />
-          </button>
-        </div>
-
-        <nav
-          className="container-brand flex flex-1 flex-col justify-center gap-1"
-          aria-label="Mobile"
-        >
+      <div className="border-navy-100 shadow-lift-lg absolute top-12 right-0 w-[min(20rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border bg-white p-3">
+        <nav className="flex flex-col" aria-label="Mobile">
           {PRIMARY_NAV.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              onClick={onClose}
-              className="font-display block border-b border-white/8 py-4 text-2xl font-semibold text-white"
+              className="text-navy-700 hover:bg-navy-50 rounded-xl px-4 py-3 text-base font-semibold transition-colors"
             >
               {link.label}
             </Link>
           ))}
         </nav>
 
-        <div className="container-brand space-y-3 pb-10">
-          <ButtonLink href="/inquiry" size="lg" className="w-full">
+        <div className="border-navy-100 mt-2 space-y-2 border-t pt-3">
+          <ButtonLink href="/inquiry" className="w-full">
             Start a Trade Inquiry
             <ArrowRight className="size-4" aria-hidden />
           </ButtonLink>
           <a
             href={CONTACT.phoneHref}
-            className="text-silver-300 flex items-center justify-center gap-2 py-2 text-sm"
+            className="text-navy-500 hover:text-navy-700 flex items-center justify-center gap-2 rounded-xl py-2 text-sm transition-colors"
           >
             <Phone className="size-4" aria-hidden />
             {CONTACT.phone}
           </a>
         </div>
       </div>
-    </div>
+    </details>
   );
 }

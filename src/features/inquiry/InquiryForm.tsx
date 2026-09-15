@@ -206,7 +206,7 @@ export function InquiryForm() {
               {...register("city")}
               {...a11y}
               autoComplete="address-level2"
-              placeholder="Lahore"
+              placeholder="Islamabad"
               className={inputClass(Boolean(errors.city))}
             />
           )}
