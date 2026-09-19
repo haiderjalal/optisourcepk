@@ -15,18 +15,9 @@
 export type OrderStatus = "created" | "dispatched" | "delivered" | "cancelled";
 export type LedgerEntryType = "invoice" | "payment" | "adjustment";
 export type PaymentMethod =
-  | "cash"
-  | "bank_transfer"
-  | "cheque"
-  | "easypaisa"
-  | "jazzcash"
-  | "other";
+  "cash" | "bank_transfer" | "cheque" | "easypaisa" | "jazzcash" | "other";
 export type StockReason =
-  | "purchase"
-  | "sale"
-  | "return"
-  | "adjustment"
-  | "void";
+  "purchase" | "sale" | "return" | "adjustment" | "void";
 export type OrderPriority = "normal" | "urgent";
 
 export type ProductCategory =
@@ -40,7 +31,7 @@ export type ProductCategory =
 
 export type Eye = "R" | "L";
 
-interface CustomerRow {
+type CustomerRow = {
   id: string;
   customer_name: string;
   shop_name: string;
@@ -57,9 +48,9 @@ interface CustomerRow {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
-}
+};
 
-interface ProductRow {
+type ProductRow = {
   id: string;
   sku: string;
   name: string;
@@ -71,9 +62,9 @@ interface ProductRow {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
-}
+};
 
-interface StockBinRow {
+type StockBinRow = {
   id: string;
   product_id: string;
   tracks_power: boolean;
@@ -82,9 +73,9 @@ interface StockBinRow {
   reorder_level: number;
   created_at: string;
   updated_at: string;
-}
+};
 
-interface StockMovementRow {
+type StockMovementRow = {
   id: string;
   bin_id: string;
   delta: number;
@@ -92,9 +83,9 @@ interface StockMovementRow {
   order_id: string | null;
   note: string | null;
   created_at: string;
-}
+};
 
-interface OrderRow {
+type OrderRow = {
   id: string;
   order_no: number;
   external_order_ref: string | null;
@@ -136,9 +127,9 @@ interface OrderRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
-}
+};
 
-interface OrderLineRow {
+type OrderLineRow = {
   id: string;
   order_id: string;
   line_no: number;
@@ -162,9 +153,9 @@ interface OrderLineRow {
   line_total: number;
   created_at: string;
   updated_at: string;
-}
+};
 
-interface LedgerEntryRow {
+type LedgerEntryRow = {
   id: string;
   customer_id: string;
   entry_date: string;
@@ -175,9 +166,9 @@ interface LedgerEntryRow {
   reference: string | null;
   memo: string | null;
   created_at: string;
-}
+};
 
-interface CustomerStatementRow {
+type CustomerStatementRow = {
   customer_id: string;
   entry_date: string;
   kind: string;
@@ -188,9 +179,9 @@ interface CustomerStatementRow {
   credit: number | null;
   amount: number;
   running_balance: number;
-}
+};
 
-interface CustomerBalanceRow {
+type CustomerBalanceRow = {
   customer_id: string;
   customer_name: string;
   shop_name: string;
@@ -201,9 +192,9 @@ interface CustomerBalanceRow {
   paid: number;
   adjustments: number;
   balance: number;
-}
+};
 
-interface LowStockRow {
+type LowStockRow = {
   bin_id: string;
   product_id: string;
   sku: string;
@@ -213,7 +204,7 @@ interface LowStockRow {
   qty_on_hand: number;
   reorder_level: number;
   shortfall: number;
-}
+};
 
 /** Columns the database fills in for us, never supplied on insert. */
 type Generated =
@@ -224,20 +215,49 @@ type Generated =
   | "line_discount"
   | "line_total";
 
-type Insert<T> = Omit<T, Generated & keyof T> &
-  Partial<Pick<T, Generated & keyof T>>;
+/** NOT NULL columns that carry a database default, so an insert may omit them. */
+type Defaulted =
+  | "order_no"
+  | "priority"
+  | "status"
+  | "freight_charge"
+  | "gst_rate"
+  | "additional_tax_rate"
+  | "unit"
+  | "discount_pct"
+  | "entry_date"
+  | "qty_on_hand"
+  | "reorder_level"
+  | "tracks_power"
+  | "tracks_stock"
+  | "list_price"
+  | "default_discount_pct"
+  | "opening_balance"
+  | "opening_balance_date";
 
-interface Table<Row> {
+/** A nullable column can always be left out — omitting it means NULL. */
+type NullableKeys<T> = {
+  [K in keyof T]-?: null extends T[K] ? K : never;
+}[keyof T];
+
+/** `Extract` rather than `&` so the key union actually reduces. */
+type OptionalOnInsert<T> =
+  Extract<keyof T, Generated | Defaulted> | NullableKeys<T>;
+
+type Insert<T> = Omit<T, OptionalOnInsert<T>> &
+  Partial<Pick<T, OptionalOnInsert<T>>>;
+
+type Table<Row> = {
   Row: Row;
   Insert: Insert<Row>;
   Update: Partial<Insert<Row>>;
   Relationships: [];
-}
+};
 
-interface View<Row> {
+type View<Row> = {
   Row: Row;
   Relationships: [];
-}
+};
 
 export interface Database {
   public: {

@@ -18,7 +18,7 @@ export default async function ShopAppLayout({
   const { user } = await requireUser();
 
   return (
-    <div className="bg-mist-50 flex min-h-svh">
+    <div className="flex min-h-svh bg-mist-50">
       <aside className="bg-navy-900 sticky top-0 hidden h-svh w-60 shrink-0 flex-col lg:flex">
         <div className="border-navy-800 border-b px-5 py-5">
           <Link href="/shop" className="block">
@@ -48,7 +48,7 @@ export default async function ShopAppLayout({
 
       {/* Mobile: the sidebar collapses to a scrolling strip above the content. */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-mist-200 bg-navy-900 flex items-center justify-between gap-4 border-b px-5 py-3 lg:hidden">
+        <header className="bg-navy-900 flex items-center justify-between gap-4 border-b border-mist-200 px-5 py-3 lg:hidden">
           <Link href="/shop">
             <Logo inverted compact />
           </Link>

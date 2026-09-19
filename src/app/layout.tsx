@@ -76,7 +76,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en-PK"
       className={`${outfit.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="bg-mist-100 min-h-full">{children}</body>
+      <body className="min-h-full bg-mist-100">{children}</body>
     </html>
   );
 }

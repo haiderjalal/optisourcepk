@@ -17,7 +17,10 @@ export default function NotFound() {
       <Header />
       <main className="flex-1">
         <section className="bg-navy-900 relative isolate flex min-h-[70svh] items-center overflow-hidden py-20">
-          <div className="grid-blueprint absolute inset-0 opacity-25" aria-hidden />
+          <div
+            className="grid-blueprint absolute inset-0 opacity-25"
+            aria-hidden
+          />
           <div
             className="bg-accent-600/12 absolute top-1/2 left-1/2 size-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[130px]"
             aria-hidden

@@ -1,7 +1,5 @@
 import { z } from "zod";
-
-/** Pakistani mobile and landline formats, with or without +92 / 0 prefix. */
-const PHONE_PATTERN = /^(\+92|0092|0)?[\s-]?\d{2,4}[\s-]?\d{6,8}$/;
+import { PHONE_PATTERN } from "./phone";
 
 /**
  * The one definition of a valid trade inquiry.
