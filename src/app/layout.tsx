@@ -1,9 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Outfit } from "next/font/google";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import { CONTACT, SITE } from "@/lib/site";
+import { SITE } from "@/lib/site";
 import "./globals.css";
+
+/**
+ * Root shell only: `<html>`, `<body>`, fonts and site-wide metadata.
+ *
+ * Navigation chrome lives in `(site)/layout.tsx`; the back-office brings its
+ * own in `shop/layout.tsx`. Keeping a single root layout means moving between
+ * the public site and `/shop` is a client navigation, not a full reload.
+ */
 
 // Both are served as variable fonts (~79 KB total, preloaded and immutable).
 // Pinning `weight` does not shrink them — Google returns the variable file
@@ -64,57 +70,13 @@ export const viewport: Viewport = {
   colorScheme: "light",
 };
 
-/** Organisation graph — one copy, emitted from the root layout. */
-const organisationSchema = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: SITE.legalName,
-  alternateName: SITE.name,
-  url: SITE.url,
-  slogan: SITE.tagline,
-  description: SITE.description,
-  address: {
-    "@type": "PostalAddress",
-    streetAddress: CONTACT.address.line1,
-    addressLocality: CONTACT.address.city,
-    addressCountry: "PK",
-  },
-  contactPoint: {
-    "@type": "ContactPoint",
-    telephone: CONTACT.phone,
-    email: CONTACT.email,
-    contactType: "sales",
-    areaServed: "PK",
-    availableLanguage: ["en", "ur"],
-  },
-};
-
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en-PK"
       className={`${outfit.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-mist-100">
-        <script
-          type="application/ld+json"
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify(organisationSchema),
-          }}
-        />
-        <a
-          href="#main"
-          className="bg-navy-700 sr-only rounded-full px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100"
-        >
-          Skip to content
-        </a>
-        <Header />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <Footer />
-      </body>
+      <body className="bg-mist-100 min-h-full">{children}</body>
     </html>
   );
 }
