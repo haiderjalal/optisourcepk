@@ -30,3 +30,16 @@ export function supabaseAnonKey(): string {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   );
 }
+
+/**
+ * Whether the Supabase connection details are present.
+ *
+ * Lets the login page say so up front instead of accepting a sign-in attempt
+ * that could never have worked.
+ */
+export function isSupabaseConfigured(): boolean {
+  return Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
+  );
+}
