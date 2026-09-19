@@ -175,7 +175,10 @@ create table public.orders (
     net_amount = invoice_amount - discount_amount + freight_charge),
   constraint orders_gross_identity check (issued_at is null or
     amount_incl_tax = net_amount + gst_amount + additional_tax_amount),
-  constraint orders_delivered_pair check ((delivered_at is not null) = (status = 'delivered')),
+  -- One-way, not an equivalence: 'delivered' requires a timestamp, but a
+  -- delivered order that is later voided keeps its delivered_at while the
+  -- status moves to 'cancelled'.
+  constraint orders_delivered_pair check (status <> 'delivered' or delivered_at is not null),
   constraint orders_dispatched_pair check (dispatched_at is not null or status not in ('dispatched','delivered')),
   constraint orders_invoice_before_dispatch check (status in ('created','cancelled') or issued_at is not null),
   constraint orders_void_needs_issue check (voided_at is null or issued_at is not null)
@@ -449,9 +452,13 @@ begin
      amount_incl_tax = v_incl
    where id = p_order_id returning * into o;
 
-  insert into ledger_entries (customer_id, entry_date, entry_type, amount, order_id, memo)
-  values (o.bill_to_customer_id, (o.issued_at at time zone 'Asia/Karachi')::date,
-          'invoice', v_incl, o.id, 'Invoice ' || v_no);
+  -- A zero-value invoice (a free replacement, say) posts no ledger entry:
+  -- the ledger rejects a zero amount, and nothing is owed either way.
+  if v_incl <> 0 then
+    insert into ledger_entries (customer_id, entry_date, entry_type, amount, order_id, memo)
+    values (o.bill_to_customer_id, (o.issued_at at time zone 'Asia/Karachi')::date,
+            'invoice', v_incl, o.id, 'Invoice ' || v_no);
+  end if;
 
   return o;
 end $$;
@@ -483,10 +490,13 @@ begin
   end loop;
 
   -- An 'adjustment', so the partial unique index on invoice entries allows it
-  -- to carry the same order_id and stay joinable.
-  insert into ledger_entries (customer_id, entry_type, amount, order_id, memo)
-  values (o.bill_to_customer_id, 'adjustment', -o.amount_incl_tax, o.id,
-          'Void of invoice ' || o.invoice_no || ' — ' || p_reason);
+  -- to carry the same order_id and stay joinable. Skipped for a zero-value
+  -- invoice, which never posted an entry to reverse.
+  if o.amount_incl_tax <> 0 then
+    insert into ledger_entries (customer_id, entry_type, amount, order_id, memo)
+    values (o.bill_to_customer_id, 'adjustment', -o.amount_incl_tax, o.id,
+            'Void of invoice ' || o.invoice_no || ' — ' || p_reason);
+  end if;
 
   update orders set voided_at = now(), void_reason = p_reason, status = 'cancelled'
    where id = p_order_id returning * into o;
@@ -505,7 +515,7 @@ end $$;
 -- customers.opening_balance, so editing that field just flows through — no
 -- duplicate ledger row to keep in step.
 create view public.customer_statement with (security_invoker = true) as
-with rows as (
+with statement_rows as (
   select c.id as customer_id, 0 as ord, c.opening_balance_date as entry_date,
          'opening' as kind, null::uuid as entry_id, null::bigint as invoice_no,
          'Opening balance' as description, c.opening_balance as amount,
@@ -524,7 +534,7 @@ select customer_id, entry_date, kind, entry_id, invoice_no, description,
        sum(amount) over (partition by customer_id
                          order by ord, entry_date, seq_at, seq_id
                          rows between unbounded preceding and current row) as running_balance
-  from rows;
+  from statement_rows;
 
 create view public.customer_balances with (security_invoker = true) as
 select c.id as customer_id, c.customer_name, c.shop_name, c.area, c.phone,
