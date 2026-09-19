@@ -63,6 +63,15 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
   alternates: { canonical: "/" },
+  verification: {
+    other: {
+      // Meta Business domain verification, needed before the domain can be
+      // used with WhatsApp Business. Emitted from the root layout so it is in
+      // the server-rendered <head> of every page: Meta's crawler will not see
+      // a tag injected by client-side JavaScript.
+      "facebook-domain-verification": "2ajrwbt88w4pxwmdmbf1rliw3pmnjr",
+    },
+  },
 };
 
 export const viewport: Viewport = {
