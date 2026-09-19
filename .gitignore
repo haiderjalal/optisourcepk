@@ -43,3 +43,6 @@ next-env.d.ts
 
 # reference material, not shipped
 # (brandbook/ is kept in-repo intentionally — see docs/brand.md)
+
+# Third-party reference documents — never commit or serve publicly
+docs/reference/
