@@ -3,6 +3,8 @@ import Link from "next/link";
 import { Boxes, PackagePlus, Plus, TriangleAlert } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listAllStock } from "@/services/shop/stock.service";
+import { listSellableProducts } from "@/services/shop/product.service";
+import { QuickReceive } from "@/features/shop/products/QuickReceive";
 import { ButtonLink } from "@/components/ui/button";
 import { describeBin } from "@/lib/format";
 
@@ -10,7 +12,13 @@ export const metadata: Metadata = { title: "Stock" };
 
 export default async function StockPage() {
   await requireUser();
-  const products = await listAllStock();
+  const [products, sellable] = await Promise.all([
+    listAllStock(),
+    listSellableProducts(),
+  ]);
+
+  // Services are billed per job and never held, so they are not offered here.
+  const stockable = sellable.filter((p) => p.tracks_stock);
 
   const empty = products.filter((p) => p.bins.length === 0);
   const lowTotal = products.reduce((sum, p) => sum + p.lowCount, 0);
@@ -22,8 +30,8 @@ export default async function StockPage() {
           <p className="eyebrow text-accent-600">Inventory</p>
           <h1 className="mt-2 text-2xl font-bold">Stock</h1>
           <p className="text-navy-500 mt-2 max-w-prose text-sm">
-            Everything you hold, by power. Open a product to receive stock or
-            adjust a count.
+            Everything you hold, by power. Receive stock below, or open a
+            product for its full history.
           </p>
         </div>
         <ButtonLink href="/shop/products/new" variant="outline">
@@ -46,6 +54,8 @@ export default async function StockPage() {
         </div>
       ) : (
         <>
+          <QuickReceive products={stockable} />
+
           {empty.length > 0 && (
             <div className="mb-5 rounded-2xl bg-amber-50 px-5 py-4 ring-1 ring-amber-200 ring-inset">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-amber-900">
