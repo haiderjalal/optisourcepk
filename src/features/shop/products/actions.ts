@@ -12,6 +12,7 @@ import {
 } from "@/services/shop/product.service";
 import {
   adjustStock,
+  receivePowers,
   receiveRange,
   setReorderLevel,
 } from "@/services/shop/stock.service";
@@ -228,6 +229,81 @@ export async function receiveRangeAction(
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Could not fill it.",
+    };
+  }
+}
+
+export interface PowerGridState {
+  error?: string;
+  message?: string;
+}
+
+/**
+ * Receive a whole column of powers at once.
+ *
+ * The grid posts its quantities as one JSON field rather than as a form input
+ * per row: a wide range is a hundred inputs, and indexed-name parsing is a
+ * class of bug worth not having.
+ */
+export async function receivePowersAction(
+  _previous: PowerGridState,
+  formData: FormData,
+): Promise<PowerGridState> {
+  await requireUser();
+
+  const productId = formData.get("productId");
+  if (typeof productId !== "string" || !productId) {
+    return { error: "That product was not found." };
+  }
+
+  let entries: { sph: number | null; qty: number }[] = [];
+  try {
+    const raw = formData.get("entries");
+    entries = typeof raw === "string" ? JSON.parse(raw) : [];
+  } catch {
+    return { error: "Could not read the quantities." };
+  }
+
+  const clean = entries.filter((e) => Number.isInteger(e.qty) && e.qty !== 0);
+
+  if (clean.length === 0) {
+    return { error: "Enter a quantity against at least one power." };
+  }
+  if (clean.some((e) => e.qty < 0)) {
+    return {
+      error:
+        "Quantities here are what arrived, so they cannot be negative. Use the product page to write stock off.",
+    };
+  }
+
+  const num = (name: string) => {
+    const v = String(formData.get(name) ?? "").trim();
+    return v === "" ? null : Number(v);
+  };
+  const eye = String(formData.get("eye") ?? "").trim();
+
+  try {
+    const bins = await receivePowers({
+      productId,
+      entries: clean,
+      cyl: num("cyl"),
+      addPower: num("addPower"),
+      eye: eye === "R" || eye === "L" ? eye : null,
+      alertQty: num("alertQty"),
+      reason: "purchase",
+      note: String(formData.get("note") ?? "").trim() || null,
+    });
+
+    revalidatePath(`/shop/products/${productId}`);
+    revalidatePath("/shop/stock");
+
+    const total = clean.reduce((sum, e) => sum + e.qty, 0);
+    return {
+      message: `Received ${total} across ${bins} ${bins === 1 ? "power" : "powers"}.`,
+    };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not receive it.",
     };
   }
 }

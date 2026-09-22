@@ -347,6 +347,19 @@ export interface Database {
         };
         Returns: number;
       };
+      receive_powers: {
+        Args: {
+          p_product_id: string;
+          p_entries: { sph: number | null; qty: number }[];
+          p_cyl?: number | null;
+          p_add?: number | null;
+          p_eye?: string | null;
+          p_alert?: number | null;
+          p_reason?: StockReason;
+          p_note?: string | null;
+        };
+        Returns: number;
+      };
       void_invoice: {
         Args: { p_order_id: string; p_reason: string };
         Returns: OrderRow;

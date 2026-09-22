@@ -11,6 +11,7 @@ import {
 import { ProductForm } from "@/features/shop/products/ProductForm";
 import { StockPanel } from "@/features/shop/products/StockPanel";
 import { RangeFillPanel } from "@/features/shop/products/RangeFillPanel";
+import { PowerGrid } from "@/features/shop/products/PowerGrid";
 import { archiveProductAction } from "@/features/shop/products/actions";
 import { formatDateTime, formatPower } from "@/lib/format";
 
@@ -45,6 +46,7 @@ export default async function ProductPage({
       <p className="text-navy-500 mt-1 mb-6 font-mono text-sm">{product.sku}</p>
 
       <div className="space-y-5">
+        <PowerGrid product={product} bins={bins} />
         <RangeFillPanel product={product} />
         <StockPanel product={product} bins={bins} />
       </div>

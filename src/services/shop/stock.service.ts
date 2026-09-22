@@ -425,3 +425,50 @@ export async function receiveRange(
   logger.info("Range filled", { productId, qty, bins: data });
   return data;
 }
+
+export interface PowerEntry {
+  sph: number | null;
+  qty: number;
+}
+
+/**
+ * Take in a different quantity against each power, in one transaction.
+ *
+ * What a real delivery looks like: twenty of one power, six of the next,
+ * none of the one after. Entries with no quantity are dropped before the
+ * call, so an untouched row costs nothing.
+ */
+export async function receivePowers(input: {
+  productId: string;
+  entries: PowerEntry[];
+  cyl: number | null;
+  addPower: number | null;
+  eye: string | null;
+  alertQty: number | null;
+  reason: StockReason;
+  note: string | null;
+}): Promise<number> {
+  const { supabase } = await requireUser();
+
+  const entries = input.entries.filter((e) => e.qty !== 0);
+  if (entries.length === 0) return 0;
+
+  const { data, error } = await supabase.rpc("receive_powers", {
+    p_product_id: input.productId,
+    p_entries: entries,
+    p_cyl: input.cyl,
+    p_add: input.addPower,
+    p_eye: input.eye,
+    p_alert: input.alertQty,
+    p_reason: input.reason,
+    p_note: input.note,
+  });
+
+  if (error) throw new Error(describePostgresError(error, "receive the stock"));
+
+  logger.info("Powers received", {
+    productId: input.productId,
+    bins: data,
+  });
+  return data;
+}

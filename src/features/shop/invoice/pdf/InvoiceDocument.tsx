@@ -128,7 +128,11 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
   },
 
-  accountRow: { flexDirection: "row", justifyContent: "flex-end", marginTop: 8 },
+  accountRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 8,
+  },
   account: {
     width: "44%",
     borderTop: `1pt solid ${RULE}`,
@@ -415,7 +419,10 @@ export function InvoiceDocument({
               {model.account.map((row) => (
                 <View
                   key={row.label}
-                  style={[styles.totalRow, row.strong ? styles.accountStrong : {}]}
+                  style={[
+                    styles.totalRow,
+                    row.strong ? styles.accountStrong : {},
+                  ]}
                 >
                   <Text>{row.label}</Text>
                   <Text>{row.value}</Text>
