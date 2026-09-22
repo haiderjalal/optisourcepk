@@ -14,7 +14,8 @@ import { listOutstanding } from "@/services/shop/ledger.service";
 import { listLowStock } from "@/services/shop/stock.service";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
-import { formatAmount, formatDate, formatPower } from "@/lib/format";
+import { formatAmount, formatDate } from "@/lib/format";
+import { describeBin } from "@/features/shop/products/StockPanel";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -193,11 +194,9 @@ export default async function ShopDashboardPage() {
                   <span className="font-medium text-amber-900">
                     {line.name}
                   </span>
-                  {line.sph !== null && (
-                    <span className="font-mono text-amber-700">
-                      {formatPower(line.sph)}
-                    </span>
-                  )}
+                  <span className="font-mono text-amber-700">
+                    {describeBin(line)}
+                  </span>
                   <span className="font-semibold text-amber-900 tabular-nums">
                     {line.qty_on_hand}
                   </span>

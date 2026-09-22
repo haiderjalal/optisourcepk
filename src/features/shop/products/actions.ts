@@ -30,8 +30,12 @@ export async function saveProduct(
     category: formData.get("category"),
     unit: formData.get("unit"),
     listPrice: formData.get("listPrice") ?? 0,
+    purchasePrice: formData.get("purchasePrice") ?? 0,
     // An unchecked checkbox sends nothing at all.
     tracksPower: formData.get("tracksPower") === "on",
+    tracksCyl: formData.get("tracksCyl") === "on",
+    tracksAdd: formData.get("tracksAdd") === "on",
+    tracksEye: formData.get("tracksEye") === "on",
     tracksStock: formData.get("tracksStock") === "on",
   });
 
@@ -92,8 +96,12 @@ export async function adjustStockAction(
   const parsed = stockAdjustmentSchema.safeParse({
     productId: formData.get("productId"),
     sph: formData.get("sph") ?? "",
+    cyl: formData.get("cyl") ?? "",
+    addPower: formData.get("addPower") ?? "",
+    eye: formData.get("eye") ?? "",
     delta: formData.get("delta"),
     reason: formData.get("reason"),
+    alertQty: formData.get("alertQty") ?? "",
     note: formData.get("note") ?? "",
   });
 
@@ -111,8 +119,15 @@ export async function adjustStockAction(
     const qty = await adjustStock({
       productId: parsed.data.productId,
       sph: parsed.data.sph,
+      cyl: parsed.data.cyl,
+      addPower: parsed.data.addPower,
+      eye:
+        parsed.data.eye === "R" || parsed.data.eye === "L"
+          ? parsed.data.eye
+          : null,
       delta: parsed.data.delta,
       reason: parsed.data.reason,
+      alertQty: parsed.data.alertQty,
       note: parsed.data.note || null,
     });
 

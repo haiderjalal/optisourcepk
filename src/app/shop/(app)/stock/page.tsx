@@ -4,7 +4,7 @@ import { Boxes, PackagePlus, Plus, TriangleAlert } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listAllStock } from "@/services/shop/stock.service";
 import { ButtonLink } from "@/components/ui/button";
-import { formatPower } from "@/lib/format";
+import { describeBin } from "@/features/shop/products/StockPanel";
 
 export const metadata: Metadata = { title: "Stock" };
 
@@ -133,7 +133,7 @@ export default async function StockPage() {
                         }`}
                       >
                         <span className="text-navy-500 block font-mono text-[11px]">
-                          {formatPower(bin.sph)}
+                          {describeBin(bin)}
                         </span>
                         <span className="block text-base font-semibold tabular-nums">
                           {bin.qty_on_hand}

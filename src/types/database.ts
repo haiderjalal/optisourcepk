@@ -57,7 +57,11 @@ type ProductRow = {
   category: ProductCategory;
   unit: string;
   list_price: number;
+  purchase_price: number;
   tracks_power: boolean;
+  tracks_cyl: boolean;
+  tracks_add: boolean;
+  tracks_eye: boolean;
   tracks_stock: boolean;
   created_at: string;
   updated_at: string;
@@ -69,6 +73,9 @@ type StockBinRow = {
   product_id: string;
   tracks_power: boolean;
   sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: Eye | null;
   qty_on_hand: number;
   reorder_level: number;
   created_at: string;
@@ -201,6 +208,9 @@ type LowStockRow = {
   name: string;
   category: ProductCategory;
   sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: Eye | null;
   qty_on_hand: number;
   reorder_level: number;
   shortfall: number;
@@ -229,7 +239,11 @@ type Defaulted =
   | "qty_on_hand"
   | "reorder_level"
   | "tracks_power"
+  | "tracks_cyl"
+  | "tracks_add"
+  | "tracks_eye"
   | "tracks_stock"
+  | "purchase_price"
   | "list_price"
   | "default_discount_pct"
   | "opening_balance"
@@ -281,11 +295,25 @@ export interface Database {
         Args: {
           p_product_id: string;
           p_sph: number | null;
+          p_cyl: number | null;
+          p_add: number | null;
+          p_eye: Eye | null;
           p_delta: number;
           p_reason?: StockReason;
           p_note?: string | null;
         };
         Returns: number;
+      };
+      set_bin_alert: {
+        Args: {
+          p_product_id: string;
+          p_sph: number | null;
+          p_cyl: number | null;
+          p_add: number | null;
+          p_eye: Eye | null;
+          p_level: number;
+        };
+        Returns: undefined;
       };
       issue_invoice: {
         Args: {

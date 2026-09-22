@@ -55,19 +55,38 @@ export const productSchema = z
       .max(16, "That unit is too long."),
 
     listPrice: z.coerce
-      .number({ error: "Enter a rate, or 0." })
-      .min(0, "A rate cannot be negative.")
-      .max(9_999_999, "That rate is out of range.")
+      .number({ error: "Enter a sale price, or 0." })
+      .min(0, "A price cannot be negative.")
+      .max(9_999_999, "That price is out of range.")
+      .default(0),
+
+    purchasePrice: z.coerce
+      .number({ error: "Enter a purchase price, or 0." })
+      .min(0, "A price cannot be negative.")
+      .max(9_999_999, "That price is out of range.")
       .default(0),
 
     tracksPower: z.coerce.boolean().default(false),
+    tracksCyl: z.coerce.boolean().default(false),
+    tracksAdd: z.coerce.boolean().default(false),
+    tracksEye: z.coerce.boolean().default(false),
     tracksStock: z.coerce.boolean().default(true),
   })
-  .refine((value) => !value.tracksPower || value.tracksStock, {
-    // Mirrors products_power_needs_stock in the migration. Caught here so the
-    // operator sees a sentence rather than a constraint name.
-    error: "A product stocked by power must also be stock-tracked.",
-    path: ["tracksStock"],
-  });
+  .refine(
+    (value) =>
+      !(
+        value.tracksPower ||
+        value.tracksCyl ||
+        value.tracksAdd ||
+        value.tracksEye
+      ) || value.tracksStock,
+    {
+      // Mirrors products_power_needs_stock in the migration. Caught here so the
+      // operator sees a sentence rather than a constraint name.
+      error:
+        "A product split by prescription must also be one you hold stock of.",
+      path: ["tracksStock"],
+    },
+  );
 
 export type ProductPayload = z.output<typeof productSchema>;

@@ -19,7 +19,11 @@ function toRow(payload: ProductPayload) {
     category: payload.category as ProductCategory,
     unit: payload.unit,
     list_price: payload.listPrice,
+    purchase_price: payload.purchasePrice,
     tracks_power: payload.tracksPower,
+    tracks_cyl: payload.tracksCyl,
+    tracks_add: payload.tracksAdd,
+    tracks_eye: payload.tracksEye,
     tracks_stock: payload.tracksStock,
   };
 }

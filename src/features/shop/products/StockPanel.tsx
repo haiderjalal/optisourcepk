@@ -10,6 +10,33 @@ import { formatPower } from "@/lib/format";
 import type { Product, StockBin } from "@/types/database";
 import { adjustStockAction, type StockFormState } from "./actions";
 
+/** "SPH and CYL", "SPH", "product" — how this product divides its shelf. */
+function describeKey(product: Product): string {
+  const parts: string[] = [];
+  if (product.tracks_power) parts.push("SPH");
+  if (product.tracks_cyl) parts.push("CYL");
+  if (product.tracks_add) parts.push("ADD");
+  if (product.tracks_eye) parts.push("eye");
+  if (parts.length === 0) return "product";
+  if (parts.length === 1) return parts[0];
+  return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
+}
+
+/** The shelf position of one bin, as the operator reads it. */
+export function describeBin(bin: {
+  sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: string | null;
+}): string {
+  const parts: string[] = [];
+  if (bin.sph !== null) parts.push(formatPower(bin.sph));
+  if (bin.cyl !== null) parts.push(formatPower(bin.cyl));
+  if (bin.add_power !== null) parts.push("A" + formatPower(bin.add_power));
+  if (bin.eye) parts.push(bin.eye);
+  return parts.join(" ");
+}
+
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
@@ -57,16 +84,28 @@ export function StockPanel({
         className="shadow-lift rounded-2xl bg-white p-5"
       >
         <input type="hidden" name="productId" value={product.id} />
-        {/* A non-power product has exactly one bin, keyed by a NULL power. */}
+
+        {/* Only the attributes this product is split by are asked for; the
+            rest are sent blank, and the database flattens them to NULL so the
+            bin key stays exactly as wide as the product needs. */}
         {!product.tracks_power && <input type="hidden" name="sph" value="" />}
+        {!product.tracks_cyl && <input type="hidden" name="cyl" value="" />}
+        {!product.tracks_add && (
+          <input type="hidden" name="addPower" value="" />
+        )}
+        {!product.tracks_eye && <input type="hidden" name="eye" value="" />}
 
         <h2 className="text-base font-semibold">Receive or adjust</h2>
+        <p className="text-navy-500 mt-1 text-sm">
+          Stock is held per {describeKey(product)}. Receiving the same
+          combination again adds to it.
+        </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {product.tracks_power && (
             <Field
               name="sph"
-              label="Power (SPH)"
+              label="SPH"
               required
               hint="0.25 steps"
               errors={errors?.sph}
@@ -85,6 +124,60 @@ export function StockPanel({
             </Field>
           )}
 
+          {product.tracks_cyl && (
+            <Field
+              name="cyl"
+              label="CYL"
+              hint="0.25 steps"
+              errors={errors?.cyl}
+            >
+              {(p) => (
+                <input
+                  {...p}
+                  type="number"
+                  step="0.25"
+                  min={-12}
+                  max={12}
+                  inputMode="decimal"
+                  placeholder="-0.50"
+                />
+              )}
+            </Field>
+          )}
+
+          {product.tracks_add && (
+            <Field
+              name="addPower"
+              label="ADD"
+              hint="0.25 steps"
+              errors={errors?.addPower}
+            >
+              {(p) => (
+                <input
+                  {...p}
+                  type="number"
+                  step="0.25"
+                  min={0.25}
+                  max={6}
+                  inputMode="decimal"
+                  placeholder="+1.50"
+                />
+              )}
+            </Field>
+          )}
+
+          {product.tracks_eye && (
+            <Field name="eye" label="Eye" errors={errors?.eye}>
+              {(p) => (
+                <select {...p} defaultValue="">
+                  <option value="">Either</option>
+                  <option value="R">Right</option>
+                  <option value="L">Left</option>
+                </select>
+              )}
+            </Field>
+          )}
+
           <Field
             name="delta"
             label={`Quantity (${product.unit})`}
@@ -93,6 +186,24 @@ export function StockPanel({
             errors={errors?.delta}
           >
             {(p) => <input {...p} type="number" step="1" inputMode="numeric" />}
+          </Field>
+
+          <Field
+            name="alertQty"
+            label="Alert quantity"
+            hint="Warn at or below this"
+            errors={errors?.alertQty}
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="1"
+                min={0}
+                inputMode="numeric"
+                placeholder="Leave blank to keep"
+              />
+            )}
           </Field>
 
           <Field name="reason" label="Reason" required errors={errors?.reason}>
@@ -163,7 +274,7 @@ export function StockPanel({
                 }`}
               >
                 <span className="text-navy-500 block font-mono text-xs">
-                  {formatPower(bin.sph)}
+                  {describeBin(bin)}
                 </span>
                 <span className="block text-lg font-semibold tabular-nums">
                   {bin.qty_on_hand}

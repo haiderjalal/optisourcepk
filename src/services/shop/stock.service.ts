@@ -55,11 +55,16 @@ export async function listLowStock(): Promise<LowStockLine[]> {
 
 export interface AdjustStockInput {
   productId: string;
-  /** `null` for anything not stocked by power. */
+  /** Each is `null` when the product is not split by that attribute. */
   sph: number | null;
+  cyl: number | null;
+  addPower: number | null;
+  eye: "R" | "L" | null;
   /** Signed: positive receives, negative issues or writes off. */
   delta: number;
   reason: StockReason;
+  /** When given, the bin's alert level is set after the movement. */
+  alertQty?: number | null;
   note?: string | null;
 }
 
@@ -75,12 +80,31 @@ export async function adjustStock(input: AdjustStockInput): Promise<number> {
   const { data, error } = await supabase.rpc("adjust_stock", {
     p_product_id: input.productId,
     p_sph: input.sph,
+    p_cyl: input.cyl,
+    p_add: input.addPower,
+    p_eye: input.eye,
     p_delta: input.delta,
     p_reason: input.reason,
     p_note: input.note ?? null,
   });
 
   if (error) throw new Error(describePostgresError(error, "adjust the stock"));
+
+  // Setting the alert level is a separate, non-critical step: the stock has
+  // already moved, and failing here must not suggest otherwise.
+  if (input.alertQty !== null && input.alertQty !== undefined) {
+    const alert = await supabase.rpc("set_bin_alert", {
+      p_product_id: input.productId,
+      p_sph: input.sph,
+      p_cyl: input.cyl,
+      p_add: input.addPower,
+      p_eye: input.eye,
+      p_level: input.alertQty,
+    });
+    if (alert.error) {
+      logger.warn("Alert quantity not set", { code: alert.error.code });
+    }
+  }
 
   logger.info("Stock adjusted", {
     productId: input.productId,

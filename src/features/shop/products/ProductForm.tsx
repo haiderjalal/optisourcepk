@@ -27,12 +27,69 @@ export function ProductForm({ product }: { product?: Product }) {
   );
   const errors = state.fieldErrors;
 
-  // Mirrors products_power_needs_stock: a power-tracked product must be
-  // stock-tracked, so ticking the first ticks and locks the second.
+  const [sale, setSale] = useState(String(product?.list_price ?? 0));
+  const [cost, setCost] = useState(String(product?.purchase_price ?? 0));
+
+  // Margin is the number the owner actually cares about, so show it rather
+  // than leave it to be worked out from two boxes.
+  const saleNum = Number(sale) || 0;
+  const costNum = Number(cost) || 0;
+  const marginHint =
+    saleNum > 0 && costNum > 0
+      ? `Margin Rs ${(saleNum - costNum).toFixed(2)} (${(
+          ((saleNum - costNum) / saleNum) *
+          100
+        ).toFixed(1)}%)`
+      : "What you pay for it.";
+
+  // Mirrors products_dimensions_need_stock: anything split by prescription
+  // must be something we hold, so ticking a split ticks and locks "we hold
+  // stock".
+  const [tracksStock, setTracksStock] = useState(product?.tracks_stock ?? true);
   const [tracksPower, setTracksPower] = useState(
     product?.tracks_power ?? false,
   );
-  const [tracksStock, setTracksStock] = useState(product?.tracks_stock ?? true);
+  const [tracksCyl, setTracksCyl] = useState(product?.tracks_cyl ?? false);
+  const [tracksAdd, setTracksAdd] = useState(product?.tracks_add ?? false);
+  const [tracksEye, setTracksEye] = useState(product?.tracks_eye ?? false);
+
+  const anySplit = tracksPower || tracksCyl || tracksAdd || tracksEye;
+
+  const splits = [
+    {
+      field: "tracksPower",
+      label: "SPH — sphere",
+      help: "One bin per power. The usual way stock lenses are held.",
+      checked: tracksPower,
+      set: setTracksPower,
+    },
+    {
+      field: "tracksCyl",
+      label: "CYL — cylinder",
+      help: "A full SPH × CYL matrix. Many more bins — only for toric stock.",
+      checked: tracksCyl,
+      set: setTracksCyl,
+    },
+    {
+      field: "tracksAdd",
+      label: "ADD — addition",
+      help: "For bifocals and progressives held by reading addition.",
+      checked: tracksAdd,
+      set: setTracksAdd,
+    },
+    {
+      field: "tracksEye",
+      label: "Eye — left / right",
+      help: "Only when left and right are genuinely different items.",
+      checked: tracksEye,
+      set: setTracksEye,
+    },
+  ];
+
+  function toggleSplit(set: (v: boolean) => void, value: boolean) {
+    set(value);
+    if (value) setTracksStock(true);
+  }
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
@@ -96,16 +153,38 @@ export function ProductForm({ product }: { product?: Product }) {
             )}
           </Field>
 
+          <div />
+
           <Field
             name="listPrice"
-            label="Rate (Rs)"
+            label="Sale price (Rs)"
             hint="Before any customer discount."
             errors={errors?.listPrice}
           >
             {(p) => (
               <input
                 {...p}
-                defaultValue={product?.list_price ?? 0}
+                value={sale}
+                onChange={(e) => setSale(e.target.value)}
+                type="number"
+                min={0}
+                step="0.01"
+                inputMode="decimal"
+              />
+            )}
+          </Field>
+
+          <Field
+            name="purchasePrice"
+            label="Purchase price (Rs)"
+            hint={marginHint}
+            errors={errors?.purchasePrice}
+          >
+            {(p) => (
+              <input
+                {...p}
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
                 type="number"
                 min={0}
                 step="0.01"
@@ -124,8 +203,8 @@ export function ProductForm({ product }: { product?: Product }) {
             type="checkbox"
             name="tracksStock"
             checked={tracksStock}
-            disabled={tracksPower}
-            onChange={(event) => setTracksStock(event.target.checked)}
+            disabled={anySplit}
+            onChange={(e) => setTracksStock(e.target.checked)}
             className="mt-0.5 size-4 shrink-0"
           />
           <span className="min-w-0">
@@ -137,29 +216,45 @@ export function ProductForm({ product }: { product?: Product }) {
           </span>
         </label>
 
-        <label className="mt-3 flex gap-3 rounded-lg border border-mist-200 p-3.5">
-          <input
-            type="checkbox"
-            name="tracksPower"
-            checked={tracksPower}
-            onChange={(event) => {
-              setTracksPower(event.target.checked);
-              if (event.target.checked) setTracksStock(true);
-            }}
-            className="mt-0.5 size-4 shrink-0"
-          />
-          <span className="min-w-0">
-            <span className="block text-sm font-medium">Stocked by power</span>
-            <span className="text-navy-500 block text-xs">
-              Lenses. Each SPH gets its own bin. CYL, AX and ADD still print on
-              the invoice line, but they do not split the stock.
-            </span>
-          </span>
-        </label>
+        {/* A disabled checkbox submits nothing, so carry the real value. */}
+        {anySplit && <input type="hidden" name="tracksStock" value="on" />}
 
-        {/* Checkboxes send nothing when unchecked; a disabled one sends nothing
-            either. These carry the real value through. */}
-        {tracksPower && <input type="hidden" name="tracksStock" value="on" />}
+        <fieldset className="mt-5" disabled={!tracksStock && !anySplit}>
+          <legend className="text-navy-600 text-sm font-medium">
+            Split stock by
+          </legend>
+          <p className="text-navy-500 mt-1 text-xs">
+            Each one you tick multiplies the number of bins you keep, so tick
+            only what the shelf is really organised by. Anything you leave off
+            is still recorded on the invoice line — it just does not divide the
+            stock.
+          </p>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {splits.map((split) => (
+              <label
+                key={split.field}
+                className="flex gap-3 rounded-lg border border-mist-200 p-3"
+              >
+                <input
+                  type="checkbox"
+                  name={split.field}
+                  checked={split.checked}
+                  onChange={(e) => toggleSplit(split.set, e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0"
+                />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium">
+                    {split.label}
+                  </span>
+                  <span className="text-navy-500 block text-xs">
+                    {split.help}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         {errors?.tracksStock && (
           <p className="mt-2 text-xs text-amber-700">{errors.tracksStock[0]}</p>
@@ -167,8 +262,9 @@ export function ProductForm({ product }: { product?: Product }) {
 
         {product && product.tracks_power !== tracksPower && (
           <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2.5 text-xs text-amber-800 ring-1 ring-amber-200 ring-inset">
-            Changing this on a product that already has stock will be refused
-            while bins exist. Clear its stock first.
+            Changing how a product is split while it already holds stock leaves
+            the existing bins where they are. Clear its stock first if you want
+            a clean start.
           </p>
         )}
       </section>
