@@ -142,6 +142,8 @@ type OrderRow = {
   additional_tax_rate: number;
   additional_tax_amount: number | null;
   amount_incl_tax: number | null;
+  previous_balance: number | null;
+  closing_balance: number | null;
   voided_at: string | null;
   void_reason: string | null;
   notes: string | null;

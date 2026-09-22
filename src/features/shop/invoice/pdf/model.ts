@@ -43,6 +43,8 @@ export interface InvoicePdfModel {
   totals: { label: string; value: string; strong?: boolean }[];
   orderQty: string;
   lensQty: string;
+  /** Empty when the invoice predates balance snapshots. */
+  account: { label: string; value: string; strong?: boolean }[];
   voided: boolean;
 }
 
@@ -153,6 +155,23 @@ export function buildInvoicePdfModel(order: OrderWithLines): InvoicePdfModel {
         strong: true,
       },
     ],
+    // Only when it was snapshotted at issue. Recomputing it now would show a
+    // different figure every time an old invoice is reprinted.
+    account:
+      order.previous_balance === null
+        ? []
+        : [
+            {
+              label: "Previous Balance",
+              value: amount(order.previous_balance),
+            },
+            { label: "This Invoice", value: amount(order.amount_incl_tax) },
+            {
+              label: "Total Payable",
+              value: amount(order.closing_balance),
+              strong: true,
+            },
+          ],
     orderQty: String(order.order_qty ?? 1),
     lensQty: String(order.lens_qty ?? 0),
     voided: order.voided_at !== null,
