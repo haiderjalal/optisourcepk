@@ -47,6 +47,137 @@ export function ProductForm({ product }: { product?: Product }) {
     product?.tracks_power ?? false,
   );
 
+  const RANGES = [
+    {
+      label: "SPH — sphere",
+      fields: [
+        {
+          name: "sphMin",
+          label: "Min",
+          step: "0.25",
+          min: -30,
+          max: 30,
+          placeholder: "-6.00",
+          value: product?.sph_min,
+        },
+        {
+          name: "sphMax",
+          label: "Max",
+          step: "0.25",
+          min: -30,
+          max: 30,
+          placeholder: "+4.00",
+          value: product?.sph_max,
+        },
+        {
+          name: "sphStep",
+          label: "Step",
+          step: "0.25",
+          min: 0.25,
+          max: 5,
+          placeholder: "0.25",
+          value: product?.sph_step,
+        },
+      ],
+    },
+    {
+      label: "CYL — cylinder",
+      fields: [
+        {
+          name: "cylMin",
+          label: "Min",
+          step: "0.25",
+          min: -12,
+          max: 12,
+          placeholder: "-2.00",
+          value: product?.cyl_min,
+        },
+        {
+          name: "cylMax",
+          label: "Max",
+          step: "0.25",
+          min: -12,
+          max: 12,
+          placeholder: "0.00",
+          value: product?.cyl_max,
+        },
+        {
+          name: "cylStep",
+          label: "Step",
+          step: "0.25",
+          min: 0.25,
+          max: 5,
+          placeholder: "0.25",
+          value: product?.cyl_step,
+        },
+      ],
+    },
+    {
+      label: "ADD — addition",
+      fields: [
+        {
+          name: "addMin",
+          label: "Min",
+          step: "0.25",
+          min: 0,
+          max: 6,
+          placeholder: "1.00",
+          value: product?.add_min,
+        },
+        {
+          name: "addMax",
+          label: "Max",
+          step: "0.25",
+          min: 0,
+          max: 6,
+          placeholder: "3.00",
+          value: product?.add_max,
+        },
+        {
+          name: "addStep",
+          label: "Step",
+          step: "0.25",
+          min: 0.25,
+          max: 5,
+          placeholder: "0.25",
+          value: product?.add_step,
+        },
+      ],
+    },
+    {
+      label: "Axis",
+      fields: [
+        {
+          name: "axisMin",
+          label: "Min",
+          step: "1",
+          min: 0,
+          max: 180,
+          placeholder: "0",
+          value: product?.axis_min,
+        },
+        {
+          name: "axisMax",
+          label: "Max",
+          step: "1",
+          min: 0,
+          max: 180,
+          placeholder: "180",
+          value: product?.axis_max,
+        },
+        {
+          name: "axisStep",
+          label: "Step",
+          step: "1",
+          min: 1,
+          max: 180,
+          placeholder: "10",
+          value: product?.axis_step,
+        },
+      ],
+    },
+  ];
+
   return (
     <form action={formAction} className="space-y-6" noValidate>
       {product && <input type="hidden" name="id" value={product.id} />}
@@ -207,6 +338,57 @@ export function ProductForm({ product }: { product?: Product }) {
             a clean start.
           </p>
         )}
+      </section>
+
+      <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
+        <h2 className="text-base font-semibold">Power range</h2>
+        <p className="text-navy-500 mt-1 max-w-prose text-sm">
+          The range this product is made in. Leave it blank if it has none.
+          Setting a range bounds and steps the inputs when you receive stock,
+          and lets you create every bin in the range in one go.
+        </p>
+
+        <div className="mt-4 space-y-4">
+          {RANGES.map((row) => (
+            <div key={row.label}>
+              <p className="text-navy-600 text-sm font-medium">{row.label}</p>
+              <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                {row.fields.map((field) => (
+                  <Field
+                    key={field.name}
+                    name={field.name}
+                    label={field.label}
+                    errors={errors?.[field.name]}
+                  >
+                    {(p) => (
+                      <input
+                        {...p}
+                        type="number"
+                        step={field.step}
+                        min={field.min}
+                        max={field.max}
+                        inputMode="decimal"
+                        placeholder={field.placeholder}
+                        defaultValue={field.value ?? ""}
+                      />
+                    )}
+                  </Field>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <Field name="eyes" label="Eyes" className="sm:max-w-xs">
+            {(p) => (
+              <select {...p} defaultValue={product?.eyes ?? ""}>
+                <option value="">Not specified</option>
+                <option value="both">Both — not eye-specific</option>
+                <option value="R">Right only</option>
+                <option value="L">Left only</option>
+              </select>
+            )}
+          </Field>
+        </div>
       </section>
 
       {state.error && (

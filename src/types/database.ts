@@ -63,6 +63,19 @@ type ProductRow = {
   tracks_add: boolean;
   tracks_eye: boolean;
   tracks_stock: boolean;
+  sph_min: number | null;
+  sph_max: number | null;
+  sph_step: number | null;
+  cyl_min: number | null;
+  cyl_max: number | null;
+  cyl_step: number | null;
+  add_min: number | null;
+  add_max: number | null;
+  add_step: number | null;
+  axis_min: number | null;
+  axis_max: number | null;
+  axis_step: number | null;
+  eyes: "both" | "R" | "L" | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -323,6 +336,14 @@ export interface Database {
           p_additional_tax_rate?: number;
         };
         Returns: OrderRow;
+      };
+      receive_range: {
+        Args: {
+          p_product_id: string;
+          p_qty: number;
+          p_alert?: number | null;
+        };
+        Returns: number;
       };
       void_invoice: {
         Args: { p_order_id: string; p_reason: string };

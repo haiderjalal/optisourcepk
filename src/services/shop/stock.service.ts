@@ -399,3 +399,29 @@ export async function checkOrderStock(
 
   return out.sort((a, b) => a.productName.localeCompare(b.productName));
 }
+
+/**
+ * Create every bin in a product's declared range at once.
+ *
+ * One database call, one transaction: the whole grid appears or none of it
+ * does. Existing bins are topped up rather than reset, so running it twice
+ * does not quietly discard a count.
+ */
+export async function receiveRange(
+  productId: string,
+  qty: number,
+  alertQty: number | null,
+): Promise<number> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase.rpc("receive_range", {
+    p_product_id: productId,
+    p_qty: qty,
+    p_alert: alertQty,
+  });
+
+  if (error) throw new Error(describePostgresError(error, "fill the range"));
+
+  logger.info("Range filled", { productId, qty, bins: data });
+  return data;
+}

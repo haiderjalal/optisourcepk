@@ -25,6 +25,19 @@ function toRow(payload: ProductPayload) {
     tracks_add: payload.tracksAdd,
     tracks_eye: payload.tracksEye,
     tracks_stock: payload.tracksStock,
+    sph_min: payload.sphMin,
+    sph_max: payload.sphMax,
+    sph_step: payload.sphStep,
+    cyl_min: payload.cylMin,
+    cyl_max: payload.cylMax,
+    cyl_step: payload.cylStep,
+    add_min: payload.addMin,
+    add_max: payload.addMax,
+    add_step: payload.addStep,
+    axis_min: payload.axisMin,
+    axis_max: payload.axisMax,
+    axis_step: payload.axisStep,
+    eyes: payload.eyes ? payload.eyes : null,
   };
 }
 

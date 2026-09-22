@@ -71,9 +71,9 @@ export function StockPanel({
               <input
                 {...p}
                 type="number"
-                step="0.25"
-                min={-30}
-                max={30}
+                step={product.sph_step ?? 0.25}
+                min={product.sph_min ?? -30}
+                max={product.sph_max ?? 30}
                 inputMode="decimal"
                 placeholder="-2.00"
               />
@@ -85,9 +85,9 @@ export function StockPanel({
               <input
                 {...p}
                 type="number"
-                step="0.25"
-                min={-12}
-                max={12}
+                step={product.cyl_step ?? 0.25}
+                min={product.cyl_min ?? -12}
+                max={product.cyl_max ?? 12}
                 inputMode="decimal"
                 placeholder="-0.50"
               />
@@ -104,9 +104,9 @@ export function StockPanel({
               <input
                 {...p}
                 type="number"
-                step="0.25"
-                min={0}
-                max={6}
+                step={product.add_step ?? 0.25}
+                min={product.add_min ?? 0}
+                max={product.add_max ?? 6}
                 inputMode="decimal"
                 placeholder="+1.50"
               />
