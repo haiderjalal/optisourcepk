@@ -10,18 +10,6 @@ import { formatPower } from "@/lib/format";
 import type { Product, StockBin } from "@/types/database";
 import { adjustStockAction, type StockFormState } from "./actions";
 
-/** "SPH and CYL", "SPH", "product" — how this product divides its shelf. */
-function describeKey(product: Product): string {
-  const parts: string[] = [];
-  if (product.tracks_power) parts.push("SPH");
-  if (product.tracks_cyl) parts.push("CYL");
-  if (product.tracks_add) parts.push("ADD");
-  if (product.tracks_eye) parts.push("eye");
-  if (parts.length === 0) return "product";
-  if (parts.length === 1) return parts[0];
-  return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
-}
-
 /** The shelf position of one bin, as the operator reads it. */
 export function describeBin(bin: {
   sph: number | null;
@@ -85,98 +73,70 @@ export function StockPanel({
       >
         <input type="hidden" name="productId" value={product.id} />
 
-        {/* Only the attributes this product is split by are asked for; the
-            rest are sent blank, and the database flattens them to NULL so the
-            bin key stays exactly as wide as the product needs. */}
-        {!product.tracks_power && <input type="hidden" name="sph" value="" />}
-        {!product.tracks_cyl && <input type="hidden" name="cyl" value="" />}
-        {!product.tracks_add && (
-          <input type="hidden" name="addPower" value="" />
-        )}
-        {!product.tracks_eye && <input type="hidden" name="eye" value="" />}
-
         <h2 className="text-base font-semibold">Receive or adjust</h2>
         <p className="text-navy-500 mt-1 text-sm">
-          Stock is held per {describeKey(product)}. Receiving the same
-          combination again adds to it.
+          Fill in only what divides your shelf. Receiving the same combination
+          again adds to it, and stock held as plain SPH still covers an order
+          line that also carries a cylinder.
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {product.tracks_power && (
-            <Field
-              name="sph"
-              label="SPH"
-              required
-              hint="0.25 steps"
-              errors={errors?.sph}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="number"
-                  step="0.25"
-                  min={-30}
-                  max={30}
-                  inputMode="decimal"
-                  placeholder="-2.00"
-                />
-              )}
-            </Field>
-          )}
+          <Field name="sph" label="SPH" hint="0.25 steps" errors={errors?.sph}>
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="0.25"
+                min={-30}
+                max={30}
+                inputMode="decimal"
+                placeholder="-2.00"
+              />
+            )}
+          </Field>
 
-          {product.tracks_cyl && (
-            <Field
-              name="cyl"
-              label="CYL"
-              hint="0.25 steps"
-              errors={errors?.cyl}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="number"
-                  step="0.25"
-                  min={-12}
-                  max={12}
-                  inputMode="decimal"
-                  placeholder="-0.50"
-                />
-              )}
-            </Field>
-          )}
+          <Field name="cyl" label="CYL" hint="0.25 steps" errors={errors?.cyl}>
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="0.25"
+                min={-12}
+                max={12}
+                inputMode="decimal"
+                placeholder="-0.50"
+              />
+            )}
+          </Field>
 
-          {product.tracks_add && (
-            <Field
-              name="addPower"
-              label="ADD"
-              hint="0.25 steps"
-              errors={errors?.addPower}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="number"
-                  step="0.25"
-                  min={0.25}
-                  max={6}
-                  inputMode="decimal"
-                  placeholder="+1.50"
-                />
-              )}
-            </Field>
-          )}
+          <Field
+            name="addPower"
+            label="ADD"
+            hint="0.25 steps"
+            errors={errors?.addPower}
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="0.25"
+                min={0.25}
+                max={6}
+                inputMode="decimal"
+                placeholder="+1.50"
+              />
+            )}
+          </Field>
 
-          {product.tracks_eye && (
-            <Field name="eye" label="Eye" errors={errors?.eye}>
-              {(p) => (
-                <select {...p} defaultValue="">
-                  <option value="">Either</option>
-                  <option value="R">Right</option>
-                  <option value="L">Left</option>
-                </select>
-              )}
-            </Field>
-          )}
+          <Field name="eye" label="Eye" errors={errors?.eye}>
+            {(p) => (
+              <select {...p} defaultValue="">
+                <option value="">Either</option>
+                <option value="R">Right</option>
+                <option value="L">Left</option>
+              </select>
+            )}
+          </Field>
 
           <Field
             name="delta"

@@ -42,54 +42,10 @@ export function ProductForm({ product }: { product?: Product }) {
         ).toFixed(1)}%)`
       : "What you pay for it.";
 
-  // Mirrors products_dimensions_need_stock: anything split by prescription
-  // must be something we hold, so ticking a split ticks and locks "we hold
-  // stock".
   const [tracksStock, setTracksStock] = useState(product?.tracks_stock ?? true);
   const [tracksPower, setTracksPower] = useState(
     product?.tracks_power ?? false,
   );
-  const [tracksCyl, setTracksCyl] = useState(product?.tracks_cyl ?? false);
-  const [tracksAdd, setTracksAdd] = useState(product?.tracks_add ?? false);
-  const [tracksEye, setTracksEye] = useState(product?.tracks_eye ?? false);
-
-  const anySplit = tracksPower || tracksCyl || tracksAdd || tracksEye;
-
-  const splits = [
-    {
-      field: "tracksPower",
-      label: "SPH — sphere",
-      help: "One bin per power. The usual way stock lenses are held.",
-      checked: tracksPower,
-      set: setTracksPower,
-    },
-    {
-      field: "tracksCyl",
-      label: "CYL — cylinder",
-      help: "A full SPH × CYL matrix. Many more bins — only for toric stock.",
-      checked: tracksCyl,
-      set: setTracksCyl,
-    },
-    {
-      field: "tracksAdd",
-      label: "ADD — addition",
-      help: "For bifocals and progressives held by reading addition.",
-      checked: tracksAdd,
-      set: setTracksAdd,
-    },
-    {
-      field: "tracksEye",
-      label: "Eye — left / right",
-      help: "Only when left and right are genuinely different items.",
-      checked: tracksEye,
-      set: setTracksEye,
-    },
-  ];
-
-  function toggleSplit(set: (v: boolean) => void, value: boolean) {
-    set(value);
-    if (value) setTracksStock(true);
-  }
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
@@ -203,7 +159,7 @@ export function ProductForm({ product }: { product?: Product }) {
             type="checkbox"
             name="tracksStock"
             checked={tracksStock}
-            disabled={anySplit}
+            disabled={tracksPower}
             onChange={(e) => setTracksStock(e.target.checked)}
             className="mt-0.5 size-4 shrink-0"
           />
@@ -217,44 +173,28 @@ export function ProductForm({ product }: { product?: Product }) {
         </label>
 
         {/* A disabled checkbox submits nothing, so carry the real value. */}
-        {anySplit && <input type="hidden" name="tracksStock" value="on" />}
+        {tracksPower && <input type="hidden" name="tracksStock" value="on" />}
 
-        <fieldset className="mt-5" disabled={!tracksStock && !anySplit}>
-          <legend className="text-navy-600 text-sm font-medium">
-            Split stock by
-          </legend>
-          <p className="text-navy-500 mt-1 text-xs">
-            Each one you tick multiplies the number of bins you keep, so tick
-            only what the shelf is really organised by. Anything you leave off
-            is still recorded on the invoice line — it just does not divide the
-            stock.
-          </p>
-
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {splits.map((split) => (
-              <label
-                key={split.field}
-                className="flex gap-3 rounded-lg border border-mist-200 p-3"
-              >
-                <input
-                  type="checkbox"
-                  name={split.field}
-                  checked={split.checked}
-                  onChange={(e) => toggleSplit(split.set, e.target.checked)}
-                  className="mt-0.5 size-4 shrink-0"
-                />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium">
-                    {split.label}
-                  </span>
-                  <span className="text-navy-500 block text-xs">
-                    {split.help}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
+        <label className="mt-3 flex gap-3 rounded-lg border border-mist-200 p-3.5">
+          <input
+            type="checkbox"
+            name="tracksPower"
+            checked={tracksPower}
+            onChange={(e) => {
+              setTracksPower(e.target.checked);
+              if (e.target.checked) setTracksStock(true);
+            }}
+            className="mt-0.5 size-4 shrink-0"
+          />
+          <span className="min-w-0">
+            <span className="block text-sm font-medium">It has a power</span>
+            <span className="text-navy-500 block text-xs">
+              Lenses. Ticking this counts them towards the Lens Qty on the
+              invoice. Stock is keyed by whatever you type when receiving it —
+              SPH alone, or SPH with CYL, ADD and eye.
+            </span>
+          </span>
+        </label>
 
         {errors?.tracksStock && (
           <p className="mt-2 text-xs text-amber-700">{errors.tracksStock[0]}</p>
