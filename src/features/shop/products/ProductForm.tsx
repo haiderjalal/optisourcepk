@@ -76,7 +76,7 @@ export function ProductForm({ product }: { product?: Product }) {
           min: 0.25,
           max: 5,
           placeholder: "0.25",
-          value: product?.sph_step,
+          value: product?.sph_step ?? 0.25,
         },
       ],
     },
@@ -108,7 +108,7 @@ export function ProductForm({ product }: { product?: Product }) {
           min: 0.25,
           max: 5,
           placeholder: "0.25",
-          value: product?.cyl_step,
+          value: product?.cyl_step ?? 0.25,
         },
       ],
     },
@@ -140,7 +140,7 @@ export function ProductForm({ product }: { product?: Product }) {
           min: 0.25,
           max: 5,
           placeholder: "0.25",
-          value: product?.add_step,
+          value: product?.add_step ?? 0.25,
         },
       ],
     },
@@ -345,7 +345,8 @@ export function ProductForm({ product }: { product?: Product }) {
         <p className="text-navy-500 mt-1 max-w-prose text-sm">
           The range this product is made in. Leave it blank if it has none.
           Setting a range bounds and steps the inputs when you receive stock,
-          and lets you create every bin in the range in one go.
+          and lets you create every bin in the range in one go. Steps default to
+          0.25 — change one only for a line that comes in half dioptres.
         </p>
 
         <div className="mt-4 space-y-4">
