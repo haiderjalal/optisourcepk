@@ -71,3 +71,25 @@ export function todayInKarachi(): string {
     new Date(),
   );
 }
+
+/**
+ * The shelf position of one stock bin, as the operator reads it: "-2.00 -0.50
+ * A+1.50 R". Blank for a product held without any prescription attributes.
+ *
+ * Lives here rather than beside the stock components because both server and
+ * client render it, and a helper exported from a "use client" module cannot be
+ * called from a Server Component.
+ */
+export function describeBin(bin: {
+  sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: string | null;
+}): string {
+  const parts: string[] = [];
+  if (bin.sph !== null) parts.push(formatPower(bin.sph));
+  if (bin.cyl !== null) parts.push(formatPower(bin.cyl));
+  if (bin.add_power !== null) parts.push(`A${formatPower(bin.add_power)}`);
+  if (bin.eye) parts.push(bin.eye);
+  return parts.join(" ");
+}

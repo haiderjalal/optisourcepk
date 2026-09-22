@@ -14,8 +14,7 @@ import { listOutstanding } from "@/services/shop/ledger.service";
 import { listLowStock } from "@/services/shop/stock.service";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
-import { formatAmount, formatDate } from "@/lib/format";
-import { describeBin } from "@/features/shop/products/StockPanel";
+import { describeBin, formatAmount, formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Dashboard" };
 

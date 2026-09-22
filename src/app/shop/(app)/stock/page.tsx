@@ -4,7 +4,7 @@ import { Boxes, PackagePlus, Plus, TriangleAlert } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listAllStock } from "@/services/shop/stock.service";
 import { ButtonLink } from "@/components/ui/button";
-import { describeBin } from "@/features/shop/products/StockPanel";
+import { describeBin } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Stock" };
 

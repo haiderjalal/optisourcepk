@@ -6,24 +6,9 @@ import { AlertCircle, Check, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { STOCK_REASONS } from "@/lib/validations/shop/stock";
-import { formatPower } from "@/lib/format";
+import { describeBin } from "@/lib/format";
 import type { Product, StockBin } from "@/types/database";
 import { adjustStockAction, type StockFormState } from "./actions";
-
-/** The shelf position of one bin, as the operator reads it. */
-export function describeBin(bin: {
-  sph: number | null;
-  cyl: number | null;
-  add_power: number | null;
-  eye: string | null;
-}): string {
-  const parts: string[] = [];
-  if (bin.sph !== null) parts.push(formatPower(bin.sph));
-  if (bin.cyl !== null) parts.push(formatPower(bin.cyl));
-  if (bin.add_power !== null) parts.push("A" + formatPower(bin.add_power));
-  if (bin.eye) parts.push(bin.eye);
-  return parts.join(" ");
-}
 
 function SubmitButton() {
   const { pending } = useFormStatus();
