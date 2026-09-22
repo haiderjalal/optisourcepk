@@ -50,7 +50,7 @@ export const orderLineSchema = z
       .refine((value) => value === null || (value >= 0 && value <= 180), {
         error: "AX runs from 0 to 180.",
       }),
-    addPower: dioptre(0.25, 6, "ADD"),
+    addPower: dioptre(0, 6, "ADD"),
     unitPrice: z.coerce
       .number({ error: "Enter a rate." })
       .min(0, "A rate cannot be negative.")

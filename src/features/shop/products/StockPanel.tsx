@@ -120,7 +120,7 @@ export function StockPanel({
                 {...p}
                 type="number"
                 step="0.25"
-                min={0.25}
+                min={0}
                 max={6}
                 inputMode="decimal"
                 placeholder="+1.50"

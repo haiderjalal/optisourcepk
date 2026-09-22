@@ -52,7 +52,7 @@ export const stockAdjustmentSchema = z.object({
   // database flattens the rest to NULL, so a stray value is harmless.
   sph: sphField,
   cyl: dioptreField(-12, 12, "CYL"),
-  addPower: dioptreField(0.25, 6, "ADD"),
+  addPower: dioptreField(0, 6, "ADD"),
   eye: z.enum(["", "R", "L"]).optional(),
 
   delta: z.coerce
