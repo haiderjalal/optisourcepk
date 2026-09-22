@@ -15,6 +15,7 @@ import {
   updateDelivery,
   updateOrder,
   voidInvoice,
+  deleteOrder,
 } from "@/services/shop/invoice.service";
 import { recordPayment } from "@/services/shop/ledger.service";
 
@@ -156,6 +157,25 @@ export async function voidInvoiceAction(formData: FormData): Promise<void> {
   revalidatePath(`/shop/orders/${id}`);
   revalidatePath("/shop/invoices");
   revalidatePath("/shop");
+}
+
+/**
+ * Delete a draft.
+ *
+ * Refused for anything issued — the service says so, and the foreign keys on
+ * the ledger and stock movements would refuse it anyway.
+ */
+export async function deleteOrderAction(formData: FormData): Promise<void> {
+  await requireUser();
+
+  const id = formData.get("orderId");
+  if (typeof id !== "string" || !id) return;
+
+  await deleteOrder(id);
+
+  revalidatePath("/shop/orders");
+  revalidatePath("/shop");
+  redirect("/shop/orders");
 }
 
 export async function markDispatchedAction(formData: FormData): Promise<void> {

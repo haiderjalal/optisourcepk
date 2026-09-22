@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardList, Plus } from "lucide-react";
+import { ClipboardList, Pencil, Plus } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listOrders } from "@/services/shop/invoice.service";
 import { listCustomers } from "@/services/shop/customer.service";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
 import { formatAmount, formatDate } from "@/lib/format";
+import { ConfirmButton } from "@/components/ui/confirm-button";
+import { deleteOrderAction } from "@/features/shop/orders/actions";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -70,6 +72,9 @@ export default async function OrdersPage() {
                 <th scope="col" className="px-4 py-3 text-right font-medium">
                   Amount (Rs)
                 </th>
+                <th scope="col" className="w-32 px-4 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -108,6 +113,37 @@ export default async function OrdersPage() {
                     {order.amount_incl_tax === null
                       ? "—"
                       : formatAmount(order.amount_incl_tax)}
+                  </td>
+                  <td className="px-4 py-3">
+                    {/* Only a draft can be changed. Once issued the database
+                        freezes it, and void is the way back. */}
+                    {order.issued_at === null ? (
+                      <div className="flex items-center justify-end gap-1">
+                        <Link
+                          href={`/shop/orders/${order.id}/edit`}
+                          className="text-navy-300 hover:text-navy-600 rounded-md p-1.5 transition-colors hover:bg-mist-100"
+                          title={`Edit order ${order.order_no}`}
+                        >
+                          <Pencil className="size-4" aria-hidden />
+                          <span className="sr-only">
+                            Edit order {order.order_no}
+                          </span>
+                        </Link>
+                        <ConfirmButton
+                          action={deleteOrderAction}
+                          id={order.id}
+                          idField="orderId"
+                          kind="delete"
+                          name={`order ${order.order_no}`}
+                          question="Delete this draft?"
+                          confirmLabel="Delete"
+                        />
+                      </div>
+                    ) : (
+                      <span className="text-navy-300 block text-right text-xs">
+                        issued
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -7,6 +7,7 @@ import { getOrder } from "@/services/shop/invoice.service";
 import { checkOrderStock } from "@/services/shop/stock.service";
 import { listSellableProducts } from "@/services/shop/product.service";
 import { StockCheck } from "@/features/shop/orders/StockCheck";
+import { DeleteDraftPanel } from "@/features/shop/orders/DeleteDraftPanel";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
 import {
@@ -213,6 +214,7 @@ export default async function OrderPage({
         <div className="space-y-5">
           <StockCheck lines={availability} productLinks={productLinks} />
           <IssuePanel order={order} subtotal={subtotal} />
+          <DeleteDraftPanel order={order} />
         </div>
       )}
 
