@@ -256,7 +256,12 @@ export async function receivePowersAction(
     return { error: "That product was not found." };
   }
 
-  let entries: { sph: number | null; qty: number }[] = [];
+  let entries: {
+    sph: number | null;
+    cyl?: number | null;
+    add?: number | null;
+    qty: number;
+  }[] = [];
   try {
     const raw = formData.get("entries");
     entries = typeof raw === "string" ? JSON.parse(raw) : [];

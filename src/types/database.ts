@@ -350,7 +350,12 @@ export interface Database {
       receive_powers: {
         Args: {
           p_product_id: string;
-          p_entries: { sph: number | null; qty: number }[];
+          p_entries: {
+            sph: number | null;
+            cyl?: number | null;
+            add?: number | null;
+            qty: number;
+          }[];
           p_cyl?: number | null;
           p_add?: number | null;
           p_eye?: string | null;

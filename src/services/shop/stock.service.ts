@@ -428,6 +428,9 @@ export async function receiveRange(
 
 export interface PowerEntry {
   sph: number | null;
+  /** Omitted when the whole batch shares one cylinder. */
+  cyl?: number | null;
+  add?: number | null;
   qty: number;
 }
 
