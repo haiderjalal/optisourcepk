@@ -4,6 +4,9 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, Download, FileText, Pencil } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
+import { checkOrderStock } from "@/services/shop/stock.service";
+import { listSellableProducts } from "@/services/shop/product.service";
+import { StockCheck } from "@/features/shop/orders/StockCheck";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
 import {
@@ -23,6 +26,13 @@ export default async function OrderPage({
 
   const order = await getOrder(id);
   if (!order) notFound();
+
+  // Only worth checking while it can still be acted on.
+  const canIssue = order.issued_at === null && order.voided_at === null;
+  const [availability, products] = canIssue
+    ? await Promise.all([checkOrderStock(id), listSellableProducts()])
+    : [[], []];
+  const productLinks = new Map(products.map((p) => [p.sku, p.id]));
 
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
@@ -199,7 +209,12 @@ export default async function OrderPage({
         </div>
       </section>
 
-      {!issued && !voided && <IssuePanel order={order} subtotal={subtotal} />}
+      {!issued && !voided && (
+        <div className="space-y-5">
+          <StockCheck lines={availability} productLinks={productLinks} />
+          <IssuePanel order={order} subtotal={subtotal} />
+        </div>
+      )}
 
       {issued && !voided && (
         <div className="space-y-5">

@@ -164,3 +164,158 @@ export async function listMovements(
     sph: sphByBin.get(row.bin_id) ?? null,
   }));
 }
+
+export interface ProductStock {
+  productId: string;
+  sku: string;
+  name: string;
+  unit: string;
+  tracksPower: boolean;
+  tracksStock: boolean;
+  bins: StockBin[];
+  total: number;
+  lowCount: number;
+}
+
+/**
+ * Every product with its bins, for the stock screen.
+ *
+ * Products with no stock yet are included on purpose — "nothing received"
+ * is the state the operator most needs to see, and leaving them out is what
+ * made an empty stock page look broken.
+ */
+export async function listAllStock(): Promise<ProductStock[]> {
+  const { supabase } = await requireUser();
+
+  const [products, bins] = await Promise.all([
+    supabase.from("products").select("*").is("deleted_at", null).order("name"),
+    supabase
+      .from("stock_bins")
+      .select("*")
+      .order("sph", { ascending: true, nullsFirst: true }),
+  ]);
+
+  if (products.error) {
+    throw new Error(describePostgresError(products.error, "load products"));
+  }
+  if (bins.error) {
+    throw new Error(describePostgresError(bins.error, "load stock"));
+  }
+
+  const byProduct = new Map<string, StockBin[]>();
+  for (const bin of bins.data ?? []) {
+    const list = byProduct.get(bin.product_id) ?? [];
+    list.push(bin);
+    byProduct.set(bin.product_id, list);
+  }
+
+  return (products.data ?? [])
+    .filter((product) => product.tracks_stock)
+    .map((product) => {
+      const own = byProduct.get(product.id) ?? [];
+      return {
+        productId: product.id,
+        sku: product.sku,
+        name: product.name,
+        unit: product.unit,
+        tracksPower: product.tracks_power,
+        tracksStock: product.tracks_stock,
+        bins: own,
+        total: own.reduce((sum, bin) => sum + bin.qty_on_hand, 0),
+        lowCount: own.filter((bin) => bin.qty_on_hand <= bin.reorder_level)
+          .length,
+      };
+    });
+}
+
+export interface LineAvailability {
+  productName: string;
+  sku: string;
+  unit: string;
+  sph: number | null;
+  needed: number;
+  onHand: number;
+  /** No bin exists at all — nothing has ever been received for this power. */
+  missing: boolean;
+  short: boolean;
+}
+
+/**
+ * Can this order actually be invoiced?
+ *
+ * Mirrors what `issue_invoice` will do, so the operator sees the problem on
+ * the page instead of discovering it from a failed transaction. The database
+ * remains the authority — this is a preview, not the check.
+ */
+export async function checkOrderStock(
+  orderId: string,
+): Promise<LineAvailability[]> {
+  const { supabase } = await requireUser();
+
+  const { data: lines, error } = await supabase
+    .from("order_lines")
+    .select("product_id, sph, quantity, product_name, unit")
+    .eq("order_id", orderId);
+
+  if (error) throw new Error(describePostgresError(error, "check stock"));
+  if (!lines || lines.length === 0) return [];
+
+  const productIds = [...new Set(lines.map((l) => l.product_id))];
+
+  const [products, bins] = await Promise.all([
+    supabase
+      .from("products")
+      .select("id, name, sku, unit, tracks_stock")
+      .in("id", productIds),
+    supabase
+      .from("stock_bins")
+      .select("product_id, sph, qty_on_hand")
+      .in("product_id", productIds),
+  ]);
+
+  if (products.error) {
+    throw new Error(describePostgresError(products.error, "check stock"));
+  }
+  if (bins.error) {
+    throw new Error(describePostgresError(bins.error, "check stock"));
+  }
+
+  const productById = new Map((products.data ?? []).map((p) => [p.id, p]));
+  const key = (id: string, sph: number | null) => `${id}|${sph ?? "null"}`;
+  const onHand = new Map(
+    (bins.data ?? []).map((b) => [key(b.product_id, b.sph), b.qty_on_hand]),
+  );
+
+  // Several lines can draw on one bin — two eyes at the same power, say — so
+  // demand is summed per bin before it is compared, exactly as the database
+  // does it.
+  const needed = new Map<string, number>();
+  for (const line of lines) {
+    const product = productById.get(line.product_id);
+    if (!product?.tracks_stock) continue;
+    const k = key(line.product_id, line.sph);
+    needed.set(k, (needed.get(k) ?? 0) + line.quantity);
+  }
+
+  const out: LineAvailability[] = [];
+
+  for (const [k, qty] of needed) {
+    const [productId, sphRaw] = k.split("|");
+    const sph = sphRaw === "null" ? null : Number(sphRaw);
+    const product = productById.get(productId);
+    const have = onHand.get(k);
+
+    out.push({
+      productName: product?.name ?? "Unknown product",
+      sku: product?.sku ?? "",
+      unit: product?.unit ?? "pcs",
+      sph,
+      needed: qty,
+      onHand: have ?? 0,
+      missing: have === undefined,
+      short: have !== undefined && have < qty,
+    });
+  }
+
+  return out.sort((a, b) => a.productName.localeCompare(b.productName));
+}
