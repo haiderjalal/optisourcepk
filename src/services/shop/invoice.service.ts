@@ -151,9 +151,11 @@ async function replaceLines(
       unit: product.unit,
       eye: line.eye === "" || !line.eye ? null : line.eye,
       sph: line.sph,
-      cyl: line.cyl,
+      // Zero cylinder or addition means none: stored as NULL so it prints
+      // blank, and so it matches a stock bin received the same way.
+      cyl: line.cyl === 0 ? null : line.cyl,
       ax: line.ax,
-      add_power: line.addPower,
+      add_power: line.addPower === 0 ? null : line.addPower,
       unit_price: line.unitPrice,
       discount_pct: line.discountPct,
       quantity: line.quantity,

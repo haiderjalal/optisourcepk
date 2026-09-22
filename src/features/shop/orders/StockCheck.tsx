@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Check, PackagePlus, TriangleAlert } from "lucide-react";
-import { formatPower } from "@/lib/format";
+import { describeBin } from "@/lib/format";
 import type { LineAvailability } from "@/services/shop/stock.service";
 
 /**
@@ -45,7 +45,7 @@ export function StockCheck({
       <ul className="mt-3 space-y-2">
         {problems.map((line, index) => {
           const id = productLinks.get(line.sku);
-          const power = line.sph === null ? "" : ` at ${formatPower(line.sph)}`;
+          const where = describeBin(line);
 
           return (
             <li
@@ -54,7 +54,11 @@ export function StockCheck({
             >
               <span className="font-medium text-amber-900">
                 {line.productName}
-                <span className="font-mono text-xs font-normal">{power}</span>
+                {where && (
+                  <span className="ml-1.5 font-mono text-xs font-normal">
+                    {where}
+                  </span>
+                )}
               </span>
               <span className="text-amber-800">
                 {line.missing
