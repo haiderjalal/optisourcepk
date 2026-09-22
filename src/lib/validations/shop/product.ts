@@ -28,6 +28,43 @@ const categoryValues = PRODUCT_CATEGORIES.map((c) => c.value) as unknown as [
   ...string[],
 ];
 
+/** An optional bound: blank means not set. */
+function rangeField(min: number, max: number, label: string) {
+  return z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : Number(v)))
+    .refine((v) => v === null || Number.isFinite(v), {
+      error: label + " is not a number.",
+    })
+    .refine((v) => v === null || (v >= min && v <= max), {
+      error: label + " runs from " + min + " to " + max + ".",
+    });
+}
+
+function stepField(label: string) {
+  return z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : Number(v)))
+    .refine((v) => v === null || (Number.isFinite(v) && v > 0), {
+      error: label + " must be greater than zero.",
+    });
+}
+
+function intField(min: number, max: number, label: string) {
+  return z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : Number(v)))
+    .refine((v) => v === null || Number.isInteger(v), {
+      error: label + " is a whole number.",
+    })
+    .refine((v) => v === null || (v >= min && v <= max), {
+      error: label + " runs from " + min + " to " + max + ".",
+    });
+}
+
 export const productSchema = z
   .object({
     sku: z
@@ -55,19 +92,54 @@ export const productSchema = z
       .max(16, "That unit is too long."),
 
     listPrice: z.coerce
-      .number({ error: "Enter a rate, or 0." })
-      .min(0, "A rate cannot be negative.")
-      .max(9_999_999, "That rate is out of range.")
+      .number({ error: "Enter a sale price, or 0." })
+      .min(0, "A price cannot be negative.")
+      .max(9_999_999, "That price is out of range.")
       .default(0),
 
+    purchasePrice: z.coerce
+      .number({ error: "Enter a purchase price, or 0." })
+      .min(0, "A price cannot be negative.")
+      .max(9_999_999, "That price is out of range.")
+      .default(0),
+
+    // The range a product is made in. Blank throughout means "no range set",
+    // which is how every product behaved before these existed.
+    sphMin: rangeField(-30, 30, "SPH minimum"),
+    sphMax: rangeField(-30, 30, "SPH maximum"),
+    sphStep: stepField("SPH step"),
+    cylMin: rangeField(-12, 12, "CYL minimum"),
+    cylMax: rangeField(-12, 12, "CYL maximum"),
+    cylStep: stepField("CYL step"),
+    addMin: rangeField(0, 6, "ADD minimum"),
+    addMax: rangeField(0, 6, "ADD maximum"),
+    addStep: stepField("ADD step"),
+    axisMin: intField(0, 180, "Axis minimum"),
+    axisMax: intField(0, 180, "Axis maximum"),
+    axisStep: intField(1, 180, "Axis step"),
+    eyes: z.enum(["", "both", "R", "L"]).optional(),
+
     tracksPower: z.coerce.boolean().default(false),
+    tracksCyl: z.coerce.boolean().default(false),
+    tracksAdd: z.coerce.boolean().default(false),
+    tracksEye: z.coerce.boolean().default(false),
     tracksStock: z.coerce.boolean().default(true),
   })
-  .refine((value) => !value.tracksPower || value.tracksStock, {
-    // Mirrors products_power_needs_stock in the migration. Caught here so the
-    // operator sees a sentence rather than a constraint name.
-    error: "A product stocked by power must also be stock-tracked.",
-    path: ["tracksStock"],
-  });
+  .refine(
+    (value) =>
+      !(
+        value.tracksPower ||
+        value.tracksCyl ||
+        value.tracksAdd ||
+        value.tracksEye
+      ) || value.tracksStock,
+    {
+      // Mirrors products_power_needs_stock in the migration. Caught here so the
+      // operator sees a sentence rather than a constraint name.
+      error:
+        "A product split by prescription must also be one you hold stock of.",
+      path: ["tracksStock"],
+    },
+  );
 
 export type ProductPayload = z.output<typeof productSchema>;

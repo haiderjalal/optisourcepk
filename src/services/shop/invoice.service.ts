@@ -151,9 +151,11 @@ async function replaceLines(
       unit: product.unit,
       eye: line.eye === "" || !line.eye ? null : line.eye,
       sph: line.sph,
-      cyl: line.cyl,
+      // Zero cylinder or addition means none: stored as NULL so it prints
+      // blank, and so it matches a stock bin received the same way.
+      cyl: line.cyl === 0 ? null : line.cyl,
       ax: line.ax,
-      add_power: line.addPower,
+      add_power: line.addPower === 0 ? null : line.addPower,
       unit_price: line.unitPrice,
       discount_pct: line.discountPct,
       quantity: line.quantity,
@@ -338,4 +340,42 @@ export async function updateDelivery(update: DeliveryUpdate): Promise<Order> {
     status: update.status,
   });
   return data;
+}
+
+/**
+ * Delete a draft order outright.
+ *
+ * Only ever a draft. An issued invoice is a business record — it is voided,
+ * which returns the stock and reverses the ledger while keeping the document
+ * and its number on file. The database enforces this too: ledger entries and
+ * stock movements reference the order with ON DELETE RESTRICT, so anything
+ * that has actually moved money or stock cannot be deleted even by mistake.
+ *
+ * Lines cascade with the order.
+ */
+export async function deleteOrder(id: string): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data: order, error: readError } = await supabase
+    .from("orders")
+    .select("id, order_no, invoice_no, issued_at")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (readError) {
+    throw new Error(describePostgresError(readError, "load the order"));
+  }
+  if (!order) return;
+
+  if (order.issued_at !== null) {
+    throw new Error(
+      `Invoice ${order.invoice_no} has been issued, so it cannot be deleted. Void it instead — that returns the stock and credits the customer, and keeps the invoice on record.`,
+    );
+  }
+
+  const { error } = await supabase.from("orders").delete().eq("id", id);
+
+  if (error) throw new Error(describePostgresError(error, "delete the order"));
+
+  logger.info("Draft order deleted", { orderId: id, orderNo: order.order_no });
 }

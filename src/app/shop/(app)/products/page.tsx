@@ -6,6 +6,8 @@ import { listProducts } from "@/services/shop/product.service";
 import { ButtonLink } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 import { formatAmount } from "@/lib/format";
+import { ConfirmButton } from "@/components/ui/confirm-button";
+import { archiveProductAction } from "@/features/shop/products/actions";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -95,6 +97,9 @@ export default async function ProductsPage({
                 <th scope="col" className="px-4 py-3 text-right font-medium">
                   On hand
                 </th>
+                <th scope="col" className="w-28 px-4 py-3">
+                  <span className="sr-only">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -136,6 +141,14 @@ export default async function ProductsPage({
                     ) : (
                       <span className="text-navy-300 text-xs">service</span>
                     )}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <ConfirmButton
+                      action={archiveProductAction}
+                      id={product.id}
+                      name={product.name}
+                      question="Archive this product?"
+                    />
                   </td>
                 </tr>
               ))}

@@ -57,8 +57,25 @@ type ProductRow = {
   category: ProductCategory;
   unit: string;
   list_price: number;
+  purchase_price: number;
   tracks_power: boolean;
+  tracks_cyl: boolean;
+  tracks_add: boolean;
+  tracks_eye: boolean;
   tracks_stock: boolean;
+  sph_min: number | null;
+  sph_max: number | null;
+  sph_step: number | null;
+  cyl_min: number | null;
+  cyl_max: number | null;
+  cyl_step: number | null;
+  add_min: number | null;
+  add_max: number | null;
+  add_step: number | null;
+  axis_min: number | null;
+  axis_max: number | null;
+  axis_step: number | null;
+  eyes: "both" | "R" | "L" | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -69,6 +86,9 @@ type StockBinRow = {
   product_id: string;
   tracks_power: boolean;
   sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: Eye | null;
   qty_on_hand: number;
   reorder_level: number;
   created_at: string;
@@ -122,6 +142,8 @@ type OrderRow = {
   additional_tax_rate: number;
   additional_tax_amount: number | null;
   amount_incl_tax: number | null;
+  previous_balance: number | null;
+  closing_balance: number | null;
   voided_at: string | null;
   void_reason: string | null;
   notes: string | null;
@@ -201,6 +223,9 @@ type LowStockRow = {
   name: string;
   category: ProductCategory;
   sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: Eye | null;
   qty_on_hand: number;
   reorder_level: number;
   shortfall: number;
@@ -229,7 +254,11 @@ type Defaulted =
   | "qty_on_hand"
   | "reorder_level"
   | "tracks_power"
+  | "tracks_cyl"
+  | "tracks_add"
+  | "tracks_eye"
   | "tracks_stock"
+  | "purchase_price"
   | "list_price"
   | "default_discount_pct"
   | "opening_balance"
@@ -281,11 +310,25 @@ export interface Database {
         Args: {
           p_product_id: string;
           p_sph: number | null;
+          p_cyl: number | null;
+          p_add: number | null;
+          p_eye: Eye | null;
           p_delta: number;
           p_reason?: StockReason;
           p_note?: string | null;
         };
         Returns: number;
+      };
+      set_bin_alert: {
+        Args: {
+          p_product_id: string;
+          p_sph: number | null;
+          p_cyl: number | null;
+          p_add: number | null;
+          p_eye: Eye | null;
+          p_level: number;
+        };
+        Returns: undefined;
       };
       issue_invoice: {
         Args: {
@@ -295,6 +338,32 @@ export interface Database {
           p_additional_tax_rate?: number;
         };
         Returns: OrderRow;
+      };
+      receive_range: {
+        Args: {
+          p_product_id: string;
+          p_qty: number;
+          p_alert?: number | null;
+        };
+        Returns: number;
+      };
+      receive_powers: {
+        Args: {
+          p_product_id: string;
+          p_entries: {
+            sph: number | null;
+            cyl?: number | null;
+            add?: number | null;
+            qty: number;
+          }[];
+          p_cyl?: number | null;
+          p_add?: number | null;
+          p_eye?: string | null;
+          p_alert?: number | null;
+          p_reason?: StockReason;
+          p_note?: string | null;
+        };
+        Returns: number;
       };
       void_invoice: {
         Args: { p_order_id: string; p_reason: string };

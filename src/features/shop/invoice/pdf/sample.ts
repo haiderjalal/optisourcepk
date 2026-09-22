@@ -97,6 +97,11 @@ export const SAMPLE_INVOICE: InvoicePdfModel = {
     { label: "Additional Tax", value: "0.00" },
     { label: "Amount (Incl. Tax)", value: "2,400.00", strong: true },
   ],
+  account: [
+    { label: "Previous Balance", value: "18,500.00" },
+    { label: "This Invoice", value: "2,400.00" },
+    { label: "Total Payable", value: "20,900.00", strong: true },
+  ],
   orderQty: "1",
   lensQty: "2",
   voided: false,

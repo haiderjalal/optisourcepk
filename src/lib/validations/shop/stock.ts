@@ -23,24 +23,37 @@ function isQuarterStep(value: number): boolean {
   );
 }
 
-export const sphField = z
-  .string()
-  .trim()
-  .transform((value) => (value === "" ? null : Number(value)))
-  .refine((value) => value === null || Number.isFinite(value), {
-    error: "That power is not a number.",
-  })
-  .refine((value) => value === null || (value >= -30 && value <= 30), {
-    error: "Powers run from -30.00 to +30.00.",
-  })
-  .refine((value) => value === null || isQuarterStep(value), {
-    error: "Powers go in 0.25 steps.",
-  });
+/**
+ * A dioptre field from a form: blank means "not applicable", and a value must
+ * sit on a quarter step, inside the range an optician would ever write.
+ */
+export function dioptreField(min: number, max: number, label: string) {
+  return z
+    .string()
+    .trim()
+    .transform((value) => (value === "" ? null : Number(value)))
+    .refine((value) => value === null || Number.isFinite(value), {
+      error: `${label} is not a number.`,
+    })
+    .refine((value) => value === null || (value >= min && value <= max), {
+      error: `${label} runs from ${min.toFixed(2)} to ${max.toFixed(2)}.`,
+    })
+    .refine((value) => value === null || isQuarterStep(value), {
+      error: `${label} goes in 0.25 steps.`,
+    });
+}
+
+export const sphField = dioptreField(-30, 30, "SPH");
 
 export const stockAdjustmentSchema = z.object({
   productId: z.uuid("Pick a product."),
 
+  // Only the attributes a product is actually split by are stored — the
+  // database flattens the rest to NULL, so a stray value is harmless.
   sph: sphField,
+  cyl: dioptreField(-12, 12, "CYL"),
+  addPower: dioptreField(0, 6, "ADD"),
+  eye: z.enum(["", "R", "L"]).optional(),
 
   delta: z.coerce
     .number({ error: "Enter a quantity." })
@@ -53,6 +66,18 @@ export const stockAdjustmentSchema = z.object({
   reason: z.enum(["purchase", "return", "adjustment"], {
     error: "Pick a reason.",
   }),
+
+  /** Warn once the bin drops to this. Blank leaves it unchanged. */
+  alertQty: z
+    .string()
+    .trim()
+    .transform((value) => (value === "" ? null : Number(value)))
+    .refine((value) => value === null || Number.isInteger(value), {
+      error: "The alert quantity is a whole number.",
+    })
+    .refine((value) => value === null || (value >= 0 && value <= 100_000), {
+      error: "That alert quantity is out of range.",
+    }),
 
   note: z
     .string()

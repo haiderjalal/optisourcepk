@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BookOpen,
   Boxes,
   ClipboardList,
   FileText,
@@ -27,7 +26,6 @@ const NAV = [
   { href: "/shop/invoices", label: "Invoices", icon: FileText },
   { href: "/shop/customers", label: "Customers", icon: Users },
   { href: "/shop/payments", label: "Payments", icon: Wallet },
-  { href: "/shop/ledger", label: "Ledger", icon: BookOpen },
   { href: "/shop/stock", label: "Stock", icon: Boxes },
   { href: "/shop/products", label: "Products", icon: Package },
 ] as const;

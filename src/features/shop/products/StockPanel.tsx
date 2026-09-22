@@ -6,7 +6,7 @@ import { AlertCircle, Check, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { STOCK_REASONS } from "@/lib/validations/shop/stock";
-import { formatPower } from "@/lib/format";
+import { describeBin } from "@/lib/format";
 import type { Product, StockBin } from "@/types/database";
 import { adjustStockAction, type StockFormState } from "./actions";
 
@@ -57,33 +57,71 @@ export function StockPanel({
         className="shadow-lift rounded-2xl bg-white p-5"
       >
         <input type="hidden" name="productId" value={product.id} />
-        {/* A non-power product has exactly one bin, keyed by a NULL power. */}
-        {!product.tracks_power && <input type="hidden" name="sph" value="" />}
 
         <h2 className="text-base font-semibold">Receive or adjust</h2>
+        <p className="text-navy-500 mt-1 text-sm">
+          Fill in only what divides your shelf. Receiving the same combination
+          again adds to it, and stock held as plain SPH still covers an order
+          line that also carries a cylinder.
+        </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {product.tracks_power && (
-            <Field
-              name="sph"
-              label="Power (SPH)"
-              required
-              hint="0.25 steps"
-              errors={errors?.sph}
-            >
-              {(p) => (
-                <input
-                  {...p}
-                  type="number"
-                  step="0.25"
-                  min={-30}
-                  max={30}
-                  inputMode="decimal"
-                  placeholder="-2.00"
-                />
-              )}
-            </Field>
-          )}
+          <Field name="sph" label="SPH" hint="0.25 steps" errors={errors?.sph}>
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step={product.sph_step ?? 0.25}
+                min={product.sph_min ?? -30}
+                max={product.sph_max ?? 30}
+                inputMode="decimal"
+                placeholder="-2.00"
+              />
+            )}
+          </Field>
+
+          <Field name="cyl" label="CYL" hint="0.25 steps" errors={errors?.cyl}>
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step={product.cyl_step ?? 0.25}
+                min={product.cyl_min ?? -12}
+                max={product.cyl_max ?? 12}
+                inputMode="decimal"
+                placeholder="-0.50"
+              />
+            )}
+          </Field>
+
+          <Field
+            name="addPower"
+            label="ADD"
+            hint="0.25 steps"
+            errors={errors?.addPower}
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step={product.add_step ?? 0.25}
+                min={product.add_min ?? 0}
+                max={product.add_max ?? 6}
+                inputMode="decimal"
+                placeholder="+1.50"
+              />
+            )}
+          </Field>
+
+          <Field name="eye" label="Eye" errors={errors?.eye}>
+            {(p) => (
+              <select {...p} defaultValue="">
+                <option value="">Either</option>
+                <option value="R">Right</option>
+                <option value="L">Left</option>
+              </select>
+            )}
+          </Field>
 
           <Field
             name="delta"
@@ -93,6 +131,24 @@ export function StockPanel({
             errors={errors?.delta}
           >
             {(p) => <input {...p} type="number" step="1" inputMode="numeric" />}
+          </Field>
+
+          <Field
+            name="alertQty"
+            label="Alert quantity"
+            hint="Warn at or below this"
+            errors={errors?.alertQty}
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="1"
+                min={0}
+                inputMode="numeric"
+                placeholder="Leave blank to keep"
+              />
+            )}
           </Field>
 
           <Field name="reason" label="Reason" required errors={errors?.reason}>
@@ -163,7 +219,7 @@ export function StockPanel({
                 }`}
               >
                 <span className="text-navy-500 block font-mono text-xs">
-                  {formatPower(bin.sph)}
+                  {describeBin(bin)}
                 </span>
                 <span className="block text-lg font-semibold tabular-nums">
                   {bin.qty_on_hand}

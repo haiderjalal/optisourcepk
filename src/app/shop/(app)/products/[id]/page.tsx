@@ -10,6 +10,8 @@ import {
 } from "@/services/shop/stock.service";
 import { ProductForm } from "@/features/shop/products/ProductForm";
 import { StockPanel } from "@/features/shop/products/StockPanel";
+import { RangeFillPanel } from "@/features/shop/products/RangeFillPanel";
+import { PowerGrid } from "@/features/shop/products/PowerGrid";
 import { archiveProductAction } from "@/features/shop/products/actions";
 import { formatDateTime, formatPower } from "@/lib/format";
 
@@ -43,7 +45,11 @@ export default async function ProductPage({
       <h1 className="text-2xl font-bold">{product.name}</h1>
       <p className="text-navy-500 mt-1 mb-6 font-mono text-sm">{product.sku}</p>
 
-      <StockPanel product={product} bins={bins} />
+      <div className="space-y-5">
+        <PowerGrid product={product} bins={bins} />
+        <RangeFillPanel product={product} />
+        <StockPanel product={product} bins={bins} />
+      </div>
 
       {movements.length > 0 && (
         <section className="shadow-lift mt-5 rounded-2xl bg-white p-5">

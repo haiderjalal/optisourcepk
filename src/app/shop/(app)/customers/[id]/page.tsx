@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ReceiptText, Wallet } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getCustomer } from "@/services/shop/customer.service";
 import { CustomerForm } from "@/features/shop/customers/CustomerForm";
 import { archiveCustomerAction } from "@/features/shop/customers/actions";
+import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Edit customer" };
 
@@ -28,10 +29,27 @@ export default async function EditCustomerPage({
         Customers
       </Link>
 
-      <h1 className="text-2xl font-bold">{customer.shop_name}</h1>
-      <p className="text-navy-500 mt-1 mb-6 text-sm">
-        {customer.customer_name} · {customer.area}
-      </p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{customer.shop_name}</h1>
+          <p className="text-navy-500 mt-1 text-sm">
+            {customer.customer_name} · {customer.area}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink
+            href={`/shop/customers/${customer.id}/statement`}
+            variant="outline"
+          >
+            <ReceiptText className="size-4" aria-hidden />
+            Statement
+          </ButtonLink>
+          <ButtonLink href={`/shop/payments?customer=${customer.id}`}>
+            <Wallet className="size-4" aria-hidden />
+            Record payment
+          </ButtonLink>
+        </div>
+      </div>
 
       <CustomerForm customer={customer} />
 

@@ -128,6 +128,34 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
   },
 
+  accountRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 8,
+  },
+  account: {
+    width: "44%",
+    borderTop: `1pt solid ${RULE}`,
+    borderBottom: `1pt solid ${RULE}`,
+    borderLeft: `1pt solid ${RULE}`,
+    borderRight: `1pt solid ${RULE}`,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    backgroundColor: "#f7f9fc",
+  },
+  accountTitle: {
+    fontSize: 6.5,
+    color: MUTED,
+    marginBottom: 2,
+  },
+  accountStrong: {
+    borderTop: `1pt solid ${RULE}`,
+    marginTop: 2,
+    paddingTop: 3,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8.5,
+  },
+
   voided: {
     position: "absolute",
     top: 300,
@@ -381,6 +409,28 @@ export function InvoiceDocument({
             ))}
           </View>
         </View>
+
+        {/* The customer account, printed only when it was snapshotted at
+            issue — an old invoice must keep the figures it went out with. */}
+        {model.account.length > 0 && (
+          <View style={styles.accountRow} wrap={false}>
+            <View style={styles.account}>
+              <Text style={styles.accountTitle}>Account Summary</Text>
+              {model.account.map((row) => (
+                <View
+                  key={row.label}
+                  style={[
+                    styles.totalRow,
+                    row.strong ? styles.accountStrong : {},
+                  ]}
+                >
+                  <Text>{row.label}</Text>
+                  <Text>{row.value}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {model.voided && <Text style={styles.voided}>VOID</Text>}
 
