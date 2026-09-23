@@ -17,7 +17,7 @@ export const STOCK_REASONS = [
 const QUARTER_STEP = 0.25;
 
 /** Guards against binary float drift: 0.1 + 0.2 style residue near zero. */
-function isQuarterStep(value: number): boolean {
+export function isQuarterStep(value: number): boolean {
   return (
     Math.abs(Math.round(value / QUARTER_STEP) * QUARTER_STEP - value) < 1e-9
   );

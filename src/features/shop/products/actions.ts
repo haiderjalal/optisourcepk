@@ -17,6 +17,8 @@ import {
   setReorderLevel,
 } from "@/services/shop/stock.service";
 import { stockAdjustmentSchema } from "@/lib/validations/shop/stock";
+import { purchaseSchema } from "@/lib/validations/shop/purchase";
+import { recordPurchase } from "@/services/shop/purchase.service";
 
 export interface ProductFormState {
   error?: string;
@@ -30,7 +32,6 @@ export async function saveProduct(
   await requireUser();
 
   const parsed = productSchema.safeParse({
-    sku: formData.get("sku"),
     name: formData.get("name"),
     category: formData.get("category"),
     unit: formData.get("unit"),
@@ -55,6 +56,8 @@ export async function saveProduct(
     axisMax: formData.get("axisMax") ?? "",
     axisStep: formData.get("axisStep") ?? "",
     eyes: formData.get("eyes") ?? "",
+    lensSign: formData.get("lensSign") ?? "",
+    alertQty: formData.get("alertQty") ?? "",
   });
 
   if (!parsed.success) {
@@ -236,14 +239,20 @@ export async function receiveRangeAction(
 export interface PowerGridState {
   error?: string;
   message?: string;
+  /** Set when the delivery was recorded against a purchase invoice. */
+  purchaseId?: string;
 }
 
 /**
- * Receive a whole column of powers at once.
+ * Receive a grid of powers at once.
  *
  * The grid posts its quantities as one JSON field rather than as a form input
- * per row: a wide range is a hundred inputs, and indexed-name parsing is a
+ * per square: a wide range is a hundred inputs, and indexed-name parsing is a
  * class of bug worth not having.
+ *
+ * With a supplier picked, the delivery becomes lines on that supplier's
+ * purchase invoice and the stock moves inside `record_purchase`. Without one
+ * it is opening stock, received with no invoice behind it.
  */
 export async function receivePowersAction(
   _previous: PowerGridState,
@@ -281,28 +290,67 @@ export async function receivePowersAction(
     };
   }
 
-  const num = (name: string) => {
-    const v = String(formData.get(name) ?? "").trim();
-    return v === "" ? null : Number(v);
-  };
-  const eye = String(formData.get("eye") ?? "").trim();
+  const text = (name: string) => String(formData.get(name) ?? "").trim();
+  const num = (name: string) => (text(name) === "" ? null : Number(text(name)));
+  const eyeRaw = text("eye");
+  const eye = eyeRaw === "R" || eyeRaw === "L" ? eyeRaw : null;
+  const addPower = num("addPower");
+  const supplierId = text("supplierId");
+  const total = clean.reduce((sum, e) => sum + e.qty, 0);
 
   try {
+    if (supplierId) {
+      const parsed = purchaseSchema.safeParse({
+        supplierId,
+        invoiceNo: text("invoiceNo"),
+        invoiceDate: text("invoiceDate"),
+        lines: clean.map((e) => ({
+          productId,
+          sph: e.sph,
+          cyl: e.cyl ?? null,
+          add: addPower,
+          eye,
+          qty: e.qty,
+          unitCost: num("unitCost"),
+        })),
+      });
+      if (!parsed.success) {
+        return {
+          error: parsed.error.issues[0]?.message ?? "Check the invoice.",
+        };
+      }
+
+      const purchaseId = await recordPurchase({
+        supplierId: parsed.data.supplierId,
+        invoiceNo: parsed.data.invoiceNo,
+        invoiceDate: parsed.data.invoiceDate,
+        lines: parsed.data.lines,
+        notes: null,
+      });
+
+      revalidatePath(`/shop/products/${productId}`);
+      revalidatePath("/shop/stock");
+      revalidatePath("/shop/purchases");
+      return {
+        message: `Received ${total} on invoice ${parsed.data.invoiceNo}.`,
+        purchaseId,
+      };
+    }
+
     const bins = await receivePowers({
       productId,
       entries: clean,
-      cyl: num("cyl"),
-      addPower: num("addPower"),
-      eye: eye === "R" || eye === "L" ? eye : null,
-      alertQty: num("alertQty"),
+      cyl: null,
+      addPower,
+      eye,
+      alertQty: null,
       reason: "purchase",
-      note: String(formData.get("note") ?? "").trim() || null,
+      note: text("note") || "Opening stock",
     });
 
     revalidatePath(`/shop/products/${productId}`);
     revalidatePath("/shop/stock");
 
-    const total = clean.reduce((sum, e) => sum + e.qty, 0);
     return {
       message: `Received ${total} across ${bins} ${bins === 1 ? "power" : "powers"}.`,
     };

@@ -67,16 +67,6 @@ function intField(min: number, max: number, label: string) {
 
 export const productSchema = z
   .object({
-    sku: z
-      .string()
-      .trim()
-      .min(1, "Enter a SKU.")
-      .max(40, "That SKU is too long.")
-      .regex(
-        /^[A-Za-z0-9][A-Za-z0-9._/-]*$/,
-        "Use letters, numbers, dot, dash, slash or underscore.",
-      ),
-
     name: z
       .string()
       .trim()
@@ -118,6 +108,10 @@ export const productSchema = z
     axisMax: intField(0, 180, "Axis maximum"),
     axisStep: intField(1, 180, "Axis step"),
     eyes: z.enum(["", "both", "R", "L"]).optional(),
+    lensSign: z.enum(["", "plus", "minus"]).optional(),
+
+    /** Warn when any power in the range is at or below this. Blank = off. */
+    alertQty: intField(0, 100_000, "Alert quantity"),
 
     tracksPower: z.coerce.boolean().default(false),
     tracksCyl: z.coerce.boolean().default(false),

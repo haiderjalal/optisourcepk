@@ -86,8 +86,9 @@ export default async function StockPage() {
 
           {lowTotal > 0 && (
             <p className="text-navy-500 mb-4 text-sm">
-              {lowTotal} {lowTotal === 1 ? "bin is" : "bins are"} at or below
-              the reorder level — shown in amber.
+              {lowTotal} {lowTotal === 1 ? "power is" : "powers are"} at or
+              below the alert quantity — shown in amber. A dashed square is a
+              power in the range with none in stock yet.
             </p>
           )}
 
@@ -105,9 +106,6 @@ export default async function StockPage() {
                     >
                       {product.name}
                     </Link>
-                    <span className="text-navy-400 ml-2 font-mono text-xs">
-                      {product.sku}
-                    </span>
                   </div>
                   <p className="text-navy-500 text-sm">
                     {product.total} {product.unit}
@@ -133,21 +131,26 @@ export default async function StockPage() {
                   </div>
                 ) : product.tracksPower ? (
                   <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-10">
-                    {product.bins.map((bin) => (
+                    {product.tiles.map((tile) => (
                       <li
-                        key={bin.id}
+                        key={tile.key}
                         className={`rounded-lg px-2 py-1.5 text-center ${
-                          bin.qty_on_hand <= bin.reorder_level
-                            ? "bg-amber-50 ring-1 ring-amber-200 ring-inset"
-                            : "bg-mist-100"
+                          !tile.received
+                            ? "border border-dashed border-amber-300 bg-amber-50/60"
+                            : tile.low
+                              ? "bg-amber-50 ring-1 ring-amber-200 ring-inset"
+                              : "bg-mist-100"
                         }`}
                       >
                         <span className="text-navy-500 block font-mono text-[11px]">
-                          {describeBin(bin)}
+                          {describeBin(tile)}
                         </span>
                         <span className="block text-base font-semibold tabular-nums">
-                          {bin.qty_on_hand}
+                          {tile.qty}
                         </span>
+                        {!tile.received && (
+                          <span className="sr-only">none received</span>
+                        )}
                       </li>
                     ))}
                   </ul>

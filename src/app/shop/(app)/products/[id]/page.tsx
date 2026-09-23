@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getProduct } from "@/services/shop/product.service";
+import { listSuppliers } from "@/services/shop/supplier.service";
 import {
   listBinsForProduct,
   listMovements,
@@ -27,9 +28,10 @@ export default async function ProductPage({
   if (!product) notFound();
 
   // Independent reads, so they go together rather than in series.
-  const [bins, movements] = await Promise.all([
+  const [bins, movements, suppliers] = await Promise.all([
     listBinsForProduct(id),
     listMovements(id, 25),
+    listSuppliers(),
   ]);
 
   return (
@@ -42,11 +44,10 @@ export default async function ProductPage({
         Products
       </Link>
 
-      <h1 className="text-2xl font-bold">{product.name}</h1>
-      <p className="text-navy-500 mt-1 mb-6 font-mono text-sm">{product.sku}</p>
+      <h1 className="mb-6 text-2xl font-bold">{product.name}</h1>
 
       <div className="space-y-5">
-        <PowerGrid product={product} bins={bins} />
+        <PowerGrid product={product} bins={bins} suppliers={suppliers} />
         <RangeFillPanel product={product} />
         <StockPanel product={product} bins={bins} />
       </div>

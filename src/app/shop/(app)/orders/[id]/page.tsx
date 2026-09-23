@@ -5,7 +5,6 @@ import { ArrowLeft, Download, FileText, Pencil } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
 import { checkOrderStock } from "@/services/shop/stock.service";
-import { listSellableProducts } from "@/services/shop/product.service";
 import { StockCheck } from "@/features/shop/orders/StockCheck";
 import { DeleteDraftPanel } from "@/features/shop/orders/DeleteDraftPanel";
 import { ButtonLink } from "@/components/ui/button";
@@ -30,10 +29,7 @@ export default async function OrderPage({
 
   // Only worth checking while it can still be acted on.
   const canIssue = order.issued_at === null && order.voided_at === null;
-  const [availability, products] = canIssue
-    ? await Promise.all([checkOrderStock(id), listSellableProducts()])
-    : [[], []];
-  const productLinks = new Map(products.map((p) => [p.sku, p.id]));
+  const availability = canIssue ? await checkOrderStock(id) : [];
 
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
@@ -212,7 +208,7 @@ export default async function OrderPage({
 
       {!issued && !voided && (
         <div className="space-y-5">
-          <StockCheck lines={availability} productLinks={productLinks} />
+          <StockCheck lines={availability} />
           <IssuePanel order={order} subtotal={subtotal} />
           <DeleteDraftPanel order={order} />
         </div>

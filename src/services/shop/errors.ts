@@ -31,13 +31,13 @@ const OUR_OWN = new Set([
 const CONSTRAINTS: Record<string, string> = {
   customers_shop_area_uq:
     "A customer with that shop name already exists in that area. Open the existing record instead of adding a second one — two records would split their ledger.",
-  products_sku_key: "That SKU is already in use by another product.",
   orders_invoice_no_key: "That invoice number has already been issued.",
   stock_bins_product_sph_uq:
     "That product and power already has a stock bin. Adjust the existing one.",
   stock_bins_sph_matches_product:
     "Power-tracked products need an SPH, and products that are not power-tracked must not have one.",
   ledger_one_per_invoice: "That invoice has already been posted to the ledger.",
+  suppliers_name_uq: "A supplier with that name already exists.",
   stock_bins_qty_on_hand_check:
     "That would take the stock below zero. Check the quantity on hand first.",
 };

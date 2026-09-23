@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AlertCircle, Copy, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { sphPlaceholder } from "@/lib/power";
 import { formatAmount } from "@/lib/format";
 import type { Customer, Order, OrderLine, Product } from "@/types/database";
 import { saveOrder, type OrderFormState } from "./actions";
@@ -366,7 +367,9 @@ export function OrderBuilder({
                         type="number"
                         step="0.25"
                         inputMode="decimal"
-                        placeholder={power ? "-2.00" : ""}
+                        placeholder={
+                          power ? sphPlaceholder(product?.lens_sign) : ""
+                        }
                         value={line.sph}
                         onChange={(e) =>
                           update(line.key, { sph: e.target.value })

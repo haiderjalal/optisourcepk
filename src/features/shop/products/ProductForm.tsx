@@ -7,7 +7,7 @@ import { AlertCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { PRODUCT_CATEGORIES } from "@/lib/validations/shop/product";
-import type { Product } from "@/types/database";
+import type { LensSign, Product } from "@/types/database";
 import { saveProduct, type ProductFormState } from "./actions";
 
 function SubmitButton({ isUpdate }: { isUpdate: boolean }) {
@@ -47,6 +47,18 @@ export function ProductForm({ product }: { product?: Product }) {
     product?.tracks_power ?? false,
   );
 
+  const [lensSign, setLensSign] = useState<LensSign | "">(
+    product?.lens_sign ?? "",
+  );
+
+  // Examples follow the lens type, so a plus line is never shown "-6.00".
+  const sphExample =
+    lensSign === "plus"
+      ? { min: "+0.25", max: "+6.00" }
+      : lensSign === "minus"
+        ? { min: "-6.00", max: "-0.25" }
+        : { min: "-6.00", max: "+4.00" };
+
   const RANGES = [
     {
       label: "SPH — sphere",
@@ -57,7 +69,7 @@ export function ProductForm({ product }: { product?: Product }) {
           step: "0.25",
           min: -30,
           max: 30,
-          placeholder: "-6.00",
+          placeholder: sphExample.min,
           value: product?.sph_min,
         },
         {
@@ -66,7 +78,7 @@ export function ProductForm({ product }: { product?: Product }) {
           step: "0.25",
           min: -30,
           max: 30,
-          placeholder: "+4.00",
+          placeholder: sphExample.max,
           value: product?.sph_max,
         },
         {
@@ -98,7 +110,7 @@ export function ProductForm({ product }: { product?: Product }) {
           step: "0.25",
           min: -12,
           max: 12,
-          placeholder: "0.00",
+          placeholder: "-0.25",
           value: product?.cyl_max,
         },
         {
@@ -184,35 +196,6 @@ export function ProductForm({ product }: { product?: Product }) {
 
       <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field name="sku" label="SKU" required errors={errors?.sku}>
-            {(p) => (
-              <input
-                {...p}
-                defaultValue={product?.sku}
-                type="text"
-                autoCapitalize="characters"
-              />
-            )}
-          </Field>
-
-          <Field name="unit" label="Unit" required errors={errors?.unit}>
-            {(p) => (
-              <input
-                {...p}
-                defaultValue={product?.unit ?? "pcs"}
-                type="text"
-                list="unit-options"
-              />
-            )}
-          </Field>
-          <datalist id="unit-options">
-            <option value="pairs" />
-            <option value="pcs" />
-            <option value="boxes" />
-            <option value="packs" />
-            <option value="cartons" />
-          </datalist>
-
           <Field
             name="name"
             label="Product name"
@@ -240,7 +223,23 @@ export function ProductForm({ product }: { product?: Product }) {
             )}
           </Field>
 
-          <div />
+          <Field name="unit" label="Unit" required errors={errors?.unit}>
+            {(p) => (
+              <input
+                {...p}
+                defaultValue={product?.unit ?? "pcs"}
+                type="text"
+                list="unit-options"
+              />
+            )}
+          </Field>
+          <datalist id="unit-options">
+            <option value="pairs" />
+            <option value="pcs" />
+            <option value="boxes" />
+            <option value="packs" />
+            <option value="cartons" />
+          </datalist>
 
           <Field
             name="listPrice"
@@ -327,6 +326,28 @@ export function ProductForm({ product }: { product?: Product }) {
           </span>
         </label>
 
+        {tracksStock && (
+          <Field
+            name="alertQty"
+            label="Alert quantity"
+            hint="Warn when any power in the range is at or below this — including powers with none in stock. Leave blank for no alert."
+            className="mt-4 sm:max-w-xs"
+            errors={errors?.alertQty}
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="1"
+                min={0}
+                inputMode="numeric"
+                placeholder="e.g. 4"
+                defaultValue={product?.alert_qty ?? ""}
+              />
+            )}
+          </Field>
+        )}
+
         {errors?.tracksStock && (
           <p className="mt-2 text-xs text-amber-700">{errors.tracksStock[0]}</p>
         )}
@@ -350,6 +371,26 @@ export function ProductForm({ product }: { product?: Product }) {
         </p>
 
         <div className="mt-4 space-y-4">
+          <Field
+            name="lensSign"
+            label="Lens type"
+            hint="Plus or minus power. The examples in every power box follow it."
+            className="sm:max-w-xs"
+            errors={errors?.lensSign}
+          >
+            {(p) => (
+              <select
+                {...p}
+                value={lensSign}
+                onChange={(e) => setLensSign(e.target.value as LensSign | "")}
+              >
+                <option value="">Not a plus/minus lens</option>
+                <option value="minus">Minus (−)</option>
+                <option value="plus">Plus (+)</option>
+              </select>
+            )}
+          </Field>
+
           {RANGES.map((row) => (
             <div key={row.label}>
               <p className="text-navy-600 text-sm font-medium">{row.label}</p>
