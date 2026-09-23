@@ -2,9 +2,11 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
+import Link from "next/link";
 import { AlertCircle, Check, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { sphPlaceholder } from "@/lib/power";
 import { STOCK_REASONS } from "@/lib/validations/shop/stock";
 import type { Product } from "@/types/database";
 import { adjustStockAction, type StockFormState } from "./actions";
@@ -46,8 +48,15 @@ export function QuickReceive({ products }: { products: Product[] }) {
     >
       <h2 className="text-base font-semibold">Receive stock</h2>
       <p className="text-navy-500 mt-1 max-w-prose text-sm">
-        Add what has come in from a supplier. Fill in only the values that
-        divide your shelf — a blank power just means the general bin.
+        Add stock one power at a time. Fill in only the values that divide your
+        shelf. For a supplier delivery,{" "}
+        <Link
+          href="/shop/purchases/new"
+          className="text-accent-600 hover:text-accent-700 font-medium"
+        >
+          record the purchase invoice
+        </Link>{" "}
+        instead, so you know where it came from.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -67,7 +76,7 @@ export function QuickReceive({ products }: { products: Product[] }) {
               <option value="">Select a product…</option>
               {products.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.name} ({item.sku})
+                  {item.name}
                 </option>
               ))}
             </select>
@@ -83,7 +92,7 @@ export function QuickReceive({ products }: { products: Product[] }) {
               min={product?.sph_min ?? -30}
               max={product?.sph_max ?? 30}
               inputMode="decimal"
-              placeholder="-2.00"
+              placeholder={sphPlaceholder(product?.lens_sign)}
             />
           )}
         </Field>

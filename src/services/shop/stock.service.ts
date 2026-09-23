@@ -8,6 +8,7 @@ import type {
   StockBin,
   StockReason,
 } from "@/types/database";
+import { byPosition, isLow } from "@/lib/power";
 import { describePostgresError } from "./errors";
 
 /**
@@ -20,7 +21,7 @@ import { describePostgresError } from "./errors";
  */
 
 export interface BinWithProduct extends StockBin {
-  product: Pick<Product, "id" | "sku" | "name" | "unit" | "tracks_power">;
+  product: Pick<Product, "id" | "name" | "unit" | "tracks_power">;
 }
 
 /** Every bin for one product, in dioptre order. */
@@ -189,14 +190,28 @@ export async function listMovements(
   }));
 }
 
+/** One square on the stock screen: a bin, or a power never received. */
+export interface StockTile {
+  key: string;
+  sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: string | null;
+  qty: number;
+  low: boolean;
+  /** False for a power in the range that has no bin yet — 0 on hand. */
+  received: boolean;
+}
+
 export interface ProductStock {
   productId: string;
-  sku: string;
   name: string;
   unit: string;
   tracksPower: boolean;
   tracksStock: boolean;
   bins: StockBin[];
+  /** Bins plus unreceived powers in the range, nearest zero first. */
+  tiles: StockTile[];
   total: number;
   lowCount: number;
 }
@@ -206,17 +221,20 @@ export interface ProductStock {
  *
  * Products with no stock yet are included on purpose — "nothing received"
  * is the state the operator most needs to see, and leaving them out is what
- * made an empty stock page look broken.
+ * made an empty stock page look broken. Powers in a product's range that were
+ * never received come from `low_stock`, which is the one place that works
+ * the range out.
  */
 export async function listAllStock(): Promise<ProductStock[]> {
   const { supabase } = await requireUser();
 
-  const [products, bins] = await Promise.all([
+  const [products, bins, missing] = await Promise.all([
     supabase.from("products").select("*").is("deleted_at", null).order("name"),
+    supabase.from("stock_bins").select("*"),
     supabase
-      .from("stock_bins")
-      .select("*")
-      .order("sph", { ascending: true, nullsFirst: true }),
+      .from("low_stock")
+      .select("product_id, sph, cyl")
+      .is("bin_id", null),
   ]);
 
   if (products.error) {
@@ -224,6 +242,9 @@ export async function listAllStock(): Promise<ProductStock[]> {
   }
   if (bins.error) {
     throw new Error(describePostgresError(bins.error, "load stock"));
+  }
+  if (missing.error) {
+    throw new Error(describePostgresError(missing.error, "load stock alerts"));
   }
 
   const byProduct = new Map<string, StockBin[]>();
@@ -233,28 +254,57 @@ export async function listAllStock(): Promise<ProductStock[]> {
     byProduct.set(bin.product_id, list);
   }
 
+  const missingByProduct = new Map<string, StockTile[]>();
+  for (const row of missing.data ?? []) {
+    const list = missingByProduct.get(row.product_id) ?? [];
+    list.push({
+      key: `none|${row.sph}|${row.cyl ?? ""}`,
+      sph: row.sph,
+      cyl: row.cyl,
+      add_power: null,
+      eye: null,
+      qty: 0,
+      low: true,
+      received: false,
+    });
+    missingByProduct.set(row.product_id, list);
+  }
+
   return (products.data ?? [])
     .filter((product) => product.tracks_stock)
     .map((product) => {
-      const own = byProduct.get(product.id) ?? [];
+      const own = (byProduct.get(product.id) ?? []).sort(byPosition);
+      const tiles = [
+        ...own.map((bin) => ({
+          key: bin.id,
+          sph: bin.sph,
+          cyl: bin.cyl,
+          add_power: bin.add_power,
+          eye: bin.eye,
+          qty: bin.qty_on_hand,
+          low: isLow(bin, product),
+          received: true,
+        })),
+        ...(missingByProduct.get(product.id) ?? []),
+      ].sort(byPosition);
+
       return {
         productId: product.id,
-        sku: product.sku,
         name: product.name,
         unit: product.unit,
         tracksPower: product.tracks_power,
         tracksStock: product.tracks_stock,
         bins: own,
+        tiles,
         total: own.reduce((sum, bin) => sum + bin.qty_on_hand, 0),
-        lowCount: own.filter((bin) => bin.qty_on_hand <= bin.reorder_level)
-          .length,
+        lowCount: tiles.filter((tile) => tile.low).length,
       };
     });
 }
 
 export interface LineAvailability {
+  productId: string;
   productName: string;
-  sku: string;
   unit: string;
   sph: number | null;
   cyl: number | null;
@@ -304,7 +354,7 @@ export async function checkOrderStock(
   const [products, bins] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, sku, unit, tracks_stock")
+      .select("id, name, unit, tracks_stock")
       .in("id", productIds),
     supabase
       .from("stock_bins")
@@ -383,8 +433,8 @@ export async function checkOrderStock(
     const have = exact.get(k) ?? general.get(`${d.productId}|${part(d.sph)}`);
 
     out.push({
+      productId: d.productId,
       productName: product?.name ?? "Unknown product",
-      sku: product?.sku ?? "",
       unit: product?.unit ?? "pcs",
       sph: d.sph,
       cyl: d.cyl,

@@ -10,14 +10,7 @@ import type { LineAvailability } from "@/services/shop/stock.service";
  * rather than arriving as a failed transaction. The database still does the
  * real check — this only tells the operator what it is about to find.
  */
-export function StockCheck({
-  lines,
-  productLinks,
-}: {
-  lines: LineAvailability[];
-  /** sku → product id, so a problem links straight to where it is fixed. */
-  productLinks: Map<string, string>;
-}) {
+export function StockCheck({ lines }: { lines: LineAvailability[] }) {
   if (lines.length === 0) return null;
 
   const problems = lines.filter((line) => line.missing || line.short);
@@ -44,12 +37,11 @@ export function StockCheck({
 
       <ul className="mt-3 space-y-2">
         {problems.map((line, index) => {
-          const id = productLinks.get(line.sku);
           const where = describeBin(line);
 
           return (
             <li
-              key={`${line.sku}-${index}`}
+              key={`${line.productId}-${index}`}
               className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-white px-3.5 py-2.5 text-sm ring-1 ring-amber-200 ring-inset"
             >
               <span className="font-medium text-amber-900">
@@ -65,9 +57,9 @@ export function StockCheck({
                   ? "none received"
                   : `${line.onHand} on hand, ${line.needed} needed`}
               </span>
-              {id && (
+              {line.productId && (
                 <Link
-                  href={`/shop/products/${id}`}
+                  href={`/shop/products/${line.productId}`}
                   className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-amber-900 underline underline-offset-2 hover:text-amber-700"
                 >
                   <PackagePlus className="size-3.5" aria-hidden />

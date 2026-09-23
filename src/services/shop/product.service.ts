@@ -14,7 +14,6 @@ export interface ProductWithStock extends Product {
 
 function toRow(payload: ProductPayload) {
   return {
-    sku: payload.sku.toUpperCase(),
     name: payload.name,
     category: payload.category as ProductCategory,
     unit: payload.unit,
@@ -38,6 +37,8 @@ function toRow(payload: ProductPayload) {
     axis_max: payload.axisMax,
     axis_step: payload.axisStep,
     eyes: payload.eyes ? payload.eyes : null,
+    lens_sign: payload.lensSign ? payload.lensSign : null,
+    alert_qty: payload.alertQty,
   };
 }
 
@@ -56,7 +57,7 @@ export async function listProducts(
   const term = search?.trim();
   if (term) {
     const escaped = term.replace(/[%_,()]/g, " ");
-    query = query.or(`name.ilike.%${escaped}%,sku.ilike.%${escaped}%`);
+    query = query.ilike("name", `%${escaped}%`);
   }
 
   const { data, error } = await query;

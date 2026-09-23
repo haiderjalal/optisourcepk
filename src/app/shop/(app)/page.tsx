@@ -68,7 +68,7 @@ export default async function ShopDashboardPage() {
           label="Running low"
           value={String(low.length)}
           detail={
-            low.length === 1 ? "bin at reorder level" : "bins at reorder level"
+            low.length === 1 ? "power at alert level" : "powers at alert level"
           }
           href="/shop/stock"
           icon={TriangleAlert}
@@ -185,7 +185,11 @@ export default async function ShopDashboardPage() {
           </div>
           <ul className="flex flex-wrap gap-2">
             {low.slice(0, 12).map((line) => (
-              <li key={line.bin_id}>
+              <li
+                key={
+                  line.bin_id ?? `${line.product_id}|${line.sph}|${line.cyl}`
+                }
+              >
                 <Link
                   href={`/shop/products/${line.product_id}`}
                   className="flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs ring-1 ring-amber-200 transition-colors ring-inset hover:bg-amber-100"

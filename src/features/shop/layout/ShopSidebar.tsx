@@ -4,10 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Boxes,
+  Building2,
   ClipboardList,
   FileText,
   LayoutDashboard,
   Package,
+  Truck,
   Users,
   Wallet,
 } from "lucide-react";
@@ -28,6 +30,8 @@ const NAV = [
   { href: "/shop/payments", label: "Payments", icon: Wallet },
   { href: "/shop/stock", label: "Stock", icon: Boxes },
   { href: "/shop/products", label: "Products", icon: Package },
+  { href: "/shop/purchases", label: "Purchases", icon: Truck },
+  { href: "/shop/suppliers", label: "Suppliers", icon: Building2 },
 ] as const;
 
 export function ShopSidebar({

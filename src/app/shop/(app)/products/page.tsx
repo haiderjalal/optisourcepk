@@ -43,7 +43,7 @@ export default async function ProductsPage({
             type="search"
             name="q"
             defaultValue={search ?? ""}
-            placeholder="Name or SKU"
+            placeholder="Product name"
             aria-label="Search products"
             className={`${inputClass} pl-9`}
           />
@@ -64,7 +64,7 @@ export default async function ProductsPage({
           </h2>
           <p className="text-navy-500 mx-auto mt-2 max-w-sm text-sm">
             {search
-              ? "Try part of the name or the SKU."
+              ? "Try part of the name."
               : "Add what you sell — lenses by power, frames and accessories by piece, and coatings and tints as services."}
           </p>
           {!search && (
@@ -115,10 +115,13 @@ export default async function ProductsPage({
                     >
                       {product.name}
                     </Link>
-                    <span className="text-navy-400 block font-mono text-xs">
-                      {product.sku}
-                      {product.tracks_power && " · by power"}
-                    </span>
+                    {product.tracks_power && (
+                      <span className="text-navy-400 block text-xs">
+                        By power
+                        {product.lens_sign &&
+                          ` · ${product.lens_sign === "plus" ? "Plus" : "Minus"}`}
+                      </span>
+                    )}
                   </td>
                   <td className="text-navy-500 hidden px-4 py-3 sm:table-cell">
                     {product.category}

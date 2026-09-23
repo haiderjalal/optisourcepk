@@ -25,6 +25,13 @@ database, a set of auth users and a backup boundary.
 2. Paste the whole of [`supabase/migrations/0001_backoffice.sql`](../supabase/migrations/0001_backoffice.sql).
 3. **Run**.
 
+Then run every later file in `supabase/migrations/` the same way, one at a
+time, in number order (`0002_…` through the highest number). A database that
+is already set up only needs the files it has not had yet — for example
+`0012_alerts_lens_sign_optional_sku.sql` (range-wide stock alerts, plus/minus
+lens type, SKU optional) and `0013_purchase_invoices.sql` (suppliers and
+purchase invoices).
+
 It should report success with no rows. If anything errors, stop and send me the
 message — do not run it twice. The script is not re-runnable: it creates enum
 types and tables that will already exist on a second run, so a partial failure

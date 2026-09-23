@@ -50,9 +50,12 @@ type CustomerRow = {
   deleted_at: string | null;
 };
 
+export type LensSign = "plus" | "minus";
+
 type ProductRow = {
   id: string;
-  sku: string;
+  /** No longer entered or shown; kept for rows created before 0012. */
+  sku: string | null;
   name: string;
   category: ProductCategory;
   unit: string;
@@ -76,6 +79,9 @@ type ProductRow = {
   axis_max: number | null;
   axis_step: number | null;
   eyes: "both" | "R" | "L" | null;
+  /** Warn when any power in the range is at or below this. */
+  alert_qty: number | null;
+  lens_sign: LensSign | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -101,8 +107,60 @@ type StockMovementRow = {
   delta: number;
   reason: StockReason;
   order_id: string | null;
+  purchase_invoice_id: string | null;
   note: string | null;
   created_at: string;
+};
+
+type SupplierRow = {
+  id: string;
+  name: string;
+  phone: string | null;
+  city: string | null;
+  address: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
+type PurchaseInvoiceRow = {
+  id: string;
+  supplier_id: string;
+  invoice_no: string;
+  invoice_date: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type PurchaseInvoiceLineRow = {
+  id: string;
+  purchase_invoice_id: string;
+  product_id: string;
+  product_name: string;
+  sph: number | null;
+  cyl: number | null;
+  add_power: number | null;
+  eye: Eye | null;
+  quantity: number;
+  unit_cost: number;
+  /** Generated column — never written. */
+  line_total: number;
+  created_at: string;
+};
+
+type PurchaseInvoiceTotalsRow = {
+  id: string;
+  supplier_id: string;
+  supplier_name: string;
+  invoice_no: string;
+  invoice_date: string;
+  notes: string | null;
+  created_at: string;
+  line_count: number;
+  total_qty: number;
+  total_amount: number;
 };
 
 type OrderRow = {
@@ -217,9 +275,9 @@ type CustomerBalanceRow = {
 };
 
 type LowStockRow = {
-  bin_id: string;
+  /** NULL for a power in the product's range that has never been received. */
+  bin_id: string | null;
   product_id: string;
-  sku: string;
   name: string;
   category: ProductCategory;
   sph: number | null;
@@ -251,6 +309,8 @@ type Defaulted =
   | "unit"
   | "discount_pct"
   | "entry_date"
+  | "invoice_date"
+  | "unit_cost"
   | "qty_on_hand"
   | "reorder_level"
   | "tracks_power"
@@ -299,11 +359,15 @@ export interface Database {
       order_lines: Table<OrderLineRow>;
       ledger_entries: Table<LedgerEntryRow>;
       counters: Table<{ name: string; next_value: number }>;
+      suppliers: Table<SupplierRow>;
+      purchase_invoices: Table<PurchaseInvoiceRow>;
+      purchase_invoice_lines: Table<PurchaseInvoiceLineRow>;
     };
     Views: {
       customer_statement: View<CustomerStatementRow>;
       customer_balances: View<CustomerBalanceRow>;
       low_stock: View<LowStockRow>;
+      purchase_invoice_totals: View<PurchaseInvoiceTotalsRow>;
     };
     Functions: {
       adjust_stock: {
@@ -365,6 +429,16 @@ export interface Database {
         };
         Returns: number;
       };
+      record_purchase: {
+        Args: {
+          p_supplier_id: string;
+          p_invoice_no: string;
+          p_invoice_date: string | null;
+          p_lines: PurchaseLineInput[];
+          p_notes?: string | null;
+        };
+        Returns: string;
+      };
       void_invoice: {
         Args: { p_order_id: string; p_reason: string };
         Returns: OrderRow;
@@ -390,3 +464,18 @@ export type LedgerEntry = LedgerEntryRow;
 export type CustomerStatementLine = CustomerStatementRow;
 export type CustomerBalance = CustomerBalanceRow;
 export type LowStockLine = LowStockRow;
+export type Supplier = SupplierRow;
+export type PurchaseInvoice = PurchaseInvoiceRow;
+export type PurchaseInvoiceLine = PurchaseInvoiceLineRow;
+export type PurchaseInvoiceSummary = PurchaseInvoiceTotalsRow;
+
+/** One line as `record_purchase` takes it. Blank unitCost = product cost. */
+export interface PurchaseLineInput {
+  productId: string;
+  sph: number | null;
+  cyl: number | null;
+  add: number | null;
+  eye: Eye | null;
+  qty: number;
+  unitCost: number | null;
+}

@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { AlertCircle, Check, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { isLow, sphPlaceholder } from "@/lib/power";
 import { STOCK_REASONS } from "@/lib/validations/shop/stock";
 import { describeBin } from "@/lib/format";
 import type { Product, StockBin } from "@/types/database";
@@ -75,7 +76,7 @@ export function StockPanel({
                 min={product.sph_min ?? -30}
                 max={product.sph_max ?? 30}
                 inputMode="decimal"
-                placeholder="-2.00"
+                placeholder={sphPlaceholder(product.lens_sign)}
               />
             )}
           </Field>
@@ -213,7 +214,7 @@ export function StockPanel({
               <li
                 key={bin.id}
                 className={`rounded-lg px-2 py-2 text-center ${
-                  bin.qty_on_hand <= bin.reorder_level
+                  isLow(bin, product)
                     ? "bg-amber-50 ring-1 ring-amber-200 ring-inset"
                     : "bg-mist-100"
                 }`}
@@ -236,7 +237,7 @@ export function StockPanel({
           </p>
         )}
 
-        {bins.some((bin) => bin.qty_on_hand <= bin.reorder_level) && (
+        {bins.some((bin) => isLow(bin, product)) && (
           <p className="text-navy-400 mt-3 text-xs">
             Amber means at or below the reorder level.
           </p>
