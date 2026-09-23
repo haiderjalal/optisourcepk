@@ -1,12 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Boxes, PackagePlus, Plus, TriangleAlert } from "lucide-react";
+import {
+  Boxes,
+  ChevronRight,
+  PackagePlus,
+  Plus,
+  TriangleAlert,
+} from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listAllStock } from "@/services/shop/stock.service";
 import { listSellableProducts } from "@/services/shop/product.service";
 import { QuickReceive } from "@/features/shop/products/QuickReceive";
 import { ButtonLink } from "@/components/ui/button";
-import { describeBin } from "@/lib/format";
+import { StockSheetTable } from "@/features/shop/products/StockSheetTable";
 
 export const metadata: Metadata = { title: "Stock" };
 
@@ -21,7 +27,6 @@ export default async function StockPage() {
   const stockable = sellable.filter((p) => p.tracks_stock);
 
   const empty = products.filter((p) => p.bins.length === 0);
-  const lowTotal = products.reduce((sum, p) => sum + p.lowCount, 0);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -84,85 +89,88 @@ export default async function StockPage() {
             </div>
           )}
 
-          {lowTotal > 0 && (
-            <p className="text-navy-500 mb-4 text-sm">
-              {lowTotal} {lowTotal === 1 ? "power is" : "powers are"} at or
-              below the alert quantity — shown in amber. A dashed square is a
-              power in the range with none in stock yet.
-            </p>
-          )}
+          <p className="text-navy-500 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+            <span>Click a product to open its stock sheet.</span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block size-3 rounded-sm ring-1 ring-red-400 ring-inset"
+                aria-hidden
+              />
+              none in stock
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="inline-block size-3 rounded-sm bg-amber-50 ring-1 ring-amber-300 ring-inset"
+                aria-hidden
+              />
+              at or below the alert quantity
+            </span>
+          </p>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {products.map((product) => (
-              <section
+              <details
                 key={product.productId}
-                className="shadow-lift rounded-2xl bg-white p-5"
+                className="shadow-lift group rounded-2xl bg-white"
               >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="min-w-0">
-                    <Link
-                      href={`/shop/products/${product.productId}`}
-                      className="hover:text-accent-600 font-semibold"
-                    >
-                      {product.name}
-                    </Link>
-                  </div>
-                  <p className="text-navy-500 text-sm">
+                <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl p-5 [&::-webkit-details-marker]:hidden">
+                  <ChevronRight
+                    className="text-navy-400 size-4 shrink-0 transition-transform group-open:rotate-90"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 flex-1 font-semibold">
+                    {product.name}
+                  </span>
+                  {product.emptyCount > 0 && (
+                    <span className="rounded-full px-2 py-0.5 text-xs font-medium text-red-700 ring-1 ring-red-300 ring-inset">
+                      {product.emptyCount} at 0
+                    </span>
+                  )}
+                  {product.lowCount > 0 && (
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 ring-1 ring-amber-200 ring-inset">
+                      {product.lowCount} low
+                    </span>
+                  )}
+                  <span className="text-navy-500 text-sm tabular-nums">
                     {product.total} {product.unit}
-                    {product.tracksPower &&
-                      product.bins.length > 0 &&
-                      ` · ${product.bins.length} powers`}
-                  </p>
-                </div>
+                  </span>
+                </summary>
 
-                {product.bins.length === 0 ? (
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                <div className="px-5 pb-5">
+                  {product.sheet ? (
+                    <>
+                      <StockSheetTable sheet={product.sheet} />
+                      {product.sheet.mixesAddOrEye && (
+                        <p className="text-navy-400 mt-2 text-xs">
+                          Some of this stock is split by ADD or eye; each square
+                          adds those together. The product page has the detail.
+                        </p>
+                      )}
+                    </>
+                  ) : product.bins.length === 0 ? (
                     <p className="text-navy-400 text-sm">
                       No stock received yet.
                     </p>
-                    <ButtonLink
-                      href={`/shop/products/${product.productId}`}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <PackagePlus className="size-4" aria-hidden />
-                      Receive stock
-                    </ButtonLink>
-                  </div>
-                ) : product.tracksPower ? (
-                  <ul className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-10">
-                    {product.tiles.map((tile) => (
-                      <li
-                        key={tile.key}
-                        className={`rounded-lg px-2 py-1.5 text-center ${
-                          !tile.received
-                            ? "border border-dashed border-amber-300 bg-amber-50/60"
-                            : tile.low
-                              ? "bg-amber-50 ring-1 ring-amber-200 ring-inset"
-                              : "bg-mist-100"
-                        }`}
-                      >
-                        <span className="text-navy-500 block font-mono text-[11px]">
-                          {describeBin(tile)}
-                        </span>
-                        <span className="block text-base font-semibold tabular-nums">
-                          {tile.qty}
-                        </span>
-                        {!tile.received && (
-                          <span className="sr-only">none received</span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-2xl font-semibold tabular-nums">
-                    {product.bins[0].qty_on_hand}
-                    <span className="text-navy-400 ml-2 text-sm font-normal">
-                      {product.unit}
-                    </span>
-                  </p>
-                )}
-              </section>
+                  ) : (
+                    <p className="text-2xl font-semibold tabular-nums">
+                      {product.total}
+                      <span className="text-navy-400 ml-2 text-sm font-normal">
+                        {product.unit}
+                      </span>
+                    </p>
+                  )}
+
+                  <ButtonLink
+                    href={`/shop/products/${product.productId}`}
+                    variant="outline"
+                    size="sm"
+                    className="mt-4"
+                  >
+                    <PackagePlus className="size-4" aria-hidden />
+                    Open product · receive stock
+                  </ButtonLink>
+                </div>
+              </details>
             ))}
           </div>
         </>
