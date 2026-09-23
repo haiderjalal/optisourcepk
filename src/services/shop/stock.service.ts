@@ -8,7 +8,12 @@ import type {
   StockBin,
   StockReason,
 } from "@/types/database";
-import { byPosition, isLow } from "@/lib/power";
+import {
+  byDistanceFromZero,
+  byPosition,
+  isLow,
+  powerSeries,
+} from "@/lib/power";
 import { describePostgresError } from "./errors";
 
 /**
@@ -190,17 +195,25 @@ export async function listMovements(
   }));
 }
 
-/** One square on the stock screen: a bin, or a power never received. */
-export interface StockTile {
-  key: string;
-  sph: number | null;
-  cyl: number | null;
-  add_power: number | null;
-  eye: string | null;
+/** One square of the stock sheet: what is on hand at one SPH x CYL. */
+export interface StockCell {
   qty: number;
+  /** At or below the alert quantity (or the bin's own reorder level). */
   low: boolean;
-  /** False for a power in the range that has no bin yet — 0 on hand. */
-  received: boolean;
+}
+
+/**
+ * A lens product laid out like the printed stock sheet: SPH down the side,
+ * CYL across the top, both nearest zero first. `cyls` is `[null]` for a
+ * product held by SPH alone.
+ */
+export interface StockSheet {
+  sphs: number[];
+  cyls: (number | null)[];
+  /** Keyed by `cellKey(sph, cyl)`; every row x column pair is present. */
+  cells: Record<string, StockCell>;
+  /** Some bins are split by ADD or eye; a cell is their sum. */
+  mixesAddOrEye: boolean;
 }
 
 export interface ProductStock {
@@ -210,31 +223,92 @@ export interface ProductStock {
   tracksPower: boolean;
   tracksStock: boolean;
   bins: StockBin[];
-  /** Bins plus unreceived powers in the range, nearest zero first. */
-  tiles: StockTile[];
+  /** Null for a product that is not held by power. */
+  sheet: StockSheet | null;
   total: number;
   lowCount: number;
+  emptyCount: number;
+}
+
+// Same caps as the receiving grid, so the two screens show the same powers.
+const MAX_SPH_POSITIONS = 200;
+const MAX_CYL_POSITIONS = 60;
+
+export const cellKey = (sph: number, cyl: number | null) =>
+  `${sph}|${cyl ?? ""}`;
+
+/**
+ * Every power in the product's declared range, plus any power it holds
+ * outside it, so nothing on the shelf is hidden and no gap in the range is
+ * either. A zero cylinder is stored as none, so it is the same column.
+ */
+function buildSheet(product: Product, bins: StockBin[]): StockSheet {
+  const rangeSph = powerSeries(
+    product.sph_min,
+    product.sph_max,
+    product.sph_step,
+    MAX_SPH_POSITIONS,
+  );
+  const rangeCyl = powerSeries(
+    product.cyl_min,
+    product.cyl_max,
+    product.cyl_step,
+    MAX_CYL_POSITIONS,
+  ).map((cyl) => (cyl === 0 ? null : cyl));
+
+  const sphs = [...new Set([...rangeSph, ...bins.map((b) => b.sph ?? 0)])].sort(
+    byDistanceFromZero,
+  );
+  const cylSet = new Set<number | null>([
+    ...rangeCyl,
+    ...bins.map((b) => b.cyl),
+  ]);
+  if (cylSet.size === 0) cylSet.add(null);
+  // "No cylinder" is the 0.00 column, so it leads.
+  const cyls = [...cylSet].sort((a, b) => byDistanceFromZero(a ?? 0, b ?? 0));
+
+  const cells: Record<string, StockCell> = {};
+  for (const sph of sphs) {
+    for (const cyl of cyls) {
+      // 0 on hand is at or below any alert quantity that is set.
+      cells[cellKey(sph, cyl)] = { qty: 0, low: product.alert_qty !== null };
+    }
+  }
+
+  const seen = new Set<string>();
+  for (const bin of bins) {
+    const k = cellKey(bin.sph ?? 0, bin.cyl);
+    const cell = cells[k];
+    if (!seen.has(k)) {
+      seen.add(k);
+      cell.low = false;
+    }
+    cell.qty += bin.qty_on_hand;
+    cell.low = cell.low || isLow(bin, product);
+  }
+
+  return {
+    sphs,
+    cyls,
+    cells,
+    mixesAddOrEye: bins.some((b) => b.add_power !== null || b.eye !== null),
+  };
 }
 
 /**
- * Every product with its bins, for the stock screen.
+ * Every product with its stock, for the stock screen.
  *
  * Products with no stock yet are included on purpose — "nothing received"
- * is the state the operator most needs to see, and leaving them out is what
- * made an empty stock page look broken. Powers in a product's range that were
- * never received come from `low_stock`, which is the one place that works
- * the range out.
+ * is the state the operator most needs to see. A product with a power range
+ * shows every power in it, 0 where nothing is held, so a gap on the shelf is
+ * as visible as a count.
  */
 export async function listAllStock(): Promise<ProductStock[]> {
   const { supabase } = await requireUser();
 
-  const [products, bins, missing] = await Promise.all([
+  const [products, bins] = await Promise.all([
     supabase.from("products").select("*").is("deleted_at", null).order("name"),
     supabase.from("stock_bins").select("*"),
-    supabase
-      .from("low_stock")
-      .select("product_id, sph, cyl")
-      .is("bin_id", null),
   ]);
 
   if (products.error) {
@@ -242,9 +316,6 @@ export async function listAllStock(): Promise<ProductStock[]> {
   }
   if (bins.error) {
     throw new Error(describePostgresError(bins.error, "load stock"));
-  }
-  if (missing.error) {
-    throw new Error(describePostgresError(missing.error, "load stock alerts"));
   }
 
   const byProduct = new Map<string, StockBin[]>();
@@ -254,39 +325,12 @@ export async function listAllStock(): Promise<ProductStock[]> {
     byProduct.set(bin.product_id, list);
   }
 
-  const missingByProduct = new Map<string, StockTile[]>();
-  for (const row of missing.data ?? []) {
-    const list = missingByProduct.get(row.product_id) ?? [];
-    list.push({
-      key: `none|${row.sph}|${row.cyl ?? ""}`,
-      sph: row.sph,
-      cyl: row.cyl,
-      add_power: null,
-      eye: null,
-      qty: 0,
-      low: true,
-      received: false,
-    });
-    missingByProduct.set(row.product_id, list);
-  }
-
   return (products.data ?? [])
     .filter((product) => product.tracks_stock)
     .map((product) => {
       const own = (byProduct.get(product.id) ?? []).sort(byPosition);
-      const tiles = [
-        ...own.map((bin) => ({
-          key: bin.id,
-          sph: bin.sph,
-          cyl: bin.cyl,
-          add_power: bin.add_power,
-          eye: bin.eye,
-          qty: bin.qty_on_hand,
-          low: isLow(bin, product),
-          received: true,
-        })),
-        ...(missingByProduct.get(product.id) ?? []),
-      ].sort(byPosition);
+      const sheet = product.tracks_power ? buildSheet(product, own) : null;
+      const cells = sheet ? Object.values(sheet.cells) : [];
 
       return {
         productId: product.id,
@@ -295,9 +339,10 @@ export async function listAllStock(): Promise<ProductStock[]> {
         tracksPower: product.tracks_power,
         tracksStock: product.tracks_stock,
         bins: own,
-        tiles,
+        sheet: sheet && sheet.sphs.length > 0 ? sheet : null,
         total: own.reduce((sum, bin) => sum + bin.qty_on_hand, 0),
-        lowCount: tiles.filter((tile) => tile.low).length,
+        lowCount: cells.filter((c) => c.low && c.qty > 0).length,
+        emptyCount: cells.filter((c) => c.qty === 0).length,
       };
     });
 }
