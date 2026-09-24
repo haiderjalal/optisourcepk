@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Download, MessageCircle, Printer } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
+import type { SheetLayout } from "./orientation";
 
 /**
  * Print or share one product's stock sheet.
@@ -19,12 +20,14 @@ export function StockSheetActions({
   productId,
   productName,
   fileName,
+  layout,
 }: {
   productId: string;
   productName: string;
   fileName: string;
+  layout: SheetLayout;
 }) {
-  const url = `/shop/stock/${productId}/pdf`;
+  const url = `/shop/stock/${productId}/pdf?layout=${layout}`;
   const [busy, setBusy] = useState<"print" | "share" | null>(null);
   const [note, setNote] = useState<{ tone: "ok" | "error"; text: string }>();
 
@@ -122,7 +125,7 @@ export function StockSheetActions({
         <MessageCircle className="size-4" aria-hidden />
         {busy === "share" ? "Preparing…" : "Share on WhatsApp"}
       </Button>
-      <ButtonLink href={`${url}?download`} variant="ghost" size="sm">
+      <ButtonLink href={`${url}&download`} variant="ghost" size="sm">
         <Download className="size-4" aria-hidden />
         Download PDF
       </ButtonLink>

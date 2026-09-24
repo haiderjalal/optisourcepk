@@ -1,66 +1,74 @@
-import { formatPower } from "@/lib/format";
 import type { StockSheet } from "@/services/shop/stock.service";
+import {
+  orientSheet,
+  type SheetLayout,
+} from "@/features/shop/stock/orientation";
 
 /**
  * One lens product's stock, laid out like the printed "Lens Stock Detail
- * List": SPH down the side, CYL across the top, a total under each column.
+ * List": SPH down the side and CYL across the top (or swapped), with a
+ * total under each column.
  *
  * A red border marks a power with nothing on hand; amber marks one at or
  * below the alert quantity. The number is always printed as well, so colour
  * is never the only signal.
  *
- * Server-rendered: it has no state, and a sheet can run to hundreds of cells.
+ * Stateless: the panel around it owns which way round it is drawn.
  */
 
-const key = (sph: number, cyl: number | null) => `${sph}|${cyl ?? ""}`;
+export function StockSheetTable({
+  sheet,
+  layout,
+}: {
+  sheet: StockSheet;
+  layout: SheetLayout;
+}) {
+  const view = orientSheet(sheet, layout);
 
-export function StockSheetTable({ sheet }: { sheet: StockSheet }) {
-  const { sphs, cyls, cells } = sheet;
-  const byCyl = cyls[0] !== null || cyls.length > 1;
-
-  const columnTotal = (cyl: number | null) =>
-    sphs.reduce((sum, sph) => sum + (cells[key(sph, cyl)]?.qty ?? 0), 0);
+  const columnTotal = (across: number | null) =>
+    view.down.reduce<number>(
+      (sum, down) => sum + (view.cell(down, across)?.qty ?? 0),
+      0,
+    );
 
   return (
     <div className="overflow-x-auto">
       <table className="border-navy-300 border-collapse border text-sm">
-        <caption className="sr-only">
-          Quantity on hand by SPH{byCyl && " and CYL"}
-        </caption>
+        <caption className="sr-only">Quantity on hand, {view.corner}</caption>
         <thead>
           <tr className="text-navy-600 bg-mist-100 text-xs">
             <th
               scope="col"
               className="border-navy-300 sticky left-0 z-10 border bg-mist-100 px-3 py-2 text-center font-semibold whitespace-nowrap"
             >
-              {byCyl ? "SPH | CYL" : "SPH"}
+              {view.corner}
             </th>
-            {cyls.map((cyl) => (
+            {view.across.map((across) => (
               <th
-                key={cyl ?? "none"}
+                key={across ?? "none"}
                 scope="col"
                 className="border-navy-300 min-w-14 border px-2 py-2 text-center font-mono font-semibold"
               >
-                {byCyl ? formatPower(cyl ?? 0) : "Qty"}
+                {view.acrossLabel(across)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {sphs.map((sph) => (
-            <tr key={sph}>
+          {view.down.map((down) => (
+            <tr key={down ?? "none"}>
               <th
                 scope="row"
                 className="border-navy-300 sticky left-0 z-10 border bg-white px-3 py-1 text-center font-mono text-xs font-semibold whitespace-nowrap"
               >
-                {formatPower(sph)}
+                {view.downLabel(down)}
               </th>
-              {cyls.map((cyl) => {
-                const cell = cells[key(sph, cyl)];
+              {view.across.map((across) => {
+                const cell = view.cell(down, across);
                 const qty = cell?.qty ?? 0;
                 return (
                   <td
-                    key={cyl ?? "none"}
+                    key={across ?? "none"}
                     className="border-navy-300 border p-0.5 text-center"
                   >
                     <span
@@ -88,12 +96,12 @@ export function StockSheetTable({ sheet }: { sheet: StockSheet }) {
             >
               Total
             </th>
-            {cyls.map((cyl) => (
+            {view.across.map((across) => (
               <td
-                key={cyl ?? "none"}
+                key={across ?? "none"}
                 className="border-navy-300 border px-2 py-2 text-center font-semibold tabular-nums"
               >
-                {columnTotal(cyl)}
+                {columnTotal(across)}
               </td>
             ))}
           </tr>

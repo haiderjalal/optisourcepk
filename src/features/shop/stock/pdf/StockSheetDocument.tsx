@@ -1,6 +1,6 @@
 import { Document, Page, StyleSheet, Text, View } from "@react-pdf/renderer";
-import { formatPower } from "@/lib/format";
 import type { StockSheet } from "@/services/shop/stock.service";
+import { orientSheet, type SheetLayout } from "../orientation";
 
 /**
  * The "Lens Stock Detail List" as it is printed in the shop: company header,
@@ -19,6 +19,7 @@ export interface StockSheetPdfModel {
   printedAt: string;
   unit: string;
   sheet: StockSheet;
+  layout: SheetLayout;
 }
 
 const INK = "#111111";
@@ -84,21 +85,22 @@ const styles = StyleSheet.create({
   },
 });
 
-const key = (sph: number, cyl: number | null) => `${sph}|${cyl ?? ""}`;
-
 export function StockSheetDocument({ model }: { model: StockSheetPdfModel }) {
-  const { sphs, cyls, cells } = model.sheet;
-  const byCyl = cyls[0] !== null || cyls.length > 1;
+  const view = orientSheet(model.sheet, model.layout);
+  const cols = view.across;
 
   // Fixed percentages so every page of one sheet lines up exactly.
-  const firstWidth = cyls.length > 12 ? 9 : 12;
-  const colWidth = `${(100 - firstWidth) / cyls.length}%`;
+  const firstWidth = cols.length > 12 ? 9 : 12;
+  const colWidth = `${(100 - firstWidth) / cols.length}%`;
   const first = `${firstWidth}%`;
 
-  const columnTotal = (cyl: number | null) =>
-    sphs.reduce((sum, sph) => sum + (cells[key(sph, cyl)]?.qty ?? 0), 0);
-  const grandTotal = cyls.reduce<number>(
-    (sum, cyl) => sum + columnTotal(cyl),
+  const columnTotal = (across: number | null) =>
+    view.down.reduce<number>(
+      (sum, down) => sum + (view.cell(down, across)?.qty ?? 0),
+      0,
+    );
+  const grandTotal = cols.reduce<number>(
+    (sum, across) => sum + columnTotal(across),
     0,
   );
 
@@ -106,7 +108,7 @@ export function StockSheetDocument({ model }: { model: StockSheetPdfModel }) {
     <Document title={`Stock — ${model.productName}`} author={model.companyName}>
       <Page
         size="A4"
-        orientation={cyls.length > 10 ? "landscape" : "portrait"}
+        orientation={cols.length > 10 ? "landscape" : "portrait"}
         style={styles.page}
       >
         <Text style={styles.printedAt}>{model.printedAt}</Text>
@@ -118,29 +120,29 @@ export function StockSheetDocument({ model }: { model: StockSheetPdfModel }) {
         <View style={styles.table}>
           <View style={styles.row} fixed>
             <Text style={[styles.cell, styles.headCell, { width: first }]}>
-              {byCyl ? "SPH | CYL" : "SPH"}
+              {view.corner}
             </Text>
-            {cyls.map((cyl) => (
+            {cols.map((across) => (
               <Text
-                key={cyl ?? "none"}
+                key={across ?? "none"}
                 style={[styles.cell, styles.headCell, { width: colWidth }]}
               >
-                {byCyl ? formatPower(cyl ?? 0) : "Qty"}
+                {view.acrossLabel(across)}
               </Text>
             ))}
           </View>
 
-          {sphs.map((sph) => (
-            <View key={sph} style={styles.row} wrap={false}>
+          {view.down.map((down) => (
+            <View key={down ?? "none"} style={styles.row} wrap={false}>
               <Text style={[styles.cell, styles.rowHead, { width: first }]}>
-                {formatPower(sph)}
+                {view.downLabel(down)}
               </Text>
-              {cyls.map((cyl) => (
+              {cols.map((across) => (
                 <Text
-                  key={cyl ?? "none"}
+                  key={across ?? "none"}
                   style={[styles.cell, styles.qty, { width: colWidth }]}
                 >
-                  {cells[key(sph, cyl)]?.qty ?? 0}
+                  {view.cell(down, across)?.qty ?? 0}
                 </Text>
               ))}
             </View>
@@ -150,12 +152,12 @@ export function StockSheetDocument({ model }: { model: StockSheetPdfModel }) {
             <Text style={[styles.cell, styles.total, { width: first }]}>
               Total
             </Text>
-            {cyls.map((cyl) => (
+            {cols.map((across) => (
               <Text
-                key={cyl ?? "none"}
+                key={across ?? "none"}
                 style={[styles.cell, styles.total, { width: colWidth }]}
               >
-                {columnTotal(cyl)}
+                {columnTotal(across)}
               </Text>
             ))}
           </View>

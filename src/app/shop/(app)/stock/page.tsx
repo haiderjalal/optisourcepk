@@ -12,8 +12,7 @@ import { listAllStock } from "@/services/shop/stock.service";
 import { listSellableProducts } from "@/services/shop/product.service";
 import { QuickReceive } from "@/features/shop/products/QuickReceive";
 import { ButtonLink } from "@/components/ui/button";
-import { StockSheetTable } from "@/features/shop/products/StockSheetTable";
-import { StockSheetActions } from "@/features/shop/stock/StockSheetActions";
+import { StockSheetPanel } from "@/features/shop/stock/StockSheetPanel";
 import { stockSheetFileName } from "@/features/shop/stock/pdf/render";
 
 export const metadata: Metadata = { title: "Stock" };
@@ -140,15 +139,12 @@ export default async function StockPage() {
 
                 <div className="px-5 pb-5">
                   {product.sheet ? (
-                    <>
-                      <StockSheetTable sheet={product.sheet} />
-                      {product.sheet.mixesAddOrEye && (
-                        <p className="text-navy-400 mt-2 text-xs">
-                          Some of this stock is split by ADD or eye; each square
-                          adds those together. The product page has the detail.
-                        </p>
-                      )}
-                    </>
+                    <StockSheetPanel
+                      sheet={product.sheet}
+                      productId={product.productId}
+                      productName={product.name}
+                      fileName={stockSheetFileName(product.name)}
+                    />
                   ) : product.bins.length === 0 ? (
                     <p className="text-navy-400 text-sm">
                       No stock received yet.
@@ -162,23 +158,15 @@ export default async function StockPage() {
                     </p>
                   )}
 
-                  <div className="mt-4 flex flex-wrap items-start gap-2">
-                    {product.sheet && (
-                      <StockSheetActions
-                        productId={product.productId}
-                        productName={product.name}
-                        fileName={stockSheetFileName(product.name)}
-                      />
-                    )}
-                    <ButtonLink
-                      href={`/shop/products/${product.productId}`}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <PackagePlus className="size-4" aria-hidden />
-                      Open product · receive stock
-                    </ButtonLink>
-                  </div>
+                  <ButtonLink
+                    href={`/shop/products/${product.productId}`}
+                    variant="outline"
+                    size="sm"
+                    className="mt-3"
+                  >
+                    <PackagePlus className="size-4" aria-hidden />
+                    Open product · receive stock
+                  </ButtonLink>
                 </div>
               </details>
             ))}
