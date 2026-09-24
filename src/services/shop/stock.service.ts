@@ -327,24 +327,53 @@ export async function listAllStock(): Promise<ProductStock[]> {
 
   return (products.data ?? [])
     .filter((product) => product.tracks_stock)
-    .map((product) => {
-      const own = (byProduct.get(product.id) ?? []).sort(byPosition);
-      const sheet = product.tracks_power ? buildSheet(product, own) : null;
-      const cells = sheet ? Object.values(sheet.cells) : [];
+    .map((product) => toProductStock(product, byProduct.get(product.id) ?? []));
+}
 
-      return {
-        productId: product.id,
-        name: product.name,
-        unit: product.unit,
-        tracksPower: product.tracks_power,
-        tracksStock: product.tracks_stock,
-        bins: own,
-        sheet: sheet && sheet.sphs.length > 0 ? sheet : null,
-        total: own.reduce((sum, bin) => sum + bin.qty_on_hand, 0),
-        lowCount: cells.filter((c) => c.low && c.qty > 0).length,
-        emptyCount: cells.filter((c) => c.qty === 0).length,
-      };
-    });
+function toProductStock(product: Product, bins: StockBin[]): ProductStock {
+  const own = [...bins].sort(byPosition);
+  const sheet = product.tracks_power ? buildSheet(product, own) : null;
+  const cells = sheet ? Object.values(sheet.cells) : [];
+
+  return {
+    productId: product.id,
+    name: product.name,
+    unit: product.unit,
+    tracksPower: product.tracks_power,
+    tracksStock: product.tracks_stock,
+    bins: own,
+    sheet: sheet && sheet.sphs.length > 0 ? sheet : null,
+    total: own.reduce((sum, bin) => sum + bin.qty_on_hand, 0),
+    lowCount: cells.filter((c) => c.low && c.qty > 0).length,
+    emptyCount: cells.filter((c) => c.qty === 0).length,
+  };
+}
+
+/** One product's stock, for its printable stock sheet. */
+export async function getProductStock(
+  productId: string,
+): Promise<ProductStock | null> {
+  const { supabase } = await requireUser();
+
+  const [product, bins] = await Promise.all([
+    supabase
+      .from("products")
+      .select("*")
+      .eq("id", productId)
+      .is("deleted_at", null)
+      .maybeSingle(),
+    supabase.from("stock_bins").select("*").eq("product_id", productId),
+  ]);
+
+  if (product.error) {
+    throw new Error(describePostgresError(product.error, "load the product"));
+  }
+  if (bins.error) {
+    throw new Error(describePostgresError(bins.error, "load stock"));
+  }
+  if (!product.data?.tracks_stock) return null;
+
+  return toProductStock(product.data, bins.data ?? []);
 }
 
 export interface LineAvailability {
