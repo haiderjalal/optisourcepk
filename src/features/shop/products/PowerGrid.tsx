@@ -16,7 +16,7 @@ import { receivePowersAction, type PowerGridState } from "./actions";
 /**
  * Receive a delivery against the product's whole range.
  *
- * SPH runs across the top and CYL down the side by default, both starting
+ * SPH runs down the side and CYL across the top by default, both starting
  * nearest zero (-0.25, -0.50, -0.75 …); the swap button turns it round, and
  * the choice is shared with the stock sheet. Without a CYL range it is a
  * single strip of SPH boxes.
@@ -78,7 +78,7 @@ export function PowerGrid({
   const [invoiceDate, setInvoiceDate] = useState(todayInKarachi);
   const [unitCost, setUnitCost] = useState(String(product.purchase_price));
   const [note, setNote] = useState("");
-  const [layout, swapLayout] = useSheetLayout("sph-across");
+  const [layout, swapLayout] = useSheetLayout("sph-down");
 
   if (!product.tracks_stock || spheres.length === 0) return null;
 
@@ -103,7 +103,7 @@ export function PowerGrid({
     sphDown ? { sph: row ?? 0, cyl: column } : { sph: column ?? 0, cyl: row };
   const label = (value: number | null) =>
     value === null ? "Qty" : formatPower(value);
-  const corner = !isMatrix ? "SPH" : sphDown ? "SPH ╲ CYL" : "CYL ╲ SPH";
+  const corner = !isMatrix ? "SPH" : sphDown ? "SPH | CYL" : "CYL | SPH";
 
   // Current bins for the ADD and eye in play, so the numbers on screen
   // always describe the shelf position being typed into.
