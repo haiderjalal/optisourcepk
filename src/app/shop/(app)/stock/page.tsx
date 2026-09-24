@@ -60,7 +60,10 @@ export default async function StockPage() {
         </div>
       ) : (
         <>
-          <QuickReceive products={stockable} />
+          <QuickReceive
+            products={stockable}
+            bins={products.flatMap((p) => p.bins)}
+          />
 
           {empty.length > 0 && (
             <div className="mb-5 rounded-2xl bg-amber-50 px-5 py-4 ring-1 ring-amber-200 ring-inset">
