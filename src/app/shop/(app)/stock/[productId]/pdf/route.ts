@@ -11,6 +11,7 @@ import {
  * GET /shop/stock/[productId]/pdf — one lens product's stock sheet as a PDF.
  *
  * `?download` forces a save dialog; without it the browser previews inline.
+ * `?layout=sph-across` draws SPH across the top instead of down the side.
  * `requireUser()` re-checks the session because a proxy matcher is not a
  * guarantee.
  */
@@ -27,6 +28,11 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
+  const url = new URL(request.url);
+  // Print and share follow the layout on screen; the printed list is the default.
+  const layout =
+    url.searchParams.get("layout") === "sph-across" ? "sph-across" : "sph-down";
+
   const pdf = await renderStockSheetPdf({
     companyName: SITE.name,
     addressLine: `${CONTACT.address.line1}, ${CONTACT.address.city}.`,
@@ -34,9 +40,10 @@ export async function GET(
     printedAt: formatDateTime(new Date().toISOString()),
     unit: stock.unit,
     sheet: stock.sheet,
+    layout,
   });
 
-  const download = new URL(request.url).searchParams.has("download");
+  const download = url.searchParams.has("download");
   const disposition = download ? "attachment" : "inline";
 
   return new Response(new Uint8Array(pdf), {

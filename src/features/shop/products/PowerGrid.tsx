@@ -9,14 +9,17 @@ import { Field } from "@/components/ui/field";
 import { formatPower, todayInKarachi } from "@/lib/format";
 import { isLow, powerSeries } from "@/lib/power";
 import type { Product, StockBin, Supplier } from "@/types/database";
+import { SwapLayoutButton } from "@/features/shop/stock/SwapLayoutButton";
+import { useSheetLayout } from "@/features/shop/stock/useSheetLayout";
 import { receivePowersAction, type PowerGridState } from "./actions";
 
 /**
  * Receive a delivery against the product's whole range.
  *
- * SPH runs across the top and CYL down the side, both starting nearest zero
- * (-0.25, -0.50, -0.75 …) — the way a stock sheet is read. Without a CYL
- * range it is a single row of SPH boxes.
+ * SPH runs across the top and CYL down the side by default, both starting
+ * nearest zero (-0.25, -0.50, -0.75 …); the swap button turns it round, and
+ * the choice is shared with the stock sheet. Without a CYL range it is a
+ * single strip of SPH boxes.
  *
  * ADD and eye remain batch-wide selectors rather than a third axis: a grid you
  * have to scroll in three directions is not a grid anybody can use.
@@ -75,6 +78,7 @@ export function PowerGrid({
   const [invoiceDate, setInvoiceDate] = useState(todayInKarachi);
   const [unitCost, setUnitCost] = useState(String(product.purchase_price));
   const [note, setNote] = useState("");
+  const [layout, swapLayout] = useSheetLayout("sph-across");
 
   if (!product.tracks_stock || spheres.length === 0) return null;
 
@@ -90,6 +94,16 @@ export function PowerGrid({
   const selEye = eye === "" ? null : eye;
 
   const key = (sph: number, cyl: number | null) => `${sph}|${cyl ?? ""}`;
+
+  // Either axis can run down the side; `at` maps a square back to its power.
+  const sphDown = layout === "sph-down";
+  const across: (number | null)[] = sphDown ? rows : spheres;
+  const down: (number | null)[] = sphDown ? spheres : rows;
+  const at = (row: number | null, column: number | null) =>
+    sphDown ? { sph: row ?? 0, cyl: column } : { sph: column ?? 0, cyl: row };
+  const label = (value: number | null) =>
+    value === null ? "Qty" : formatPower(value);
+  const corner = !isMatrix ? "SPH" : sphDown ? "SPH ╲ CYL" : "CYL ╲ SPH";
 
   // Current bins for the ADD and eye in play, so the numbers on screen
   // always describe the shelf position being typed into.
@@ -119,7 +133,9 @@ export function PowerGrid({
       <h2 className="text-base font-semibold">Receive a delivery</h2>
       <p className="text-navy-500 mt-1 max-w-prose text-sm">
         {isMatrix
-          ? "SPH across the top, CYL down the side."
+          ? sphDown
+            ? "SPH down the side, CYL across the top."
+            : "SPH across the top, CYL down the side."
           : `Every SPH in the range, in steps of ${product.sph_step}.`}{" "}
         Type against what arrived and leave the rest blank. The small figure is
         what is already on hand
@@ -152,7 +168,11 @@ export function PowerGrid({
         </Field>
       </div>
 
-      <div className="mt-5 overflow-x-auto rounded-xl border border-mist-200">
+      <div className="mt-5 mb-2 flex justify-end">
+        <SwapLayoutButton layout={layout} onSwap={swapLayout} />
+      </div>
+
+      <div className="overflow-x-auto rounded-xl border border-mist-200">
         <table className="text-sm">
           <caption className="sr-only">
             Quantity received against each power
@@ -163,30 +183,31 @@ export function PowerGrid({
                 scope="col"
                 className="sticky left-0 z-10 bg-mist-100 px-3 py-2.5 text-left font-medium whitespace-nowrap"
               >
-                {isMatrix ? "CYL ╲ SPH" : "SPH"}
+                {corner}
               </th>
-              {spheres.map((sph) => (
+              {across.map((value) => (
                 <th
-                  key={sph}
+                  key={value ?? "none"}
                   scope="col"
                   className="px-2 py-2.5 text-center font-mono font-medium"
                 >
-                  {formatPower(sph)}
+                  {label(value)}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map((cyl) => (
-              <tr key={cyl ?? "none"} className="border-t border-mist-200">
+            {down.map((row) => (
+              <tr key={row ?? "none"} className="border-t border-mist-200">
                 <th
                   scope="row"
                   className="sticky left-0 z-10 bg-white px-3 py-1.5 text-left font-mono font-medium whitespace-nowrap"
                 >
-                  {cyl === null ? "Qty" : formatPower(cyl)}
+                  {label(row)}
                 </th>
 
-                {spheres.map((sph) => {
+                {across.map((column) => {
+                  const { sph, cyl } = at(row, column);
                   const k = key(sph, cyl);
                   const bin = onHand.get(k);
                   const have = bin?.qty_on_hand ?? 0;
@@ -196,7 +217,7 @@ export function PowerGrid({
 
                   return (
                     <td
-                      key={sph}
+                      key={column ?? "none"}
                       className={`px-2 py-1.5 ${typed > 0 ? "bg-emerald-50" : ""}`}
                     >
                       <input
