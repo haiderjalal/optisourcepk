@@ -13,6 +13,8 @@ import { listSellableProducts } from "@/services/shop/product.service";
 import { QuickReceive } from "@/features/shop/products/QuickReceive";
 import { ButtonLink } from "@/components/ui/button";
 import { StockSheetTable } from "@/features/shop/products/StockSheetTable";
+import { StockSheetActions } from "@/features/shop/stock/StockSheetActions";
+import { stockSheetFileName } from "@/features/shop/stock/pdf/render";
 
 export const metadata: Metadata = { title: "Stock" };
 
@@ -93,7 +95,7 @@ export default async function StockPage() {
             <span>Click a product to open its stock sheet.</span>
             <span className="inline-flex items-center gap-1.5">
               <span
-                className="inline-block size-3 rounded-sm ring-1 ring-red-400 ring-inset"
+                className="inline-block size-3 rounded-sm ring-2 ring-red-500 ring-inset"
                 aria-hidden
               />
               none in stock
@@ -160,15 +162,23 @@ export default async function StockPage() {
                     </p>
                   )}
 
-                  <ButtonLink
-                    href={`/shop/products/${product.productId}`}
-                    variant="outline"
-                    size="sm"
-                    className="mt-4"
-                  >
-                    <PackagePlus className="size-4" aria-hidden />
-                    Open product · receive stock
-                  </ButtonLink>
+                  <div className="mt-4 flex flex-wrap items-start gap-2">
+                    {product.sheet && (
+                      <StockSheetActions
+                        productId={product.productId}
+                        productName={product.name}
+                        fileName={stockSheetFileName(product.name)}
+                      />
+                    )}
+                    <ButtonLink
+                      href={`/shop/products/${product.productId}`}
+                      variant="outline"
+                      size="sm"
+                    >
+                      <PackagePlus className="size-4" aria-hidden />
+                      Open product · receive stock
+                    </ButtonLink>
+                  </div>
                 </div>
               </details>
             ))}
