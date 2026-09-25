@@ -1,5 +1,5 @@
 import { formatPower } from "@/lib/format";
-import type { StockCell, StockSheet } from "@/services/shop/stock.service";
+import { cellKey, type StockCell, type StockSheet } from "./sheet";
 
 /**
  * Which way round a power grid is drawn: SPH down the side (the printed stock
@@ -35,8 +35,7 @@ export function orientSheet(
       : v === null && sheet.colAxis === "add"
         ? "No ADD"
         : formatPower(v ?? 0);
-  const at = (sph: Power, col: Power) =>
-    sheet.cells[`${sph ?? 0}|${col ?? ""}`];
+  const at = (sph: Power, col: Power) => sheet.cells[cellKey(sph ?? 0, col)];
 
   if (layout === "sph-down") {
     return {

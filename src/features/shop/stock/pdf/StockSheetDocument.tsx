@@ -18,7 +18,7 @@ export interface StockSheetPdfModel {
   productName: string;
   printedAt: string;
   unit: string;
-  sheet: StockSheet;
+  sheets: StockSheet[];
   layout: SheetLayout;
 }
 
@@ -85,8 +85,28 @@ const styles = StyleSheet.create({
   },
 });
 
+/**
+ * One page run per sheet. A product with both CYL and ADD prints one table per
+ * ADD, each on its own page so its repeating header row belongs to it alone.
+ */
 export function StockSheetDocument({ model }: { model: StockSheetPdfModel }) {
-  const view = orientSheet(model.sheet, model.layout);
+  return (
+    <Document title={`Stock — ${model.productName}`} author={model.companyName}>
+      {model.sheets.map((sheet, i) => (
+        <SheetPages key={sheet.title ?? i} model={model} sheet={sheet} />
+      ))}
+    </Document>
+  );
+}
+
+function SheetPages({
+  model,
+  sheet,
+}: {
+  model: StockSheetPdfModel;
+  sheet: StockSheet;
+}) {
+  const view = orientSheet(sheet, model.layout);
   const cols = view.across;
 
   // Fixed percentages so every page of one sheet lines up exactly.
@@ -105,75 +125,77 @@ export function StockSheetDocument({ model }: { model: StockSheetPdfModel }) {
   );
 
   return (
-    <Document title={`Stock — ${model.productName}`} author={model.companyName}>
-      <Page
-        size="A4"
-        orientation={cols.length > 10 ? "landscape" : "portrait"}
-        style={styles.page}
-      >
-        <Text style={styles.printedAt}>{model.printedAt}</Text>
-        <Text style={styles.company}>{model.companyName}</Text>
-        <Text style={styles.address}>{model.addressLine}</Text>
-        <Text style={styles.title}>Lens Stock Detail List</Text>
-        <Text style={styles.product}>Product Name : {model.productName}</Text>
+    <Page
+      size="A4"
+      orientation={cols.length > 10 ? "landscape" : "portrait"}
+      style={styles.page}
+    >
+      <Text style={styles.printedAt}>{model.printedAt}</Text>
+      <Text style={styles.company}>{model.companyName}</Text>
+      <Text style={styles.address}>{model.addressLine}</Text>
+      <Text style={styles.title}>Lens Stock Detail List</Text>
+      <Text style={styles.product}>
+        Product Name : {model.productName}
+        {sheet.title ? ` — ${sheet.title}` : ""}
+      </Text>
 
-        <View style={styles.table}>
-          <View style={styles.row} fixed>
-            <Text style={[styles.cell, styles.headCell, { width: first }]}>
-              {view.corner}
-            </Text>
-            {cols.map((across) => (
-              <Text
-                key={across ?? "none"}
-                style={[styles.cell, styles.headCell, { width: colWidth }]}
-              >
-                {view.acrossLabel(across)}
-              </Text>
-            ))}
-          </View>
-
-          {view.down.map((down) => (
-            <View key={down ?? "none"} style={styles.row} wrap={false}>
-              <Text style={[styles.cell, styles.rowHead, { width: first }]}>
-                {view.downLabel(down)}
-              </Text>
-              {cols.map((across) => (
-                <Text
-                  key={across ?? "none"}
-                  style={[styles.cell, styles.qty, { width: colWidth }]}
-                >
-                  {view.cell(down, across)?.qty ?? 0}
-                </Text>
-              ))}
-            </View>
-          ))}
-
-          <View style={styles.row} wrap={false}>
-            <Text style={[styles.cell, styles.total, { width: first }]}>
-              Total
-            </Text>
-            {cols.map((across) => (
-              <Text
-                key={across ?? "none"}
-                style={[styles.cell, styles.total, { width: colWidth }]}
-              >
-                {columnTotal(across)}
-              </Text>
-            ))}
-          </View>
-        </View>
-
-        <View style={styles.footer} fixed>
-          <Text>
-            Total on hand: {grandTotal} {model.unit}
+      <View style={styles.table}>
+        <View style={styles.row} fixed>
+          <Text style={[styles.cell, styles.headCell, { width: first }]}>
+            {view.corner}
           </Text>
-          <Text
-            render={({ pageNumber, totalPages }) =>
-              `Page ${pageNumber} of ${totalPages}`
-            }
-          />
+          {cols.map((across) => (
+            <Text
+              key={across ?? "none"}
+              style={[styles.cell, styles.headCell, { width: colWidth }]}
+            >
+              {view.acrossLabel(across)}
+            </Text>
+          ))}
         </View>
-      </Page>
-    </Document>
+
+        {view.down.map((down) => (
+          <View key={down ?? "none"} style={styles.row} wrap={false}>
+            <Text style={[styles.cell, styles.rowHead, { width: first }]}>
+              {view.downLabel(down)}
+            </Text>
+            {cols.map((across) => (
+              <Text
+                key={across ?? "none"}
+                style={[styles.cell, styles.qty, { width: colWidth }]}
+              >
+                {view.cell(down, across)?.qty ?? 0}
+              </Text>
+            ))}
+          </View>
+        ))}
+
+        <View style={styles.row} wrap={false}>
+          <Text style={[styles.cell, styles.total, { width: first }]}>
+            Total
+          </Text>
+          {cols.map((across) => (
+            <Text
+              key={across ?? "none"}
+              style={[styles.cell, styles.total, { width: colWidth }]}
+            >
+              {columnTotal(across)}
+            </Text>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.footer} fixed>
+        <Text>
+          Total on hand{sheet.title ? ` (${sheet.title})` : ""}: {grandTotal}{" "}
+          {model.unit}
+        </Text>
+        <Text
+          render={({ pageNumber, totalPages }) =>
+            `Page ${pageNumber} of ${totalPages}`
+          }
+        />
+      </View>
+    </Page>
   );
 }
