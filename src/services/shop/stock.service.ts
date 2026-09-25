@@ -11,8 +11,10 @@ import type {
 import {
   byDistanceFromZero,
   byPosition,
+  columnAxis,
   isLow,
   powerSeries,
+  type ColumnAxis,
 } from "@/lib/power";
 import { describePostgresError } from "./errors";
 
@@ -195,7 +197,7 @@ export async function listMovements(
   }));
 }
 
-/** One square of the stock sheet: what is on hand at one SPH x CYL. */
+/** One square of the stock sheet: what is on hand at one SPH x column. */
 export interface StockCell {
   qty: number;
   /** At or below the alert quantity (or the bin's own reorder level). */
@@ -203,17 +205,18 @@ export interface StockCell {
 }
 
 /**
- * A lens product laid out like the printed stock sheet: SPH down the side,
- * CYL across the top, both nearest zero first. `cyls` is `[null]` for a
- * product held by SPH alone.
+ * A lens product laid out like the printed stock sheet: SPH down the side and
+ * one column per CYL — or per ADD, for a product with an ADD range — both
+ * nearest zero first. `cols` is `[null]` for a product held by SPH alone.
  */
 export interface StockSheet {
   sphs: number[];
-  cyls: (number | null)[];
-  /** Keyed by `cellKey(sph, cyl)`; every row x column pair is present. */
+  colAxis: ColumnAxis;
+  cols: (number | null)[];
+  /** Keyed by `cellKey(sph, col)`; every row x column pair is present. */
   cells: Record<string, StockCell>;
-  /** Some bins are split by ADD or eye; a cell is their sum. */
-  mixesAddOrEye: boolean;
+  /** Some bins are also split by eye or the other axis; a cell is their sum. */
+  mixed: boolean;
 }
 
 export interface ProductStock {
@@ -232,52 +235,62 @@ export interface ProductStock {
 
 // Same caps as the receiving grid, so the two screens show the same powers.
 const MAX_SPH_POSITIONS = 200;
-const MAX_CYL_POSITIONS = 60;
+const MAX_COL_POSITIONS = 60;
 
-export const cellKey = (sph: number, cyl: number | null) =>
-  `${sph}|${cyl ?? ""}`;
+export const cellKey = (sph: number, col: number | null) =>
+  `${sph}|${col ?? ""}`;
 
 /**
  * Every power in the product's declared range, plus any power it holds
  * outside it, so nothing on the shelf is hidden and no gap in the range is
- * either. A zero cylinder is stored as none, so it is the same column.
+ * either. A zero CYL or ADD is stored as none, so it is the same column.
  */
 function buildSheet(product: Product, bins: StockBin[]): StockSheet {
+  const colAxis = columnAxis(product);
+  const colOf = (bin: StockBin) =>
+    colAxis === "add" ? bin.add_power : bin.cyl;
+
   const rangeSph = powerSeries(
     product.sph_min,
     product.sph_max,
     product.sph_step,
     MAX_SPH_POSITIONS,
   );
-  const rangeCyl = powerSeries(
-    product.cyl_min,
-    product.cyl_max,
-    product.cyl_step,
-    MAX_CYL_POSITIONS,
-  ).map((cyl) => (cyl === 0 ? null : cyl));
+  const rangeCol = (
+    colAxis === "add"
+      ? powerSeries(
+          product.add_min,
+          product.add_max,
+          product.add_step,
+          MAX_COL_POSITIONS,
+        )
+      : powerSeries(
+          product.cyl_min,
+          product.cyl_max,
+          product.cyl_step,
+          MAX_COL_POSITIONS,
+        )
+  ).map((v) => (v === 0 ? null : v));
 
   const sphs = [...new Set([...rangeSph, ...bins.map((b) => b.sph ?? 0)])].sort(
     byDistanceFromZero,
   );
-  const cylSet = new Set<number | null>([
-    ...rangeCyl,
-    ...bins.map((b) => b.cyl),
-  ]);
-  if (cylSet.size === 0) cylSet.add(null);
-  // "No cylinder" is the 0.00 column, so it leads.
-  const cyls = [...cylSet].sort((a, b) => byDistanceFromZero(a ?? 0, b ?? 0));
+  const colSet = new Set<number | null>([...rangeCol, ...bins.map(colOf)]);
+  if (colSet.size === 0) colSet.add(null);
+  // "None" is the 0.00 column, so it leads.
+  const cols = [...colSet].sort((a, b) => byDistanceFromZero(a ?? 0, b ?? 0));
 
   const cells: Record<string, StockCell> = {};
   for (const sph of sphs) {
-    for (const cyl of cyls) {
+    for (const col of cols) {
       // 0 on hand is at or below any alert quantity that is set.
-      cells[cellKey(sph, cyl)] = { qty: 0, low: product.alert_qty !== null };
+      cells[cellKey(sph, col)] = { qty: 0, low: product.alert_qty !== null };
     }
   }
 
   const seen = new Set<string>();
   for (const bin of bins) {
-    const k = cellKey(bin.sph ?? 0, bin.cyl);
+    const k = cellKey(bin.sph ?? 0, colOf(bin));
     const cell = cells[k];
     if (!seen.has(k)) {
       seen.add(k);
@@ -289,9 +302,14 @@ function buildSheet(product: Product, bins: StockBin[]): StockSheet {
 
   return {
     sphs,
-    cyls,
+    colAxis,
+    cols,
     cells,
-    mixesAddOrEye: bins.some((b) => b.add_power !== null || b.eye !== null),
+    mixed: bins.some(
+      (b) =>
+        b.eye !== null ||
+        (colAxis === "add" ? b.cyl !== null : b.add_power !== null),
+    ),
   };
 }
 

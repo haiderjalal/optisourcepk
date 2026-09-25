@@ -63,3 +63,22 @@ export function isLow(
 export function sphPlaceholder(sign: LensSign | null | undefined): string {
   return sign === "plus" ? "+2.50" : "-2.00";
 }
+
+/** Which prescription value runs across a product's power grid. */
+export type ColumnAxis = "cyl" | "add";
+
+/**
+ * A product with an ADD range (bifocals, progressives) is laid out by ADD —
+ * one column per addition — and CYL becomes a single choice for the batch.
+ * Everything else is laid out by CYL.
+ */
+export function columnAxis(product: {
+  add_min: number | null;
+  add_max: number | null;
+  add_step: number | null;
+}): ColumnAxis {
+  return powerSeries(product.add_min, product.add_max, product.add_step, 1)
+    .length > 0
+    ? "add"
+    : "cyl";
+}

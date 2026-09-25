@@ -32,9 +32,10 @@ export function StockSheetPanel({
 
       <StockSheetTable sheet={sheet} layout={layout} />
 
-      {sheet.mixesAddOrEye && (
+      {sheet.mixed && (
         <p className="text-navy-400 mt-2 text-xs">
-          Some of this stock is split by ADD or eye; each square adds those
+          Some of this stock is also split by eye or{" "}
+          {sheet.colAxis === "add" ? "CYL" : "ADD"}; each square adds those
           together. The product page has the detail.
         </p>
       )}
