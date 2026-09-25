@@ -112,6 +112,17 @@ type StockMovementRow = {
   created_at: string;
 };
 
+type ExpenseRow = {
+  id: string;
+  expense_date: string;
+  item: string;
+  amount: number;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+};
+
 type SupplierRow = {
   id: string;
   name: string;
@@ -310,6 +321,7 @@ type Defaulted =
   | "discount_pct"
   | "entry_date"
   | "invoice_date"
+  | "expense_date"
   | "unit_cost"
   | "qty_on_hand"
   | "reorder_level"
@@ -360,6 +372,7 @@ export interface Database {
       ledger_entries: Table<LedgerEntryRow>;
       counters: Table<{ name: string; next_value: number }>;
       suppliers: Table<SupplierRow>;
+      expenses: Table<ExpenseRow>;
       purchase_invoices: Table<PurchaseInvoiceRow>;
       purchase_invoice_lines: Table<PurchaseInvoiceLineRow>;
     };
@@ -465,6 +478,7 @@ export type CustomerStatementLine = CustomerStatementRow;
 export type CustomerBalance = CustomerBalanceRow;
 export type LowStockLine = LowStockRow;
 export type Supplier = SupplierRow;
+export type Expense = ExpenseRow;
 export type PurchaseInvoice = PurchaseInvoiceRow;
 export type PurchaseInvoiceLine = PurchaseInvoiceLineRow;
 export type PurchaseInvoiceSummary = PurchaseInvoiceTotalsRow;
