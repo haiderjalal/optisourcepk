@@ -10,6 +10,7 @@ import type {
 } from "@/types/database";
 import { toProductStock, type ProductStock } from "@/features/shop/stock/sheet";
 import { describePostgresError } from "./errors";
+import { selectAllPages } from "./paging";
 
 export type {
   ProductStock,
@@ -36,28 +37,42 @@ export async function listBinsForProduct(
 ): Promise<StockBin[]> {
   const { supabase } = await requireUser();
 
-  const { data, error } = await supabase
-    .from("stock_bins")
-    .select("*")
-    .eq("product_id", productId)
-    .order("sph", { ascending: true, nullsFirst: true });
-
-  if (error) throw new Error(describePostgresError(error, "load stock"));
-  return data ?? [];
+  try {
+    return await selectAllPages<StockBin>((from, to) =>
+      supabase
+        .from("stock_bins")
+        .select("*")
+        .eq("product_id", productId)
+        .order("sph", { ascending: true, nullsFirst: true })
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    throw new Error(describePostgresError(error, "load stock"));
+  }
 }
 
-export async function listLowStock(): Promise<LowStockLine[]> {
+/**
+ * The worst `limit` low-stock lines, plus how many there are in all.
+ *
+ * Counted by the database rather than by length: the list can run to
+ * thousands of powers, and the API would cut a full read off at 1,000.
+ */
+export async function listLowStock(
+  limit = 12,
+): Promise<{ lines: LowStockLine[]; total: number }> {
   const { supabase } = await requireUser();
 
-  const { data, error } = await supabase
+  const { data, error, count } = await supabase
     .from("low_stock")
-    .select("*")
-    .order("shortfall", { ascending: false });
+    .select("*", { count: "exact" })
+    .order("shortfall", { ascending: false })
+    .limit(limit);
 
   if (error) {
     throw new Error(describePostgresError(error, "load the low-stock list"));
   }
-  return data ?? [];
+  return { lines: data ?? [], total: count ?? data?.length ?? 0 };
 }
 
 export interface AdjustStockInput {
@@ -209,18 +224,19 @@ export async function listAllStock(): Promise<ProductStock[]> {
 
   const [products, bins] = await Promise.all([
     supabase.from("products").select("*").is("deleted_at", null).order("name"),
-    supabase.from("stock_bins").select("*"),
+    selectAllPages<StockBin>((from, to) =>
+      supabase.from("stock_bins").select("*").order("id").range(from, to),
+    ).catch((error: unknown) => {
+      throw new Error(describePostgresError(error, "load stock"));
+    }),
   ]);
 
   if (products.error) {
     throw new Error(describePostgresError(products.error, "load products"));
   }
-  if (bins.error) {
-    throw new Error(describePostgresError(bins.error, "load stock"));
-  }
 
   const byProduct = new Map<string, StockBin[]>();
-  for (const bin of bins.data ?? []) {
+  for (const bin of bins) {
     const list = byProduct.get(bin.product_id) ?? [];
     list.push(bin);
     byProduct.set(bin.product_id, list);
@@ -244,18 +260,24 @@ export async function getProductStock(
       .eq("id", productId)
       .is("deleted_at", null)
       .maybeSingle(),
-    supabase.from("stock_bins").select("*").eq("product_id", productId),
+    selectAllPages<StockBin>((from, to) =>
+      supabase
+        .from("stock_bins")
+        .select("*")
+        .eq("product_id", productId)
+        .order("id")
+        .range(from, to),
+    ).catch((error: unknown) => {
+      throw new Error(describePostgresError(error, "load stock"));
+    }),
   ]);
 
   if (product.error) {
     throw new Error(describePostgresError(product.error, "load the product"));
   }
-  if (bins.error) {
-    throw new Error(describePostgresError(bins.error, "load stock"));
-  }
   if (!product.data?.tracks_stock) return null;
 
-  return toProductStock(product.data, bins.data ?? []);
+  return toProductStock(product.data, bins);
 }
 
 export interface LineAvailability {
@@ -312,17 +334,20 @@ export async function checkOrderStock(
       .from("products")
       .select("id, name, unit, tracks_stock")
       .in("id", productIds),
-    supabase
-      .from("stock_bins")
-      .select("product_id, sph, cyl, add_power, eye, qty_on_hand")
-      .in("product_id", productIds),
+    selectAllPages((from, to) =>
+      supabase
+        .from("stock_bins")
+        .select("id, product_id, sph, cyl, add_power, eye, qty_on_hand")
+        .in("product_id", productIds)
+        .order("id")
+        .range(from, to),
+    ).catch((error: unknown) => {
+      throw new Error(describePostgresError(error, "check stock"));
+    }),
   ]);
 
   if (products.error) {
     throw new Error(describePostgresError(products.error, "check stock"));
-  }
-  if (bins.error) {
-    throw new Error(describePostgresError(bins.error, "check stock"));
   }
 
   const productById = new Map((products.data ?? []).map((p) => [p.id, p]));
@@ -339,7 +364,7 @@ export async function checkOrderStock(
   const exact = new Map<string, number>();
   const general = new Map<string, number>();
 
-  for (const b of bins.data ?? []) {
+  for (const b of bins) {
     const cyl = normalise(b.cyl);
     const add = normalise(b.add_power);
     exact.set(binKey(b.product_id, b.sph, cyl, add, b.eye), b.qty_on_hand);

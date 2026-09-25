@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import type { ProductPayload } from "@/lib/validations/shop/product";
 import type { Product, ProductCategory } from "@/types/database";
 import { describePostgresError } from "./errors";
+import { selectAllPages } from "./paging";
 
 /** A product with its total quantity across every power bin. */
 export interface ProductWithStock extends Product {
@@ -68,16 +69,21 @@ export async function listProducts(
   if (products.length === 0) return [];
 
   // One query for every bin, then folded in memory — not one query per product.
-  const { data: bins, error: binError } = await supabase
-    .from("stock_bins")
-    .select("product_id, qty_on_hand");
-
-  if (binError) {
-    throw new Error(describePostgresError(binError, "load stock levels"));
+  let bins: { product_id: string; qty_on_hand: number }[];
+  try {
+    bins = await selectAllPages((from, to) =>
+      supabase
+        .from("stock_bins")
+        .select("id, product_id, qty_on_hand")
+        .order("id")
+        .range(from, to),
+    );
+  } catch (error) {
+    throw new Error(describePostgresError(error, "load stock levels"));
   }
 
   const totals = new Map<string, { qty: number; bins: number }>();
-  for (const bin of bins ?? []) {
+  for (const bin of bins) {
     const current = totals.get(bin.product_id) ?? { qty: 0, bins: 0 };
     current.qty += bin.qty_on_hand;
     current.bins += 1;
