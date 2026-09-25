@@ -54,8 +54,15 @@ export function PowerGrid({
   bins: StockBin[];
   suppliers: Supplier[];
 }) {
+  const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [state, formAction] = useActionState<PowerGridState, FormData>(
-    receivePowersAction,
+    async (previous, formData) => {
+      const result = await receivePowersAction(previous, formData);
+      // Saved: empty the boxes so the next delivery starts clean. The small
+      // on-hand figures refresh to include what was just received.
+      if (!result.error) setQuantities({});
+      return result;
+    },
     {},
   );
 
@@ -68,7 +75,6 @@ export function PowerGrid({
     [product],
   );
 
-  const [quantities, setQuantities] = useState<Record<string, string>>({});
   const [addPower, setAddPower] = useState("");
   const [eye, setEye] = useState("");
   // Controlled so a failed save keeps them: React resets uncontrolled fields

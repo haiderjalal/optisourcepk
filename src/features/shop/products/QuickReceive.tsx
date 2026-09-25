@@ -55,8 +55,14 @@ export function QuickReceive({
   products: Product[];
   bins: StockBin[];
 }) {
+  const [qty, setQty] = useState("");
   const [state, formAction] = useActionState<StockFormState, FormData>(
-    adjustStockAction,
+    async (previous, formData) => {
+      const result = await adjustStockAction(previous, formData);
+      // Saved: clear the quantity so the next entry cannot repeat it by accident.
+      if (!result.error) setQty("");
+      return result;
+    },
     {},
   );
   const [mode, setMode] = useState<Mode>("add");
@@ -65,7 +71,6 @@ export function QuickReceive({
   const [cyl, setCyl] = useState("");
   const [addPower, setAddPower] = useState("");
   const [eye, setEye] = useState("");
-  const [qty, setQty] = useState("");
   const [reason, setReason] = useState("purchase");
   const [alertQty, setAlertQty] = useState("");
   const [note, setNote] = useState("");
