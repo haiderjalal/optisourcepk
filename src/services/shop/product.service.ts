@@ -35,7 +35,8 @@ function toRow(payload: ProductPayload) {
     add_step: payload.addStep,
     axis_min: payload.axisMin,
     axis_max: payload.axisMax,
-    axis_step: payload.axisStep,
+    // Any whole degree is valid, so axis has no step.
+    axis_step: null,
     eyes: payload.eyes ? payload.eyes : null,
     lens_sign: payload.lensSign ? payload.lensSign : null,
     alert_qty: payload.alertQty,

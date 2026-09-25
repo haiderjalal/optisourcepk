@@ -7,7 +7,7 @@ import { AlertCircle, Check, PackagePlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { formatPower, todayInKarachi } from "@/lib/format";
-import { isLow, powerSeries } from "@/lib/power";
+import { columnAxis, isLow, powerSeries } from "@/lib/power";
 import type { Product, StockBin, Supplier } from "@/types/database";
 import { SwapLayoutButton } from "@/features/shop/stock/SwapLayoutButton";
 import { useSheetLayout } from "@/features/shop/stock/useSheetLayout";
@@ -70,12 +70,20 @@ export function PowerGrid({
     () => powerSeries(product.sph_min, product.sph_max, product.sph_step, 200),
     [product],
   );
-  const cylinders = useMemo(
-    () => powerSeries(product.cyl_min, product.cyl_max, product.cyl_step, 60),
-    [product],
+  // One column per CYL, or per ADD for a product with an ADD range; the other
+  // one becomes a single value for the whole delivery.
+  const axis = columnAxis(product);
+  const colName = axis === "add" ? "ADD" : "CYL";
+  const batchName = axis === "add" ? "CYL" : "ADD";
+  const colValues = useMemo(
+    () =>
+      axis === "add"
+        ? powerSeries(product.add_min, product.add_max, product.add_step, 60)
+        : powerSeries(product.cyl_min, product.cyl_max, product.cyl_step, 60),
+    [product, axis],
   );
 
-  const [addPower, setAddPower] = useState("");
+  const [batchValue, setBatchValue] = useState("");
   const [eye, setEye] = useState("");
   // Controlled so a failed save keeps them: React resets uncontrolled fields
   // once a form action finishes.
@@ -89,42 +97,49 @@ export function PowerGrid({
   if (!product.tracks_stock || spheres.length === 0) return null;
 
   // One row of `null` keeps the matrix and the plain strip on one code path.
-  const rows: (number | null)[] = cylinders.length > 0 ? cylinders : [null];
-  const isMatrix = cylinders.length > 0;
+  const rows: (number | null)[] = colValues.length > 0 ? colValues : [null];
+  const isMatrix = colValues.length > 0;
 
   const norm = (v: string) => {
     const n = Number(v);
     return v.trim() === "" || n === 0 ? null : n;
   };
-  const selAdd = norm(addPower);
+  const selBatch = norm(batchValue);
   const selEye = eye === "" ? null : eye;
 
-  const key = (sph: number, cyl: number | null) => `${sph}|${cyl ?? ""}`;
+  const key = (sph: number, col: number | null) => `${sph}|${col ?? ""}`;
+  const colOf = (b: StockBin) => (axis === "add" ? b.add_power : b.cyl);
+  const batchOf = (b: StockBin) => (axis === "add" ? b.cyl : b.add_power);
 
   // Either axis can run down the side; `at` maps a square back to its power.
   const sphDown = layout === "sph-down";
   const across: (number | null)[] = sphDown ? rows : spheres;
   const down: (number | null)[] = sphDown ? spheres : rows;
   const at = (row: number | null, column: number | null) =>
-    sphDown ? { sph: row ?? 0, cyl: column } : { sph: column ?? 0, cyl: row };
+    sphDown ? { sph: row ?? 0, col: column } : { sph: column ?? 0, col: row };
   const label = (value: number | null) =>
     value === null ? "Qty" : formatPower(value);
-  const corner = !isMatrix ? "SPH" : sphDown ? "SPH | CYL" : "CYL | SPH";
+  const corner = !isMatrix
+    ? "SPH"
+    : sphDown
+      ? `SPH | ${colName}`
+      : `${colName} | SPH`;
 
-  // Current bins for the ADD and eye in play, so the numbers on screen
-  // always describe the shelf position being typed into.
+  // Current bins for the batch value and eye in play, so the numbers on
+  // screen always describe the shelf position being typed into.
   const onHand = new Map(
     bins
       .filter(
-        (b) => (b.add_power ?? null) === selAdd && (b.eye ?? null) === selEye,
+        (b) => (batchOf(b) ?? null) === selBatch && (b.eye ?? null) === selEye,
       )
-      .map((b) => [key(b.sph ?? 0, b.cyl ?? null), b]),
+      .map((b) => [key(b.sph ?? 0, colOf(b) ?? null), b]),
   );
 
-  const entries = rows.flatMap((cyl) =>
+  const entries = rows.flatMap((col) =>
     spheres.flatMap((sph) => {
-      const qty = Number(quantities[key(sph, cyl)] ?? "") || 0;
-      return qty === 0 ? [] : [{ sph, cyl, qty }];
+      const qty = Number(quantities[key(sph, col)] ?? "") || 0;
+      if (qty === 0) return [];
+      return [axis === "add" ? { sph, add: col, qty } : { sph, cyl: col, qty }];
     }),
   );
 
@@ -140,8 +155,8 @@ export function PowerGrid({
       <p className="text-navy-500 mt-1 max-w-prose text-sm">
         {isMatrix
           ? sphDown
-            ? "SPH down the side, CYL across the top."
-            : "SPH across the top, CYL down the side."
+            ? `SPH down the side, ${colName} across the top.`
+            : `SPH across the top, ${colName} down the side.`
           : `Every SPH in the range, in steps of ${product.sph_step}.`}{" "}
         Type against what arrived and leave the rest blank. The small figure is
         what is already on hand
@@ -149,16 +164,22 @@ export function PowerGrid({
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field name="addPower" label="ADD" hint="Applies to the whole delivery">
+        <Field
+          name={axis === "add" ? "cyl" : "addPower"}
+          label={batchName}
+          hint="Applies to the whole delivery"
+        >
           {(p) => (
             <input
               {...p}
               type="number"
-              step={product.add_step ?? 0.25}
+              step={
+                (axis === "add" ? product.cyl_step : product.add_step) ?? 0.25
+              }
               inputMode="decimal"
               placeholder="Blank"
-              value={addPower}
-              onChange={(e) => setAddPower(e.target.value)}
+              value={batchValue}
+              onChange={(e) => setBatchValue(e.target.value)}
             />
           )}
         </Field>
@@ -213,8 +234,8 @@ export function PowerGrid({
                 </th>
 
                 {across.map((column) => {
-                  const { sph, cyl } = at(row, column);
-                  const k = key(sph, cyl);
+                  const { sph, col } = at(row, column);
+                  const k = key(sph, col);
                   const bin = onHand.get(k);
                   const have = bin?.qty_on_hand ?? 0;
                   const typed = Number(quantities[k] ?? "") || 0;
@@ -232,9 +253,9 @@ export function PowerGrid({
                         min={0}
                         inputMode="numeric"
                         aria-label={
-                          cyl === null
+                          col === null
                             ? `Received at SPH ${formatPower(sph)}`
-                            : `Received at SPH ${formatPower(sph)} CYL ${formatPower(cyl)}`
+                            : `Received at SPH ${formatPower(sph)} ${colName} ${formatPower(col)}`
                         }
                         className={cell}
                         value={quantities[k] ?? ""}

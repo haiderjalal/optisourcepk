@@ -25,27 +25,34 @@ export function orientSheet(
   sheet: StockSheet,
   layout: SheetLayout,
 ): OrientedSheet {
-  const byCyl = sheet.cyls[0] !== null || sheet.cyls.length > 1;
+  const colName = sheet.colAxis === "add" ? "ADD" : "CYL";
+  // A product held by SPH alone has one unnamed column.
+  const hasCols = sheet.cols[0] !== null || sheet.cols.length > 1;
   const sphLabel = (v: Power) => formatPower(v ?? 0);
-  const cylLabel = (v: Power) => (byCyl ? formatPower(v ?? 0) : "Qty");
-  const at = (sph: Power, cyl: Power) =>
-    sheet.cells[`${sph ?? 0}|${cyl ?? ""}`];
+  const colLabel = (v: Power) =>
+    !hasCols
+      ? "Qty"
+      : v === null && sheet.colAxis === "add"
+        ? "No ADD"
+        : formatPower(v ?? 0);
+  const at = (sph: Power, col: Power) =>
+    sheet.cells[`${sph ?? 0}|${col ?? ""}`];
 
   if (layout === "sph-down") {
     return {
-      corner: byCyl ? "SPH | CYL" : "SPH",
+      corner: hasCols ? `SPH | ${colName}` : "SPH",
       down: sheet.sphs,
-      across: sheet.cyls,
+      across: sheet.cols,
       downLabel: sphLabel,
-      acrossLabel: cylLabel,
+      acrossLabel: colLabel,
       cell: (d, a) => at(d, a),
     };
   }
   return {
-    corner: byCyl ? "CYL | SPH" : "SPH",
-    down: sheet.cyls,
+    corner: hasCols ? `${colName} | SPH` : "SPH",
+    down: sheet.cols,
     across: sheet.sphs,
-    downLabel: cylLabel,
+    downLabel: colLabel,
     acrossLabel: sphLabel,
     cell: (d, a) => at(a, d),
   };

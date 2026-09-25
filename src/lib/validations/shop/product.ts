@@ -106,7 +106,6 @@ export const productSchema = z
     addStep: stepField("ADD step"),
     axisMin: intField(0, 180, "Axis minimum"),
     axisMax: intField(0, 180, "Axis maximum"),
-    axisStep: intField(1, 180, "Axis step"),
     eyes: z.enum(["", "both", "R", "L"]).optional(),
     lensSign: z.enum(["", "plus", "minus"]).optional(),
 

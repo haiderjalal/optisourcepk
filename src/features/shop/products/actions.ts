@@ -54,7 +54,6 @@ export async function saveProduct(
     addStep: formData.get("addStep") ?? "",
     axisMin: formData.get("axisMin") ?? "",
     axisMax: formData.get("axisMax") ?? "",
-    axisStep: formData.get("axisStep") ?? "",
     eyes: formData.get("eyes") ?? "",
     lensSign: formData.get("lensSign") ?? "",
     alertQty: formData.get("alertQty") ?? "",
@@ -294,7 +293,10 @@ export async function receivePowersAction(
   const num = (name: string) => (text(name) === "" ? null : Number(text(name)));
   const eyeRaw = text("eye");
   const eye = eyeRaw === "R" || eyeRaw === "L" ? eyeRaw : null;
+  // The grid posts per-square CYL or ADD in each entry; the other one comes
+  // from the batch field.
   const addPower = num("addPower");
+  const batchCyl = num("cyl");
   const supplierId = text("supplierId");
   const total = clean.reduce((sum, e) => sum + e.qty, 0);
 
@@ -307,8 +309,8 @@ export async function receivePowersAction(
         lines: clean.map((e) => ({
           productId,
           sph: e.sph,
-          cyl: e.cyl ?? null,
-          add: addPower,
+          cyl: e.cyl ?? batchCyl,
+          add: e.add ?? addPower,
           eye,
           qty: e.qty,
           unitCost: num("unitCost"),
@@ -340,7 +342,7 @@ export async function receivePowersAction(
     const bins = await receivePowers({
       productId,
       entries: clean,
-      cyl: null,
+      cyl: batchCyl,
       addPower,
       eye,
       alertQty: null,
