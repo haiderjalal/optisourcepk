@@ -24,11 +24,12 @@ export default async function ShopDashboardPage() {
   await requireUser();
 
   // Independent reads, so they go together rather than in series.
-  const [orders, outstanding, low] = await Promise.all([
-    listOrders({ limit: 8 }),
-    listOutstanding(),
-    listLowStock(),
-  ]);
+  const [orders, outstanding, { lines: low, total: lowTotal }] =
+    await Promise.all([
+      listOrders({ limit: 8 }),
+      listOutstanding(),
+      listLowStock(),
+    ]);
 
   const receivable = outstanding.reduce((sum, row) => sum + row.balance, 0);
   const openOrders = orders.filter(
@@ -66,13 +67,13 @@ export default async function ShopDashboardPage() {
         />
         <Metric
           label="Running low"
-          value={String(low.length)}
+          value={String(lowTotal)}
           detail={
-            low.length === 1 ? "power at alert level" : "powers at alert level"
+            lowTotal === 1 ? "power at alert level" : "powers at alert level"
           }
           href="/shop/stock"
           icon={TriangleAlert}
-          tone={low.length > 0 ? "owing" : undefined}
+          tone={lowTotal > 0 ? "owing" : undefined}
         />
       </div>
 
@@ -184,7 +185,7 @@ export default async function ShopDashboardPage() {
             </Link>
           </div>
           <ul className="flex flex-wrap gap-2">
-            {low.slice(0, 12).map((line) => (
+            {low.map((line) => (
               <li
                 key={
                   line.bin_id ?? `${line.product_id}|${line.sph}|${line.cyl}`
