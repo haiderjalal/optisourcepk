@@ -141,9 +141,9 @@ export default async function StockPage() {
                 </summary>
 
                 <div className="px-5 pb-5">
-                  {product.sheet ? (
+                  {product.sheets.length > 0 ? (
                     <StockSheetPanel
-                      sheet={product.sheet}
+                      sheets={product.sheets}
                       productId={product.productId}
                       productName={product.name}
                       fileName={stockSheetFileName(product.name)}

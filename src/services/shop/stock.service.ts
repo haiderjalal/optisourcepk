@@ -8,15 +8,14 @@ import type {
   StockBin,
   StockReason,
 } from "@/types/database";
-import {
-  byDistanceFromZero,
-  byPosition,
-  columnAxis,
-  isLow,
-  powerSeries,
-  type ColumnAxis,
-} from "@/lib/power";
+import { toProductStock, type ProductStock } from "@/features/shop/stock/sheet";
 import { describePostgresError } from "./errors";
+
+export type {
+  ProductStock,
+  StockCell,
+  StockSheet,
+} from "@/features/shop/stock/sheet";
 
 /**
  * Stock levels.
@@ -197,122 +196,6 @@ export async function listMovements(
   }));
 }
 
-/** One square of the stock sheet: what is on hand at one SPH x column. */
-export interface StockCell {
-  qty: number;
-  /** At or below the alert quantity (or the bin's own reorder level). */
-  low: boolean;
-}
-
-/**
- * A lens product laid out like the printed stock sheet: SPH down the side and
- * one column per CYL — or per ADD, for a product with an ADD range — both
- * nearest zero first. `cols` is `[null]` for a product held by SPH alone.
- */
-export interface StockSheet {
-  sphs: number[];
-  colAxis: ColumnAxis;
-  cols: (number | null)[];
-  /** Keyed by `cellKey(sph, col)`; every row x column pair is present. */
-  cells: Record<string, StockCell>;
-  /** Some bins are also split by eye or the other axis; a cell is their sum. */
-  mixed: boolean;
-}
-
-export interface ProductStock {
-  productId: string;
-  name: string;
-  unit: string;
-  tracksPower: boolean;
-  tracksStock: boolean;
-  bins: StockBin[];
-  /** Null for a product that is not held by power. */
-  sheet: StockSheet | null;
-  total: number;
-  lowCount: number;
-  emptyCount: number;
-}
-
-// Same caps as the receiving grid, so the two screens show the same powers.
-const MAX_SPH_POSITIONS = 200;
-const MAX_COL_POSITIONS = 60;
-
-export const cellKey = (sph: number, col: number | null) =>
-  `${sph}|${col ?? ""}`;
-
-/**
- * Every power in the product's declared range, plus any power it holds
- * outside it, so nothing on the shelf is hidden and no gap in the range is
- * either. A zero CYL or ADD is stored as none, so it is the same column.
- */
-function buildSheet(product: Product, bins: StockBin[]): StockSheet {
-  const colAxis = columnAxis(product);
-  const colOf = (bin: StockBin) =>
-    colAxis === "add" ? bin.add_power : bin.cyl;
-
-  const rangeSph = powerSeries(
-    product.sph_min,
-    product.sph_max,
-    product.sph_step,
-    MAX_SPH_POSITIONS,
-  );
-  const rangeCol = (
-    colAxis === "add"
-      ? powerSeries(
-          product.add_min,
-          product.add_max,
-          product.add_step,
-          MAX_COL_POSITIONS,
-        )
-      : powerSeries(
-          product.cyl_min,
-          product.cyl_max,
-          product.cyl_step,
-          MAX_COL_POSITIONS,
-        )
-  ).map((v) => (v === 0 ? null : v));
-
-  const sphs = [...new Set([...rangeSph, ...bins.map((b) => b.sph ?? 0)])].sort(
-    byDistanceFromZero,
-  );
-  const colSet = new Set<number | null>([...rangeCol, ...bins.map(colOf)]);
-  if (colSet.size === 0) colSet.add(null);
-  // "None" is the 0.00 column, so it leads.
-  const cols = [...colSet].sort((a, b) => byDistanceFromZero(a ?? 0, b ?? 0));
-
-  const cells: Record<string, StockCell> = {};
-  for (const sph of sphs) {
-    for (const col of cols) {
-      // 0 on hand is at or below any alert quantity that is set.
-      cells[cellKey(sph, col)] = { qty: 0, low: product.alert_qty !== null };
-    }
-  }
-
-  const seen = new Set<string>();
-  for (const bin of bins) {
-    const k = cellKey(bin.sph ?? 0, colOf(bin));
-    const cell = cells[k];
-    if (!seen.has(k)) {
-      seen.add(k);
-      cell.low = false;
-    }
-    cell.qty += bin.qty_on_hand;
-    cell.low = cell.low || isLow(bin, product);
-  }
-
-  return {
-    sphs,
-    colAxis,
-    cols,
-    cells,
-    mixed: bins.some(
-      (b) =>
-        b.eye !== null ||
-        (colAxis === "add" ? b.cyl !== null : b.add_power !== null),
-    ),
-  };
-}
-
 /**
  * Every product with its stock, for the stock screen.
  *
@@ -346,25 +229,6 @@ export async function listAllStock(): Promise<ProductStock[]> {
   return (products.data ?? [])
     .filter((product) => product.tracks_stock)
     .map((product) => toProductStock(product, byProduct.get(product.id) ?? []));
-}
-
-function toProductStock(product: Product, bins: StockBin[]): ProductStock {
-  const own = [...bins].sort(byPosition);
-  const sheet = product.tracks_power ? buildSheet(product, own) : null;
-  const cells = sheet ? Object.values(sheet.cells) : [];
-
-  return {
-    productId: product.id,
-    name: product.name,
-    unit: product.unit,
-    tracksPower: product.tracks_power,
-    tracksStock: product.tracks_stock,
-    bins: own,
-    sheet: sheet && sheet.sphs.length > 0 ? sheet : null,
-    total: own.reduce((sum, bin) => sum + bin.qty_on_hand, 0),
-    lowCount: cells.filter((c) => c.low && c.qty > 0).length,
-    emptyCount: cells.filter((c) => c.qty === 0).length,
-  };
 }
 
 /** One product's stock, for its printable stock sheet. */

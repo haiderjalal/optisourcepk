@@ -7,16 +7,17 @@ import { SwapLayoutButton } from "./SwapLayoutButton";
 import { useSheetLayout } from "./useSheetLayout";
 
 /**
- * A product's stock sheet with its swap, print and share buttons. The layout
+ * A product's stock sheets — one, or one per ADD — with the swap, print and
+ * share buttons. The layout
  * lives here so the table and the PDF it prints are always the same way round.
  */
 export function StockSheetPanel({
-  sheet,
+  sheets,
   productId,
   productName,
   fileName,
 }: {
-  sheet: StockSheet;
+  sheets: StockSheet[];
   productId: string;
   productName: string;
   fileName: string;
@@ -30,15 +31,25 @@ export function StockSheetPanel({
         <SwapLayoutButton layout={layout} onSwap={swap} />
       </div>
 
-      <StockSheetTable sheet={sheet} layout={layout} />
-
-      {sheet.mixed && (
-        <p className="text-navy-400 mt-2 text-xs">
-          Some of this stock is also split by eye or{" "}
-          {sheet.colAxis === "add" ? "CYL" : "ADD"}; each square adds those
-          together. The product page has the detail.
-        </p>
-      )}
+      <div className="space-y-5">
+        {sheets.map((sheet, i) => (
+          <section key={sheet.title ?? i}>
+            {sheet.title && (
+              <h3 className="text-navy-700 mb-1.5 text-sm font-semibold">
+                {sheet.title}
+              </h3>
+            )}
+            <StockSheetTable sheet={sheet} layout={layout} />
+            {sheet.mixed && (
+              <p className="text-navy-400 mt-2 text-xs">
+                Some of this stock is also split by eye
+                {sheet.colAxis === "add" || sheet.title ? "" : " or ADD"}; each
+                square adds those together. The product page has the detail.
+              </p>
+            )}
+          </section>
+        ))}
+      </div>
 
       <div className="mt-4">
         <StockSheetActions

@@ -24,7 +24,7 @@ export async function GET(
   const { productId } = await params;
   const stock = await getProductStock(productId);
 
-  if (!stock?.sheet) {
+  if (!stock || stock.sheets.length === 0) {
     return new Response("Not found", { status: 404 });
   }
 
@@ -39,7 +39,7 @@ export async function GET(
     productName: stock.name,
     printedAt: formatDateTime(new Date().toISOString()),
     unit: stock.unit,
-    sheet: stock.sheet,
+    sheets: stock.sheets,
     layout,
   });
 

@@ -67,18 +67,42 @@ export function sphPlaceholder(sign: LensSign | null | undefined): string {
 /** Which prescription value runs across a product's power grid. */
 export type ColumnAxis = "cyl" | "add";
 
-/**
- * A product with an ADD range (bifocals, progressives) is laid out by ADD —
- * one column per addition — and CYL becomes a single choice for the batch.
- * Everything else is laid out by CYL.
- */
-export function columnAxis(product: {
+interface Ranges {
+  cyl_min: number | null;
+  cyl_max: number | null;
+  cyl_step: number | null;
   add_min: number | null;
   add_max: number | null;
   add_step: number | null;
-}): ColumnAxis {
-  return powerSeries(product.add_min, product.add_max, product.add_step, 1)
-    .length > 0
-    ? "add"
-    : "cyl";
+}
+
+/**
+ * How a lens product's grid is laid out.
+ *
+ * - Only an ADD range (e.g. CV hardcoat): one column per ADD.
+ * - A CYL range (with or without ADD): one column per CYL. With an ADD range
+ *   as well, the stock sheet is split into one table per ADD, and the
+ *   receiving grid takes ADD as one value for the delivery.
+ *
+ * A range that is only 0.00 does not count: zero CYL or ADD means none.
+ */
+export function gridLayout(product: Ranges): {
+  colAxis: ColumnAxis;
+  perAdd: boolean;
+} {
+  const nonZero = (
+    min: number | null,
+    max: number | null,
+    step: number | null,
+  ) => powerSeries(min, max, step, 400).some((v) => v !== 0);
+  const hasCyl = nonZero(product.cyl_min, product.cyl_max, product.cyl_step);
+  const hasAdd = nonZero(product.add_min, product.add_max, product.add_step);
+
+  if (hasAdd && !hasCyl) return { colAxis: "add", perAdd: false };
+  return { colAxis: "cyl", perAdd: hasAdd && hasCyl };
+}
+
+/** Which prescription value runs across the product's receiving grid. */
+export function columnAxis(product: Ranges): ColumnAxis {
+  return gridLayout(product).colAxis;
 }

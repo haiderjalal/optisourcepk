@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { formatPower, todayInKarachi } from "@/lib/format";
 import { columnAxis, isLow, powerSeries } from "@/lib/power";
+import { cellKey } from "@/features/shop/stock/sheet";
 import type { Product, StockBin, Supplier } from "@/types/database";
 import { SwapLayoutButton } from "@/features/shop/stock/SwapLayoutButton";
 import { useSheetLayout } from "@/features/shop/stock/useSheetLayout";
@@ -107,7 +108,8 @@ export function PowerGrid({
   const selBatch = norm(batchValue);
   const selEye = eye === "" ? null : eye;
 
-  const key = (sph: number, col: number | null) => `${sph}|${col ?? ""}`;
+  // A zero CYL or ADD is saved as none, so the 0.00 column must find those bins.
+  const key = cellKey;
   const colOf = (b: StockBin) => (axis === "add" ? b.add_power : b.cyl);
   const batchOf = (b: StockBin) => (axis === "add" ? b.cyl : b.add_power);
 
