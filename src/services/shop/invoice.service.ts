@@ -128,7 +128,7 @@ async function replaceLines(
   const productIds = [...new Set(payload.lines.map((line) => line.productId))];
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, unit")
+    .select("id, name, unit, tracks_power")
     .in("id", productIds);
 
   if (productError) {
@@ -150,7 +150,9 @@ async function replaceLines(
       product_name: product.name,
       unit: product.unit,
       eye: line.eye === "" || !line.eye ? null : line.eye,
-      sph: line.sph,
+      // A lens always has an SPH, and every lens bin is held at one, so a
+      // blank SPH is plano (0.00) — otherwise the line matches no stock.
+      sph: line.sph ?? (product.tracks_power ? 0 : null),
       // Zero cylinder or addition means none: stored as NULL so it prints
       // blank, and so it matches a stock bin received the same way.
       cyl: line.cyl === 0 ? null : line.cyl,
