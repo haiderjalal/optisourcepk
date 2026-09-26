@@ -9,9 +9,14 @@ import type {
   StockReason,
 } from "@/types/database";
 import { toProductStock, type ProductStock } from "@/features/shop/stock/sheet";
+import {
+  resolveOrderStock,
+  type LineAvailability,
+} from "@/features/shop/stock/availability";
 import { describePostgresError } from "./errors";
 import { selectAllPages } from "./paging";
 
+export type { LineAvailability } from "@/features/shop/stock/availability";
 export type {
   ProductStock,
   StockCell,
@@ -280,37 +285,10 @@ export async function getProductStock(
   return toProductStock(product.data, bins);
 }
 
-export interface LineAvailability {
-  productId: string;
-  productName: string;
-  unit: string;
-  sph: number | null;
-  cyl: number | null;
-  add_power: number | null;
-  eye: string | null;
-  needed: number;
-  onHand: number;
-  /** No bin matched at all — nothing has been received for this position. */
-  missing: boolean;
-  short: boolean;
-}
-
-/**
- * A zero cylinder or addition means none, so it is the same bin as blank.
- * SPH is left alone: 0.00 there is a plano lens, a real power.
- */
-function normalise(value: number | null): number | null {
-  return value === 0 ? null : value;
-}
-
 /**
  * Can this order actually be invoiced?
  *
- * Deliberately mirrors `issue_invoice` step for step — group demand by the bin
- * a line draws on, try the exact shelf position, then fall back to the general
- * bin for that power. When this drifts from the function, the page cheerfully
- * reports stock the transaction then refuses, which is worse than no check at
- * all. The database stays the authority; this is a preview of its answer.
+ * Reads the lines and bins; the matching lives in `resolveOrderStock`.
  */
 export async function checkOrderStock(
   orderId: string,
@@ -350,85 +328,7 @@ export async function checkOrderStock(
     throw new Error(describePostgresError(products.error, "check stock"));
   }
 
-  const productById = new Map((products.data ?? []).map((p) => [p.id, p]));
-
-  const part = (v: number | string | null) => (v === null ? "~" : String(v));
-  const binKey = (
-    id: string,
-    sph: number | null,
-    cyl: number | null,
-    add: number | null,
-    eye: string | null,
-  ) => [id, part(sph), part(cyl), part(add), part(eye)].join("|");
-
-  const exact = new Map<string, number>();
-  const general = new Map<string, number>();
-
-  for (const b of bins) {
-    const cyl = normalise(b.cyl);
-    const add = normalise(b.add_power);
-    exact.set(binKey(b.product_id, b.sph, cyl, add, b.eye), b.qty_on_hand);
-    if (cyl === null && add === null && b.eye === null) {
-      general.set(`${b.product_id}|${part(b.sph)}`, b.qty_on_hand);
-    }
-  }
-
-  // Several lines can draw on one bin — two eyes at the same power, say — so
-  // demand is summed per bin before it is compared, as the database does.
-  interface Demand {
-    productId: string;
-    sph: number | null;
-    cyl: number | null;
-    add: number | null;
-    eye: string | null;
-    qty: number;
-  }
-  const demand = new Map<string, Demand>();
-
-  for (const line of lines) {
-    const product = productById.get(line.product_id);
-    if (!product?.tracks_stock) continue;
-
-    const cyl = normalise(line.cyl);
-    const add = normalise(line.add_power);
-    const k = binKey(line.product_id, line.sph, cyl, add, line.eye);
-    const existing = demand.get(k);
-
-    if (existing) existing.qty += line.quantity;
-    else {
-      demand.set(k, {
-        productId: line.product_id,
-        sph: line.sph,
-        cyl,
-        add,
-        eye: line.eye,
-        qty: line.quantity,
-      });
-    }
-  }
-
-  const out: LineAvailability[] = [];
-
-  for (const [k, d] of demand) {
-    const product = productById.get(d.productId);
-    const have = exact.get(k) ?? general.get(`${d.productId}|${part(d.sph)}`);
-
-    out.push({
-      productId: d.productId,
-      productName: product?.name ?? "Unknown product",
-      unit: product?.unit ?? "pcs",
-      sph: d.sph,
-      cyl: d.cyl,
-      add_power: d.add,
-      eye: d.eye,
-      needed: d.qty,
-      onHand: have ?? 0,
-      missing: have === undefined,
-      short: have !== undefined && have < d.qty,
-    });
-  }
-
-  return out.sort((a, b) => a.productName.localeCompare(b.productName));
+  return resolveOrderStock(lines, products.data ?? [], bins);
 }
 
 /**
