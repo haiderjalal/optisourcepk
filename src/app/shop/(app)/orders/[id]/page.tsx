@@ -5,6 +5,7 @@ import { ArrowLeft, Download, FileText, Pencil } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
 import { checkOrderStock } from "@/services/shop/stock.service";
+import { getBalance } from "@/services/shop/ledger.service";
 import { StockCheck } from "@/features/shop/orders/StockCheck";
 import { DeleteDraftPanel } from "@/features/shop/orders/DeleteDraftPanel";
 import { ButtonLink } from "@/components/ui/button";
@@ -29,7 +30,14 @@ export default async function OrderPage({
 
   // Only worth checking while it can still be acted on.
   const canIssue = order.issued_at === null && order.voided_at === null;
-  const availability = canIssue ? await checkOrderStock(id) : [];
+  // A draft shows the account as it stands now; an issued invoice shows the
+  // figures frozen when it went out.
+  const [availability, account] = canIssue
+    ? await Promise.all([
+        checkOrderStock(id),
+        getBalance(order.bill_to_customer_id),
+      ])
+    : [[], null];
 
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
@@ -195,12 +203,27 @@ export default async function OrderPage({
                     Rs {formatAmount(order.amount_incl_tax ?? 0)}
                   </dd>
                 </div>
+                {order.previous_balance !== null && (
+                  <AccountRows
+                    previous={order.previous_balance}
+                    payable={order.closing_balance ?? 0}
+                  />
+                )}
               </>
             ) : (
-              <div className="flex justify-between text-base font-semibold">
-                <dt>Subtotal</dt>
-                <dd className="tabular-nums">Rs {formatAmount(subtotal)}</dd>
-              </div>
+              <>
+                <div className="flex justify-between text-base font-semibold">
+                  <dt>Subtotal</dt>
+                  <dd className="tabular-nums">Rs {formatAmount(subtotal)}</dd>
+                </div>
+                {account && (
+                  <AccountRows
+                    previous={account.balance}
+                    payable={account.balance + subtotal}
+                    note="Freight and tax are added when you issue."
+                  />
+                )}
+              </>
             )}
           </dl>
         </div>
@@ -229,6 +252,36 @@ export default async function OrderPage({
         </p>
       )}
     </div>
+  );
+}
+
+/** What the shop owed before this invoice, and what it owes with it. */
+function AccountRows({
+  previous,
+  payable,
+  note,
+}: {
+  previous: number;
+  payable: number;
+  note?: string;
+}) {
+  return (
+    <>
+      <div className="mt-3 flex justify-between border-t border-mist-200 pt-3">
+        <dt className="text-navy-500">Previous balance</dt>
+        <dd className="tabular-nums">{formatAmount(previous)}</dd>
+      </div>
+      <div className="flex justify-between text-base font-semibold">
+        <dt>Total payable</dt>
+        <dd className="tabular-nums">Rs {formatAmount(payable)}</dd>
+      </div>
+      {note && (
+        <div className="text-navy-500 text-xs">
+          <dt className="sr-only">Note</dt>
+          <dd>{note}</dd>
+        </div>
+      )}
+    </>
   );
 }
 
