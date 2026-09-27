@@ -149,17 +149,22 @@ export function OrderBuilder({
     );
   }
 
-  /** Picking a product fills in its rate and the customer's standing discount. */
+  /**
+   * Picking a product fills in the customer's standing discount, and — for
+   * stock lines only — the product's rate.
+   */
   function pickProduct(key: string, productId: string) {
     const product = productById.get(productId);
+    // An RX lens is priced per job: the rate and the lab price are typed in,
+    // never taken from the product's stock prices.
+    if (isRx || product?.is_rx) {
+      update(key, { productId, discountPct: String(defaultDiscount) });
+      return;
+    }
     update(key, {
       productId,
       unitPrice: product ? String(product.list_price) : "",
       discountPct: String(defaultDiscount),
-      unitCost:
-        (isRx || product?.is_rx) && product && product.purchase_price > 0
-          ? String(product.purchase_price)
-          : "",
     });
   }
 
@@ -456,6 +461,9 @@ export function OrderBuilder({
                           step="0.01"
                           min={0}
                           inputMode="decimal"
+                          // Typed per job on RX, so it must not be left blank.
+                          required={rxLine}
+                          placeholder={rxLine ? "Enter" : undefined}
                           value={line.unitPrice}
                           onChange={(e) =>
                             update(line.key, { unitPrice: e.target.value })
