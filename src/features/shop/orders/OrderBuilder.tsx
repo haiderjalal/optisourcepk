@@ -111,12 +111,15 @@ export function OrderBuilder({
   suppliers,
   order,
   lines: existing,
+  isRx = order?.is_rx ?? false,
 }: {
   customers: Customer[];
   products: Product[];
   suppliers: Supplier[];
   order?: Order;
   lines?: OrderLine[];
+  /** An RX order: every line is a lab job, and none touches stock. */
+  isRx?: boolean;
 }) {
   const [state, formAction] = useActionState<OrderFormState, FormData>(
     saveOrder,
@@ -154,7 +157,7 @@ export function OrderBuilder({
       unitPrice: product ? String(product.list_price) : "",
       discountPct: String(defaultDiscount),
       unitCost:
-        product?.is_rx && product.purchase_price > 0
+        (isRx || product?.is_rx) && product && product.purchase_price > 0
           ? String(product.purchase_price)
           : "",
     });
@@ -187,7 +190,7 @@ export function OrderBuilder({
   const subtotal = lines.reduce((sum, line) => sum + lineTotal(line), 0);
   const lensCount = lines.reduce((sum, line) => {
     const product = productById.get(line.productId);
-    return product?.tracks_power || product?.is_rx
+    return isRx || product?.tracks_power || product?.is_rx
       ? sum + (Number(line.quantity) || 0)
       : sum;
   }, 0);
@@ -211,6 +214,7 @@ export function OrderBuilder({
   return (
     <form action={formAction} className="space-y-5">
       {order && <input type="hidden" name="id" value={order.id} />}
+      <input type="hidden" name="isRx" value={String(isRx)} />
       <input type="hidden" name="lines" value={JSON.stringify(payload)} />
 
       <section className="shadow-lift rounded-2xl bg-white p-5">
@@ -337,12 +341,13 @@ export function OrderBuilder({
             <tbody>
               {lines.map((line, index) => {
                 const product = productById.get(line.productId);
-                const power = product?.tracks_power || product?.is_rx;
+                const rxLine = isRx || Boolean(product?.is_rx);
+                const power = product?.tracks_power || rxLine;
 
                 return (
                   <Fragment key={line.key}>
                     <tr
-                      className={`align-top ${product?.is_rx ? "" : "border-b border-mist-200"}`}
+                      className={`align-top ${rxLine ? "" : "border-b border-mist-200"}`}
                     >
                       <td className="text-navy-400 px-3 py-2 text-xs">
                         {index + 1}
@@ -525,7 +530,7 @@ export function OrderBuilder({
                         </div>
                       </td>
                     </tr>
-                    {product?.is_rx && (
+                    {rxLine && (
                       <tr className="border-b border-mist-200 bg-mist-50">
                         <td />
                         <td colSpan={11} className="px-3 pb-3">
@@ -676,13 +681,15 @@ export function OrderBuilder({
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton isUpdate={Boolean(order)} />
         <Link
-          href="/shop/orders"
+          href={isRx ? "/shop/rx" : "/shop/orders"}
           className="text-navy-500 hover:text-navy-700 text-sm font-medium"
         >
           Cancel
         </Link>
         <span className="text-navy-400 text-xs">
-          Saving creates a draft. Stock moves only when you issue the invoice.
+          {isRx
+            ? "Saving creates a draft RX order. It never touches stock."
+            : "Saving creates a draft. Stock moves only when you issue the invoice."}
         </span>
       </div>
     </form>

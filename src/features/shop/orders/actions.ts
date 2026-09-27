@@ -49,6 +49,7 @@ function readOrder(formData: FormData) {
     customerId: formData.get("customerId"),
     externalOrderRef: formData.get("externalOrderRef") ?? "",
     priority: formData.get("priority") ?? "normal",
+    isRx: formData.get("isRx") === "true",
     orderByName: formData.get("orderByName") ?? "",
     deliverToName: formData.get("deliverToName") ?? "",
     deliverToAddress: formData.get("deliverToAddress") ?? "",
@@ -92,7 +93,7 @@ export async function saveOrder(
     return { error: error instanceof Error ? error.message : "Save failed." };
   }
 
-  revalidatePath("/shop/orders");
+  revalidatePath(parsed.data.isRx ? "/shop/rx" : "/shop/orders");
   redirect(`/shop/orders/${orderId}`);
 }
 

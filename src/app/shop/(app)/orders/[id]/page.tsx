@@ -34,7 +34,8 @@ export default async function OrderPage({
   // figures frozen when it went out.
   const [availability, account] = canIssue
     ? await Promise.all([
-        checkOrderStock(id),
+        // An RX order is made by a lab; there is no stock to check.
+        order.is_rx ? [] : checkOrderStock(id),
         getBalance(order.bill_to_customer_id),
       ])
     : [[], null];
@@ -46,11 +47,11 @@ export default async function OrderPage({
   return (
     <div className="mx-auto max-w-5xl">
       <Link
-        href="/shop/orders"
+        href={order.is_rx ? "/shop/rx" : "/shop/orders"}
         className="text-navy-500 hover:text-navy-700 mb-5 inline-flex items-center gap-2 text-sm font-medium"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        Orders
+        {order.is_rx ? "RX orders" : "Orders"}
       </Link>
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -62,6 +63,11 @@ export default async function OrderPage({
                 : `Order ${order.order_no}`}
             </h1>
             <StatusBadge order={order} />
+            {order.is_rx && (
+              <span className="bg-accent-50 text-accent-700 ring-accent-200 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset">
+                RX
+              </span>
+            )}
           </div>
           <p className="text-navy-500 mt-1.5 text-sm">
             {order.customer?.shop_name ?? order.bill_to_shop ?? "—"}

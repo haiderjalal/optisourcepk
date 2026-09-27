@@ -182,6 +182,8 @@ type OrderRow = {
   order_no: number;
   external_order_ref: string | null;
   priority: OrderPriority;
+  /** An RX order: lenses made by a lab; its lines never touch stock. */
+  is_rx: boolean;
   bill_to_customer_id: string;
   order_by_name: string | null;
   deliver_to_name: string | null;

@@ -75,9 +75,9 @@ export default async function RxOrdersPage({
             search its power to see which shop it is for, then mark it received.
           </p>
         </div>
-        <ButtonLink href="/shop/orders/new" size="lg">
+        <ButtonLink href="/shop/rx/new" size="lg">
           <Plus className="size-4" aria-hidden />
-          New order
+          New RX order
         </ButtonLink>
       </div>
 
@@ -156,7 +156,7 @@ export default async function RxOrdersPage({
           <p className="text-navy-500 mx-auto mt-2 max-w-sm text-sm">
             {searching
               ? "Check the power, or set Status to All to include received lenses."
-              : "Create an order with an RX product and its lines appear here until the lens is received."}
+              : "Start one with New RX order. Its lenses appear here until they come back from the lab."}
           </p>
         </div>
       ) : (
