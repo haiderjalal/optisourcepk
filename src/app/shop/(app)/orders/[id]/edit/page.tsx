@@ -6,6 +6,7 @@ import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
 import { listCustomers } from "@/services/shop/customer.service";
 import { listSellableProducts } from "@/services/shop/product.service";
+import { listSuppliers } from "@/services/shop/supplier.service";
 import { OrderBuilder } from "@/features/shop/orders/OrderBuilder";
 
 export const metadata: Metadata = { title: "Edit order" };
@@ -23,9 +24,10 @@ export default async function EditOrderPage({
   // view rather than showing a form whose save would be refused.
   if (order.issued_at) redirect(`/shop/orders/${id}`);
 
-  const [customers, products] = await Promise.all([
+  const [customers, products, suppliers] = await Promise.all([
     listCustomers(),
     listSellableProducts(),
+    listSuppliers(),
   ]);
 
   return (
@@ -41,6 +43,7 @@ export default async function EditOrderPage({
       <OrderBuilder
         customers={customers}
         products={products}
+        suppliers={suppliers}
         order={order}
         lines={order.lines}
       />

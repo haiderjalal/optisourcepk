@@ -43,6 +43,7 @@ export async function saveProduct(
     tracksAdd: formData.get("tracksAdd") === "on",
     tracksEye: formData.get("tracksEye") === "on",
     tracksStock: formData.get("tracksStock") === "on",
+    isRx: formData.get("isRx") === "on",
     sphMin: formData.get("sphMin") ?? "",
     sphMax: formData.get("sphMax") ?? "",
     sphStep: formData.get("sphStep") ?? "",

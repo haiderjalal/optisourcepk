@@ -25,6 +25,7 @@ function toRow(payload: ProductPayload) {
     tracks_add: payload.tracksAdd,
     tracks_eye: payload.tracksEye,
     tracks_stock: payload.tracksStock,
+    is_rx: payload.isRx,
     sph_min: payload.sphMin,
     sph_max: payload.sphMax,
     sph_step: payload.sphStep,
