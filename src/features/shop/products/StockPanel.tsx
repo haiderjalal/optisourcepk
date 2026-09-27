@@ -44,7 +44,9 @@ export function StockPanel({
   if (!product.tracks_stock) {
     return (
       <p className="text-navy-500 rounded-2xl border border-dashed border-mist-300 bg-white/60 px-5 py-8 text-center text-sm">
-        This is a service — it is billed per job and never held in stock.
+        {product.is_rx
+          ? "This is an RX lens — ordered from a lab for each job, never held in stock. Track its jobs on the RX orders screen."
+          : "This is a service — it is billed per job and never held in stock."}
       </p>
     );
   }
