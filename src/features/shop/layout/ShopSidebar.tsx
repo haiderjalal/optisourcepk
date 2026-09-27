@@ -7,6 +7,7 @@ import {
   Building2,
   ClipboardList,
   FileText,
+  Glasses,
   LayoutDashboard,
   Package,
   Receipt,
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { href: "/shop", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/shop/orders", label: "Orders", icon: ClipboardList },
+  { href: "/shop/rx", label: "RX orders", icon: Glasses },
   { href: "/shop/invoices", label: "Invoices", icon: FileText },
   { href: "/shop/customers", label: "Customers", icon: Users },
   { href: "/shop/payments", label: "Payments", icon: Wallet },

@@ -117,6 +117,7 @@ export const productSchema = z
     tracksAdd: z.coerce.boolean().default(false),
     tracksEye: z.coerce.boolean().default(false),
     tracksStock: z.coerce.boolean().default(true),
+    isRx: z.coerce.boolean().default(false),
   })
   .refine(
     (value) =>
@@ -133,6 +134,11 @@ export const productSchema = z
         "A product split by prescription must also be one you hold stock of.",
       path: ["tracksStock"],
     },
-  );
+  )
+  // Mirrors products_rx_no_stock: an RX lens is ordered per job, never held.
+  .refine((value) => !value.isRx || !value.tracksStock, {
+    error: "An RX lens is made to order, so it cannot also hold stock.",
+    path: ["isRx"],
+  });
 
 export type ProductPayload = z.output<typeof productSchema>;

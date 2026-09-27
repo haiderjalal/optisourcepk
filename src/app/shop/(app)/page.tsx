@@ -3,6 +3,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   ClipboardList,
+  DatabaseBackup,
   Plus,
   TriangleAlert,
   Users,
@@ -43,10 +44,16 @@ export default async function ShopDashboardPage() {
           <p className="eyebrow text-accent-600">Back office</p>
           <h1 className="mt-2 text-2xl font-bold">Today</h1>
         </div>
-        <ButtonLink href="/shop/orders/new" size="lg">
-          <Plus className="size-4" aria-hidden />
-          New order
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/shop/backup" variant="outline" size="lg">
+            <DatabaseBackup className="size-4" aria-hidden />
+            Download backup
+          </ButtonLink>
+          <ButtonLink href="/shop/orders/new" size="lg">
+            <Plus className="size-4" aria-hidden />
+            New order
+          </ButtonLink>
+        </div>
       </div>
 
       <div className="shadow-lift mb-6 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-3">

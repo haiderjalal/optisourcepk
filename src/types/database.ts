@@ -30,6 +30,7 @@ export type ProductCategory =
   | "services";
 
 export type Eye = "R" | "L";
+export type RxStatus = "ordered" | "received";
 
 type CustomerRow = {
   id: string;
@@ -82,6 +83,8 @@ type ProductRow = {
   /** Warn when any power in the range is at or below this. */
   alert_qty: number | null;
   lens_sign: LensSign | null;
+  /** Made to order per prescription (RX): never stocked. */
+  is_rx: boolean;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -242,8 +245,26 @@ type OrderLineRow = {
   line_discount: number;
   /** Generated column — never written. */
   line_total: number;
+  /** What one unit cost us (RX: the lab price). Never printed. */
+  unit_cost: number | null;
+  /** RX: the lab it was ordered from. */
+  supplier_id: string | null;
+  /** RX lines only; NULL for everything else. */
+  rx_status: RxStatus | null;
+  received_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+/** RX sales, cost and profit for one month of issued invoices. */
+type RxMonthlyRow = {
+  month: string;
+  lines: number;
+  lenses: number;
+  sales: number;
+  cost: number;
+  profit: number;
+  missing_cost: number;
 };
 
 type LedgerEntryRow = {
@@ -330,6 +351,7 @@ type Defaulted =
   | "tracks_add"
   | "tracks_eye"
   | "tracks_stock"
+  | "is_rx"
   | "purchase_price"
   | "list_price"
   | "default_discount_pct"
@@ -381,6 +403,7 @@ export interface Database {
       customer_balances: View<CustomerBalanceRow>;
       low_stock: View<LowStockRow>;
       purchase_invoice_totals: View<PurchaseInvoiceTotalsRow>;
+      rx_monthly: View<RxMonthlyRow>;
     };
     Functions: {
       adjust_stock: {
@@ -482,6 +505,7 @@ export type Expense = ExpenseRow;
 export type PurchaseInvoice = PurchaseInvoiceRow;
 export type PurchaseInvoiceLine = PurchaseInvoiceLineRow;
 export type PurchaseInvoiceSummary = PurchaseInvoiceTotalsRow;
+export type RxMonth = RxMonthlyRow;
 
 /** One line as `record_purchase` takes it. Blank unitCost = product cost. */
 export interface PurchaseLineInput {

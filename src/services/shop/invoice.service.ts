@@ -114,6 +114,33 @@ async function replaceLines(
 ): Promise<void> {
   const { supabase } = await requireUser();
 
+  // Lines are replaced wholesale, so an RX lens already back from the lab
+  // would lose its "received" mark on every edit. Carry it over by position.
+  const { data: previous, error: readError } = await supabase
+    .from("order_lines")
+    .select("product_id, sph, cyl, add_power, eye, rx_status, received_at")
+    .eq("order_id", orderId);
+
+  if (readError) {
+    throw new Error(describePostgresError(readError, "update the lines"));
+  }
+
+  const positionOf = (l: {
+    product_id: string;
+    sph: number | null;
+    cyl: number | null;
+    add_power: number | null;
+    eye: string | null;
+  }) => [l.product_id, l.sph, l.cyl, l.add_power, l.eye].join("|");
+
+  const received = new Map<string, string[]>();
+  for (const line of previous ?? []) {
+    if (line.rx_status !== "received" || !line.received_at) continue;
+    const list = received.get(positionOf(line)) ?? [];
+    list.push(line.received_at);
+    received.set(positionOf(line), list);
+  }
+
   const { error: clearError } = await supabase
     .from("order_lines")
     .delete()
@@ -128,7 +155,7 @@ async function replaceLines(
   const productIds = [...new Set(payload.lines.map((line) => line.productId))];
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, unit, tracks_power")
+    .select("id, name, unit, tracks_power, is_rx")
     .in("id", productIds);
 
   if (productError) {
@@ -142,6 +169,28 @@ async function replaceLines(
     if (!product) {
       throw new Error("One of those products no longer exists.");
     }
+    // A lens always has an SPH, and every lens bin is held at one, so a blank
+    // SPH is plano (0.00) — otherwise the line matches no stock.
+    const sph = line.sph ?? (product.tracks_power || product.is_rx ? 0 : null);
+    // Zero cylinder or addition means none: stored as NULL so it prints
+    // blank, and so it matches a stock bin received the same way.
+    const cyl = line.cyl === 0 ? null : line.cyl;
+    const addPower = line.addPower === 0 ? null : line.addPower;
+    const eye = line.eye === "" || !line.eye ? null : line.eye;
+    const receivedAt = product.is_rx
+      ? (received
+          .get(
+            positionOf({
+              product_id: product.id,
+              sph,
+              cyl,
+              add_power: addPower,
+              eye,
+            }),
+          )
+          ?.shift() ?? null)
+      : null;
+
     return {
       order_id: orderId,
       line_no: index + 1,
@@ -149,19 +198,19 @@ async function replaceLines(
       product_id: line.productId,
       product_name: product.name,
       unit: product.unit,
-      eye: line.eye === "" || !line.eye ? null : line.eye,
-      // A lens always has an SPH, and every lens bin is held at one, so a
-      // blank SPH is plano (0.00) — otherwise the line matches no stock.
-      sph: line.sph ?? (product.tracks_power ? 0 : null),
-      // Zero cylinder or addition means none: stored as NULL so it prints
-      // blank, and so it matches a stock bin received the same way.
-      cyl: line.cyl === 0 ? null : line.cyl,
+      eye,
+      sph,
+      cyl,
       ax: line.ax,
-      add_power: line.addPower === 0 ? null : line.addPower,
+      add_power: addPower,
       unit_price: line.unitPrice,
       discount_pct: line.discountPct,
       quantity: line.quantity,
-    };
+      unit_cost: line.unitCost,
+      supplier_id: product.is_rx ? line.supplierId : null,
+      rx_status: product.is_rx ? (receivedAt ? "received" : "ordered") : null,
+      received_at: receivedAt,
+    } as const;
   });
 
   const { error: insertError } = await supabase

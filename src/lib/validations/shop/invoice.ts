@@ -65,6 +65,22 @@ export const orderLineSchema = z
       .int("Quantities are whole numbers.")
       .positive("Quantity must be at least 1.")
       .max(100_000, "That quantity is out of range."),
+    // RX only: what the lab charges us, and which lab. Blank means not known yet.
+    unitCost: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => (value ? Number(value) : null))
+      .refine((value) => value === null || Number.isFinite(value), {
+        error: "Purchase price is not a number.",
+      })
+      .refine((value) => value === null || (value >= 0 && value <= 9_999_999), {
+        error: "Purchase price is out of range.",
+      }),
+    supplierId: z
+      .union([z.uuid("Pick a lab from the list."), z.literal("")])
+      .optional()
+      .transform((value) => value || null),
   })
   // Mirrors order_lines_ax_needs_cyl: an axis without a cylinder is meaningless.
   .refine((line) => line.ax === null || line.cyl !== null, {
