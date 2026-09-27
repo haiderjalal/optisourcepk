@@ -6,20 +6,20 @@ import { requireUser } from "@/server/shop/dal";
 import { setRxReceived } from "@/services/shop/rx.service";
 
 const receiveSchema = z.object({
-  id: z.uuid(),
+  ids: z.array(z.uuid()).min(1).max(20),
   received: z.enum(["true", "false"]).transform((v) => v === "true"),
 });
 
-/** Mark an RX lens as back from the lab, or undo a mistaken mark. */
+/** Mark an RX job's lenses as back from the lab, or undo a mistaken mark. */
 export async function setRxReceivedAction(formData: FormData): Promise<void> {
   await requireUser();
 
   const parsed = receiveSchema.safeParse({
-    id: formData.get("id"),
+    ids: formData.getAll("id"),
     received: formData.get("received"),
   });
   if (!parsed.success) return;
 
-  await setRxReceived(parsed.data.id, parsed.data.received);
+  await setRxReceived(parsed.data.ids, parsed.data.received);
   revalidatePath("/shop/rx");
 }

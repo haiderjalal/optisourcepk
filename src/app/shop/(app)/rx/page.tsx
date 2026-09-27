@@ -6,6 +6,7 @@ import {
   listRxJobs,
   listRxMonthly,
   RX_LIMIT,
+  type RxJob,
   type RxSearch,
 } from "@/services/shop/rx.service";
 import { setRxReceivedAction } from "@/features/shop/rx/actions";
@@ -175,6 +176,9 @@ export default async function RxOrdersPage({
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Lens
                   </th>
+                  <th scope="col" className="px-2 py-2.5 font-medium">
+                    Eye
+                  </th>
                   <th
                     scope="col"
                     className="px-2 py-2.5 text-right font-medium"
@@ -217,116 +221,150 @@ export default async function RxOrdersPage({
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((job) => (
-                  <tr key={job.id} className="border-t border-mist-200">
-                    <td className="px-4 py-2.5">
-                      <span className="font-medium">{job.shopName}</span>
-                      {job.area && (
-                        <span className="text-navy-400 block text-xs">
-                          {job.area}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5 whitespace-nowrap">
-                      <Link
-                        href={`/shop/orders/${job.orderId}`}
-                        className="text-accent-700 font-medium hover:underline"
-                      >
-                        {job.invoiceNo
-                          ? `Invoice ${job.invoiceNo}`
-                          : `Order ${job.orderNo}`}
-                      </Link>
-                      <span className="text-navy-400 block text-xs">
-                        {job.voided
-                          ? "void"
-                          : job.invoiceNo
-                            ? job.orderStatus === "delivered"
-                              ? "delivered"
-                              : "invoiced"
-                            : "draft"}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5">
-                      {job.product_name}
-                      {job.eye && (
-                        <span className="text-navy-500 ml-1.5 font-mono text-xs">
-                          {job.eye}
-                        </span>
-                      )}
-                      {job.quantity > 1 && (
-                        <span className="text-navy-500 ml-1.5 text-xs">
-                          × {job.quantity}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {formatPower(job.sph)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {formatPower(job.cyl)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {job.ax ?? ""}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {formatPower(job.add_power)}
-                    </td>
-                    <td className="text-navy-600 px-3 py-2.5">
-                      {job.supplierName ?? "—"}
-                    </td>
-                    <td className="px-3 py-2.5 text-right whitespace-nowrap tabular-nums">
-                      <span className="text-navy-500">
-                        {job.unit_cost === null
-                          ? "—"
-                          : formatAmount(job.unit_cost)}
-                      </span>
-                      {" / "}
-                      {formatAmount(job.unit_price)}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <form action={setRxReceivedAction}>
-                        <input type="hidden" name="id" value={job.id} />
-                        {job.rx_status === "received" ? (
-                          <span className="inline-flex items-center gap-2">
-                            <span className="text-xs text-emerald-700">
-                              Received {formatDate(job.received_at)}
-                            </span>
-                            <input
-                              type="hidden"
-                              name="received"
-                              value="false"
-                            />
-                            <button
-                              type="submit"
-                              className="text-navy-400 hover:text-navy-600 rounded p-1 transition-colors hover:bg-mist-100"
-                              title="Undo received"
-                            >
-                              <RotateCcw className="size-3.5" aria-hidden />
-                              <span className="sr-only">
-                                Undo received for {job.shopName}
-                              </span>
-                            </button>
+                {jobs.map((pair) => {
+                  const job = pair[0];
+                  const waiting = pair.filter(
+                    (l) => l.rx_status !== "received",
+                  );
+                  const lastReceived = pair
+                    .map((l) => l.received_at)
+                    .filter((d) => d !== null)
+                    .sort()
+                    .at(-1);
+
+                  return (
+                    <tr
+                      key={pair.map((l) => l.id).join("+")}
+                      className="border-t border-mist-200 align-top"
+                    >
+                      <td className="px-4 py-2.5">
+                        <span className="font-medium">{job.shopName}</span>
+                        {job.area && (
+                          <span className="text-navy-400 block text-xs">
+                            {job.area}
                           </span>
-                        ) : (
-                          <>
-                            <input type="hidden" name="received" value="true" />
-                            <button
-                              type="submit"
-                              className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
-                            >
-                              <Check className="size-3.5" aria-hidden />
-                              Mark received
-                            </button>
-                          </>
                         )}
-                      </form>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-3 py-2.5 whitespace-nowrap">
+                        <Link
+                          href={`/shop/orders/${job.orderId}`}
+                          className="text-accent-700 font-medium hover:underline"
+                        >
+                          {job.invoiceNo
+                            ? `Invoice ${job.invoiceNo}`
+                            : `Order ${job.orderNo}`}
+                        </Link>
+                        <span className="text-navy-400 block text-xs">
+                          {job.voided
+                            ? "void"
+                            : job.invoiceNo
+                              ? job.orderStatus === "delivered"
+                                ? "delivered"
+                                : "invoiced"
+                              : "draft"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {job.product_name}
+                        {job.order_ref && (
+                          <span className="text-navy-400 block text-xs">
+                            Ref {job.order_ref}
+                          </span>
+                        )}
+                      </td>
+                      <Stack
+                        pair={pair}
+                        align="left"
+                        value={(l) =>
+                          `${l.eye ?? "—"}${l.quantity > 1 ? ` ×${l.quantity}` : ""}`
+                        }
+                      />
+                      <Stack pair={pair} value={(l) => formatPower(l.sph)} />
+                      <Stack pair={pair} value={(l) => formatPower(l.cyl)} />
+                      <Stack pair={pair} value={(l) => String(l.ax ?? "")} />
+                      <Stack
+                        pair={pair}
+                        value={(l) => formatPower(l.add_power)}
+                      />
+                      <td className="text-navy-600 px-3 py-2.5">
+                        {[
+                          ...new Set(pair.map((l) => l.supplierName ?? "—")),
+                        ].join(", ")}
+                      </td>
+                      <Stack
+                        pair={pair}
+                        mono={false}
+                        value={(l) =>
+                          `${l.unit_cost === null ? "—" : formatAmount(l.unit_cost)} / ${formatAmount(l.unit_price)}`
+                        }
+                      />
+                      <td className="px-4 py-2 text-right">
+                        <form action={setRxReceivedAction}>
+                          {(waiting.length === 0 ? pair : waiting).map((l) => (
+                            <input
+                              key={l.id}
+                              type="hidden"
+                              name="id"
+                              value={l.id}
+                            />
+                          ))}
+                          {waiting.length === 0 ? (
+                            <span className="inline-flex items-center gap-2">
+                              <span className="text-xs text-emerald-700">
+                                Received {formatDate(lastReceived ?? null)}
+                              </span>
+                              <input
+                                type="hidden"
+                                name="received"
+                                value="false"
+                              />
+                              <button
+                                type="submit"
+                                className="text-navy-400 hover:text-navy-600 rounded p-1 transition-colors hover:bg-mist-100"
+                                title="Undo received"
+                              >
+                                <RotateCcw className="size-3.5" aria-hidden />
+                                <span className="sr-only">
+                                  Undo received for {job.shopName}
+                                </span>
+                              </button>
+                            </span>
+                          ) : (
+                            <>
+                              <input
+                                type="hidden"
+                                name="received"
+                                value="true"
+                              />
+                              <button
+                                type="submit"
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
+                              >
+                                <Check className="size-3.5" aria-hidden />
+                                {waiting.length > 1
+                                  ? "Mark both received"
+                                  : "Mark received"}
+                              </button>
+                              {waiting.length < pair.length && (
+                                <span className="mt-1 block text-xs text-emerald-700">
+                                  {pair
+                                    .filter((l) => l.rx_status === "received")
+                                    .map((l) => l.eye ?? "One")
+                                    .join(" + ")}{" "}
+                                  received
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </form>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          {jobs.length === RX_LIMIT && (
+          {jobs.flat().length >= RX_LIMIT && (
             <p className="text-navy-500 border-t border-mist-200 px-5 py-3 text-xs">
               Showing the latest {RX_LIMIT}. Search by power or shop to narrow
               it down.
@@ -417,5 +455,30 @@ export default async function RxOrdersPage({
         )}
       </section>
     </div>
+  );
+}
+
+/** One cell showing each eye of a pair on its own line, R above L. */
+function Stack({
+  pair,
+  value,
+  align = "right",
+  mono = true,
+}: {
+  pair: RxJob[];
+  value: (line: RxJob) => string;
+  align?: "left" | "right";
+  mono?: boolean;
+}) {
+  return (
+    <td
+      className={`px-2 py-2.5 tabular-nums ${align === "right" ? "text-right" : ""} ${mono ? "font-mono text-xs" : "text-sm whitespace-nowrap"}`}
+    >
+      {pair.map((line) => (
+        <span key={line.id} className="block leading-6">
+          {value(line)}
+        </span>
+      ))}
+    </td>
   );
 }

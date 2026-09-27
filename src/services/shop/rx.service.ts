@@ -3,6 +3,7 @@ import "server-only";
 import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
 import type { OrderLine, RxMonth, RxStatus } from "@/types/database";
+import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
 
 /**
@@ -36,8 +37,11 @@ export interface RxSearch {
 /** The most jobs one search returns; narrow by power or shop to see more. */
 export const RX_LIMIT = 200;
 
-/** RX jobs matching a search, newest first. */
-export async function listRxJobs(search: RxSearch): Promise<RxJob[]> {
+/**
+ * RX jobs matching a search, newest first — one row per job, the R and L of
+ * the same product on the same order together.
+ */
+export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
   const { supabase } = await requireUser();
 
   // A shop search narrows to that shop's orders first, so the limit below
@@ -87,9 +91,24 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[]> {
   }
   if (orderIds) query = query.in("order_id", orderIds);
 
-  const { data: lines, error } = await query;
+  const { data: matched, error } = await query;
   if (error) throw new Error(describePostgresError(error, "load RX jobs"));
-  if (!lines || lines.length === 0) return [];
+  if (!matched || matched.length === 0) return [];
+
+  // A search can hit one eye only; read the rest of those orders' RX lines so
+  // each lens is shown with its partner.
+  const { data: siblings, error: siblingError } = await supabase
+    .from("order_lines")
+    .select("*")
+    .not("rx_status", "is", null)
+    .in("order_id", [...new Set(matched.map((l) => l.order_id))]);
+  if (siblingError) {
+    throw new Error(describePostgresError(siblingError, "load RX jobs"));
+  }
+
+  const matchedIds = new Set(matched.map((l) => l.id));
+  const extra = (siblings ?? []).filter((l) => !matchedIds.has(l.id));
+  const lines = [...matched, ...extra];
 
   const supplierIds = [
     ...new Set(lines.map((l) => l.supplier_id).filter((id) => id !== null)),
@@ -129,7 +148,7 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[]> {
     (suppliers.data ?? []).map((s) => [s.id, s.name]),
   );
 
-  return lines.map((line) => {
+  const jobs = lines.map((line): RxJob => {
     const order = orderById.get(line.order_id);
     const customer = order
       ? customerById.get(order.bill_to_customer_id)
@@ -148,11 +167,13 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[]> {
       voided: Boolean(order?.voided_at),
     };
   });
+
+  return pairEyes(jobs, matchedIds);
 }
 
-/** Mark an RX lens as back from the lab, or undo that. */
+/** Mark RX lenses (usually an R and L pair) as back from the lab, or undo. */
 export async function setRxReceived(
-  lineId: string,
+  lineIds: string[],
   received: boolean,
 ): Promise<void> {
   const { supabase } = await requireUser();
@@ -163,13 +184,13 @@ export async function setRxReceived(
       rx_status: received ? "received" : "ordered",
       received_at: received ? new Date().toISOString() : null,
     })
-    .eq("id", lineId)
+    .in("id", lineIds)
     .not("rx_status", "is", null);
 
   if (error) {
     throw new Error(describePostgresError(error, "update the RX job"));
   }
-  logger.info("RX job updated", { lineId, received });
+  logger.info("RX job updated", { lines: lineIds.length, received });
 }
 
 /** RX sales, cost and profit for the latest months, newest first. */
