@@ -38,6 +38,7 @@ export async function createOrder(payload: OrderPayload): Promise<Order> {
       bill_to_customer_id: payload.customerId,
       external_order_ref: optional(payload.externalOrderRef),
       priority: payload.priority,
+      is_rx: payload.isRx,
       order_by_name: optional(payload.orderByName),
       deliver_to_name: optional(payload.deliverToName),
       deliver_to_address: optional(payload.deliverToAddress),
@@ -171,13 +172,15 @@ async function replaceLines(
     }
     // A lens always has an SPH, and every lens bin is held at one, so a blank
     // SPH is plano (0.00) — otherwise the line matches no stock.
-    const sph = line.sph ?? (product.tracks_power || product.is_rx ? 0 : null);
+    // Every line of an RX order is a lab job; so is any line on an RX product.
+    const rx = payload.isRx || product.is_rx;
+    const sph = line.sph ?? (product.tracks_power || rx ? 0 : null);
     // Zero cylinder or addition means none: stored as NULL so it prints
     // blank, and so it matches a stock bin received the same way.
     const cyl = line.cyl === 0 ? null : line.cyl;
     const addPower = line.addPower === 0 ? null : line.addPower;
     const eye = line.eye === "" || !line.eye ? null : line.eye;
-    const receivedAt = product.is_rx
+    const receivedAt = rx
       ? (received
           .get(
             positionOf({
@@ -207,8 +210,8 @@ async function replaceLines(
       discount_pct: line.discountPct,
       quantity: line.quantity,
       unit_cost: line.unitCost,
-      supplier_id: product.is_rx ? line.supplierId : null,
-      rx_status: product.is_rx ? (receivedAt ? "received" : "ordered") : null,
+      supplier_id: rx ? line.supplierId : null,
+      rx_status: rx ? (receivedAt ? "received" : "ordered") : null,
       received_at: receivedAt,
     } as const;
   });
@@ -260,16 +263,20 @@ export async function getOrder(id: string): Promise<OrderWithLines | null> {
 export interface ListOrdersOptions {
   /** `true` for issued invoices, `false` for open drafts. */
   issued?: boolean;
+  /** `false` for stock orders only, `true` for RX only; omit for both. */
+  rx?: boolean;
   limit?: number;
 }
 
 export async function listOrders({
   issued,
+  rx,
   limit = 100,
 }: ListOrdersOptions = {}): Promise<Order[]> {
   const { supabase } = await requireUser();
 
   let query = supabase.from("orders").select("*").limit(limit);
+  if (rx !== undefined) query = query.eq("is_rx", rx);
 
   query =
     issued === true

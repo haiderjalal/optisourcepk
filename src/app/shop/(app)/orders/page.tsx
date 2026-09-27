@@ -15,7 +15,8 @@ export const metadata: Metadata = { title: "Orders" };
 export default async function OrdersPage() {
   await requireUser();
   const [orders, customers] = await Promise.all([
-    listOrders(),
+    // RX orders live on the RX screen.
+    listOrders({ rx: false }),
     listCustomers(),
   ]);
   // Drafts have no billing snapshot yet — that is written when the invoice is

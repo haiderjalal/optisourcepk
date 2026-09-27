@@ -43,7 +43,8 @@ export function ProductForm({ product }: { product?: Product }) {
       : "What you pay for it.";
 
   const [tracksStock, setTracksStock] = useState(product?.tracks_stock ?? true);
-  const [isRx, setIsRx] = useState(product?.is_rx ?? false);
+  // Set by migration 0019 only; RX is now chosen per order, not per product.
+  const isRx = product?.is_rx ?? false;
   const [tracksPower, setTracksPower] = useState(
     product?.tracks_power ?? false,
   );
@@ -294,6 +295,9 @@ export function ProductForm({ product }: { product?: Product }) {
           </span>
         </label>
 
+        {/* Keep a product 0019 marked RX as it is on re-save. */}
+        {isRx && <input type="hidden" name="isRx" value="on" />}
+
         {/* A disabled checkbox submits nothing, so carry the real value. */}
         {tracksPower && <input type="hidden" name="tracksStock" value="on" />}
 
@@ -304,10 +308,7 @@ export function ProductForm({ product }: { product?: Product }) {
             checked={tracksPower}
             onChange={(e) => {
               setTracksPower(e.target.checked);
-              if (e.target.checked) {
-                setTracksStock(true);
-                setIsRx(false);
-              }
+              if (e.target.checked) setTracksStock(true);
             }}
             className="mt-0.5 size-4 shrink-0"
           />
@@ -320,35 +321,6 @@ export function ProductForm({ product }: { product?: Product }) {
             </span>
           </span>
         </label>
-
-        <label className="mt-3 flex gap-3 rounded-lg border border-mist-200 p-3.5">
-          <input
-            type="checkbox"
-            name="isRx"
-            checked={isRx}
-            onChange={(e) => {
-              setIsRx(e.target.checked);
-              if (e.target.checked) {
-                setTracksStock(false);
-                setTracksPower(false);
-              }
-            }}
-            className="mt-0.5 size-4 shrink-0"
-          />
-          <span className="min-w-0">
-            <span className="block text-sm font-medium">
-              RX lens — made to order
-            </span>
-            <span className="text-navy-500 block text-xs">
-              Ordered from a lab for each job, so no stock is held. Order lines
-              take SPH, CYL, ADD, a purchase price and the lab, and show on the
-              RX screen until the lens is received.
-            </span>
-          </span>
-        </label>
-        {errors?.isRx && (
-          <p className="mt-2 text-xs text-amber-700">{errors.isRx[0]}</p>
-        )}
 
         {tracksStock && (
           <Field

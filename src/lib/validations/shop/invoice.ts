@@ -92,6 +92,8 @@ export const orderSchema = z.object({
   customerId: z.uuid("Pick a customer."),
   externalOrderRef: z.string().trim().max(40).optional().or(z.literal("")),
   priority: z.enum(["normal", "urgent"]).default("normal"),
+  /** Set when the order is started from the RX screen; fixed after that. */
+  isRx: z.boolean().default(false),
 
   orderByName: z.string().trim().max(120).optional().or(z.literal("")),
   deliverToName: z.string().trim().max(120).optional().or(z.literal("")),

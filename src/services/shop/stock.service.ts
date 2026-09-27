@@ -300,7 +300,9 @@ export async function checkOrderStock(
     .select(
       "product_id, sph, cyl, add_power, eye, quantity, product_name, unit",
     )
-    .eq("order_id", orderId);
+    .eq("order_id", orderId)
+    // RX lines come from a lab, as issue_invoice treats them.
+    .is("rx_status", null);
 
   if (error) throw new Error(describePostgresError(error, "check stock"));
   if (!lines || lines.length === 0) return [];
