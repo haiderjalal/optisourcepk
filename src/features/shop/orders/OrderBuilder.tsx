@@ -30,6 +30,8 @@ import { saveOrder, type OrderFormState } from "./actions";
 interface LineDraft {
   key: string;
   productId: string;
+  /** RX orders type the product; a new name is added as a product on save. */
+  productName: string;
   orderRef: string;
   eye: "" | "R" | "L";
   sph: string;
@@ -51,6 +53,7 @@ function emptyLine(discount: number): LineDraft {
   return {
     key: nextKey(),
     productId: "",
+    productName: "",
     orderRef: "",
     eye: "",
     sph: "",
@@ -70,6 +73,7 @@ function fromExisting(line: OrderLine): LineDraft {
   return {
     key: nextKey(),
     productId: line.product_id,
+    productName: line.product_name,
     orderRef: line.order_ref ?? "",
     eye: line.eye ?? "",
     sph: text(line.sph),
@@ -142,6 +146,12 @@ export function OrderBuilder({
     () => new Map(products.map((p) => [p.id, p])),
     [products],
   );
+  // RX products typed on earlier orders, offered as you type.
+  const rxNames = useMemo(
+    () =>
+      [...new Set(products.filter((p) => p.is_rx).map((p) => p.name))].sort(),
+    [products],
+  );
 
   function update(key: string, patch: Partial<LineDraft>) {
     setLines((rows) =>
@@ -202,7 +212,9 @@ export function OrderBuilder({
 
   // What the server actually validates. Blank strings become nulls there.
   const payload = lines.map((line) => ({
-    productId: line.productId,
+    // An RX line goes by the typed name; the server finds or adds the product.
+    productId: isRx ? "" : line.productId,
+    productName: isRx ? line.productName : "",
     orderRef: line.orderRef,
     eye: line.eye,
     sph: line.sph,
@@ -221,6 +233,13 @@ export function OrderBuilder({
       {order && <input type="hidden" name="id" value={order.id} />}
       <input type="hidden" name="isRx" value={String(isRx)} />
       <input type="hidden" name="lines" value={JSON.stringify(payload)} />
+      {isRx && (
+        <datalist id="rx-product-names">
+          {rxNames.map((name) => (
+            <option key={name} value={name} />
+          ))}
+        </datalist>
+      )}
 
       <section className="shadow-lift rounded-2xl bg-white p-5">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -359,21 +378,37 @@ export function OrderBuilder({
                       </td>
 
                       <td className="px-3 py-2">
-                        <select
-                          aria-label={`Product for line ${index + 1}`}
-                          className={cell}
-                          value={line.productId}
-                          onChange={(e) =>
-                            pickProduct(line.key, e.target.value)
-                          }
-                        >
-                          <option value="">Select…</option>
-                          {products.map((p) => (
-                            <option key={p.id} value={p.id}>
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
+                        {isRx ? (
+                          <input
+                            aria-label={`Product for line ${index + 1}`}
+                            className={cell}
+                            type="text"
+                            list="rx-product-names"
+                            required
+                            maxLength={120}
+                            placeholder="Type a product"
+                            value={line.productName}
+                            onChange={(e) =>
+                              update(line.key, { productName: e.target.value })
+                            }
+                          />
+                        ) : (
+                          <select
+                            aria-label={`Product for line ${index + 1}`}
+                            className={cell}
+                            value={line.productId}
+                            onChange={(e) =>
+                              pickProduct(line.key, e.target.value)
+                            }
+                          >
+                            <option value="">Select…</option>
+                            {products.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
                       </td>
 
                       <td className="px-2 py-2">

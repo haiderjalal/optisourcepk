@@ -8,6 +8,7 @@ import type {
 } from "@/lib/validations/shop/invoice";
 import type { Customer, Order, OrderLine } from "@/types/database";
 import { describePostgresError } from "./errors";
+import { resolveRxProducts, rxProductId } from "./product.service";
 
 /**
  * Orders and invoices.
@@ -142,6 +143,15 @@ async function replaceLines(
     received.set(positionOf(line), list);
   }
 
+  // Typed RX product names become products first, before any line is touched.
+  const typed = payload.lines
+    .filter((line) => !line.productId && line.productName)
+    .map((line) => line.productName ?? "");
+  const typedIds = await resolveRxProducts(typed);
+  const productIdOf = (line: OrderPayload["lines"][number]) =>
+    line.productId ??
+    (line.productName ? rxProductId(typedIds, line.productName) : undefined);
+
   const { error: clearError } = await supabase
     .from("order_lines")
     .delete()
@@ -153,7 +163,9 @@ async function replaceLines(
 
   // Snapshot the product name at this moment: a later rename must not rewrite
   // an order that has already been printed or sent.
-  const productIds = [...new Set(payload.lines.map((line) => line.productId))];
+  const productIds = [
+    ...new Set(payload.lines.map(productIdOf).filter((id) => id !== undefined)),
+  ];
   const { data: products, error: productError } = await supabase
     .from("products")
     .select("id, name, unit, tracks_power, is_rx")
@@ -166,7 +178,8 @@ async function replaceLines(
   const byId = new Map((products ?? []).map((p) => [p.id, p]));
 
   const rows = payload.lines.map((line, index) => {
-    const product = byId.get(line.productId);
+    const productId = productIdOf(line);
+    const product = productId ? byId.get(productId) : undefined;
     if (!product) {
       throw new Error("One of those products no longer exists.");
     }
@@ -198,7 +211,7 @@ async function replaceLines(
       order_id: orderId,
       line_no: index + 1,
       order_ref: optional(line.orderRef) ?? optional(payload.externalOrderRef),
-      product_id: line.productId,
+      product_id: product.id,
       product_name: product.name,
       unit: product.unit,
       eye,

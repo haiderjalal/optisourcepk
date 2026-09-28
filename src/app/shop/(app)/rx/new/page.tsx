@@ -20,7 +20,8 @@ export default async function NewRxOrderPage() {
     listSuppliers(),
   ]);
 
-  const blocked = customers.length === 0 || products.length === 0;
+  // Products are typed on an RX order, so only a customer is needed first.
+  const blocked = customers.length === 0;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -34,29 +35,19 @@ export default async function NewRxOrderPage() {
 
       <h1 className="text-2xl font-bold">New RX order</h1>
       <p className="text-navy-500 mt-2 mb-6 max-w-prose text-sm">
-        For lenses ordered from a lab. Enter each lens with its power, the sale
-        price, and what the lab charges. No stock is checked or deducted.
+        For lenses ordered from a lab. Type the product, its power, the sale
+        price and what the lab charges. A product you have not used before is
+        saved for next time. No stock is checked or deducted.
       </p>
 
       {blocked ? (
         <div className="rounded-2xl border border-dashed border-mist-300 bg-white/60 px-6 py-12 text-center">
-          <h2 className="font-semibold">
-            {customers.length === 0
-              ? "Add a customer first."
-              : "Add a product first."}
-          </h2>
+          <h2 className="font-semibold">Add a customer first.</h2>
           <p className="text-navy-500 mx-auto mt-2 max-w-sm text-sm">
-            An order needs a shop to bill and something to sell.
+            An RX order needs a shop to bill.
           </p>
-          <ButtonLink
-            href={
-              customers.length === 0
-                ? "/shop/customers/new"
-                : "/shop/products/new"
-            }
-            className="mt-6"
-          >
-            {customers.length === 0 ? "Add a customer" : "Add a product"}
+          <ButtonLink href="/shop/customers/new" className="mt-6">
+            Add a customer
           </ButtonLink>
         </div>
       ) : (
