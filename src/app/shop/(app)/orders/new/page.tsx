@@ -4,7 +4,6 @@ import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listCustomers } from "@/services/shop/customer.service";
 import { listSellableProducts } from "@/services/shop/product.service";
-import { listSuppliers } from "@/services/shop/supplier.service";
 import { OrderBuilder } from "@/features/shop/orders/OrderBuilder";
 import { ButtonLink } from "@/components/ui/button";
 
@@ -13,10 +12,9 @@ export const metadata: Metadata = { title: "New order" };
 export default async function NewOrderPage() {
   await requireUser();
 
-  const [customers, products, suppliers] = await Promise.all([
+  const [customers, products] = await Promise.all([
     listCustomers(),
     listSellableProducts(),
-    listSuppliers(),
   ]);
 
   const blocked = customers.length === 0 || products.length === 0;
@@ -55,11 +53,7 @@ export default async function NewOrderPage() {
           </ButtonLink>
         </div>
       ) : (
-        <OrderBuilder
-          customers={customers}
-          products={products}
-          suppliers={suppliers}
-        />
+        <OrderBuilder customers={customers} products={products} />
       )}
     </div>
   );

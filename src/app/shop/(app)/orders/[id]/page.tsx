@@ -15,7 +15,13 @@ import {
   IssuePanel,
   VoidPanel,
 } from "@/features/shop/orders/InvoiceActions";
-import { formatAmount, formatDateTime, formatPower } from "@/lib/format";
+import { RxStageControl } from "@/features/shop/rx/RxStageControl";
+import {
+  formatAmount,
+  formatDateTime,
+  formatPower,
+  formatRxNo,
+} from "@/lib/format";
 
 export const metadata: Metadata = { title: "Order" };
 
@@ -60,16 +66,23 @@ export default async function OrderPage({
             <h1 className="text-2xl font-bold">
               {issued
                 ? `Invoice ${order.invoice_no}`
-                : `Order ${order.order_no}`}
+                : order.is_rx
+                  ? formatRxNo(order.rx_no)
+                  : `Order ${order.order_no}`}
             </h1>
             <StatusBadge order={order} />
             {order.is_rx && (
               <span className="bg-accent-50 text-accent-700 ring-accent-200 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset">
-                RX
+                {issued ? formatRxNo(order.rx_no) : "RX"}
               </span>
             )}
           </div>
           <p className="text-navy-500 mt-1.5 text-sm">
+            {order.is_rx && order.patient_name && (
+              <span className="text-navy-800 font-medium">
+                {order.patient_name} ·{" "}
+              </span>
+            )}
             {order.customer?.shop_name ?? order.bill_to_shop ?? "—"}
             {order.customer?.area ? ` · ${order.customer.area}` : ""}
             {issued && ` · issued ${formatDateTime(order.issued_at)}`}
@@ -103,6 +116,40 @@ export default async function OrderPage({
           )}
         </div>
       </div>
+
+      {order.is_rx && order.rx_stage && (
+        <section className="shadow-lift mb-5 rounded-2xl bg-white p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base font-semibold">Lab</h2>
+            <RxStageControl
+              orderId={order.id}
+              stage={order.rx_stage}
+              sentAt={order.rx_sent_at}
+              backAt={order.rx_back_at}
+              final={issued || voided}
+            />
+          </div>
+          <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
+            <RxDetail
+              label="Lens type"
+              value={order.rx_lens_type?.toUpperCase() ?? null}
+            />
+            <RxDetail
+              label="Frame"
+              value={
+                [order.frame_material, order.frame_type]
+                  .filter(Boolean)
+                  .map((v) => String(v).replace(/^./, (c) => c.toUpperCase()))
+                  .join(", ") || null
+              }
+            />
+            <RxDetail
+              label="Tint / photochromatic / antiglare"
+              value={order.rx_tint_reason}
+            />
+          </dl>
+        </section>
+      )}
 
       <section className="shadow-lift mb-5 overflow-hidden rounded-2xl bg-white">
         <div className="overflow-x-auto">
@@ -238,7 +285,15 @@ export default async function OrderPage({
       {!issued && !voided && (
         <div className="space-y-5">
           <StockCheck lines={availability} />
-          <IssuePanel order={order} subtotal={subtotal} />
+          {order.is_rx && order.rx_stage !== "back" ? (
+            <p className="text-navy-600 rounded-2xl border border-dashed border-mist-300 bg-white/60 px-5 py-4 text-sm">
+              The invoice can be issued once the lens is back from the lab. Mark
+              it back from the lab above, check the prices with Edit, then
+              issue.
+            </p>
+          ) : (
+            <IssuePanel order={order} subtotal={subtotal} />
+          )}
           <DeleteDraftPanel order={order} />
         </div>
       )}
@@ -296,6 +351,15 @@ function Row({ label, value }: { label: string; value: number | null }) {
     <div className="flex justify-between">
       <dt className="text-navy-500">{label}</dt>
       <dd className="tabular-nums">{formatAmount(value ?? 0)}</dd>
+    </div>
+  );
+}
+
+function RxDetail({ label, value }: { label: string; value: string | null }) {
+  return (
+    <div>
+      <dt className="text-navy-500 text-xs">{label}</dt>
+      <dd className="mt-0.5">{value ?? "—"}</dd>
     </div>
   );
 }
