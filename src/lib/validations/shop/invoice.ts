@@ -35,7 +35,18 @@ function dioptre(min: number, max: number, label: string) {
 
 export const orderLineSchema = z
   .object({
-    productId: z.uuid("Pick a product for every line."),
+    // A stock order picks a product. An RX order may type one instead; a name
+    // not seen before is added as an RX product when the order is saved.
+    productId: z
+      .union([z.uuid("Pick a product for every line."), z.literal("")])
+      .optional()
+      .transform((value) => value || null),
+    productName: z
+      .string()
+      .trim()
+      .max(120, "Keep the product name under 120 characters.")
+      .optional()
+      .transform((value) => value || null),
     orderRef: z.string().trim().max(40).optional().or(z.literal("")),
     eye: z.enum(["", "R", "L"]).optional(),
     sph: sphField,
@@ -81,6 +92,10 @@ export const orderLineSchema = z
       .union([z.uuid("Pick a lab from the list."), z.literal("")])
       .optional()
       .transform((value) => value || null),
+  })
+  .refine((line) => line.productId !== null || line.productName !== null, {
+    error: "Pick or type a product for every line.",
+    path: ["productId"],
   })
   // Mirrors order_lines_ax_needs_cyl: an axis without a cylinder is meaningless.
   .refine((line) => line.ax === null || line.cyl !== null, {

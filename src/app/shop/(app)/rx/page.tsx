@@ -174,7 +174,7 @@ export default async function RxOrdersPage({
                     Order
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
-                    Lens
+                    Product
                   </th>
                   <th scope="col" className="px-2 py-2.5 font-medium">
                     Eye

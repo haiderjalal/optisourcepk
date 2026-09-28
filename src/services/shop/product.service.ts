@@ -126,6 +126,78 @@ export async function listSellableProducts(): Promise<Product[]> {
   return data ?? [];
 }
 
+/** A typed product name, compared the way a person would: case and spaces aside. */
+function nameKey(name: string): string {
+  return name.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/**
+ * The product id for each typed RX product name, adding any not seen before.
+ *
+ * RX lenses are priced per job and never stocked, so a new name becomes a
+ * product with no price and no stock — just a name to pick next time. An
+ * existing product of the same name is reused, whatever its kind: an RX line
+ * never touches stock, so reusing a stocked lens's name is harmless.
+ */
+export async function resolveRxProducts(
+  names: string[],
+): Promise<Map<string, string>> {
+  const { supabase } = await requireUser();
+
+  const wanted = new Map<string, string>();
+  for (const name of names) {
+    const clean = name.trim().replace(/\s+/g, " ");
+    if (clean) wanted.set(nameKey(clean), clean);
+  }
+  const ids = new Map<string, string>();
+  if (wanted.size === 0) return ids;
+
+  // ponytail: reads every product name to match case-insensitively; fine for a
+  // shop catalogue, move to a unique index on lower(name) if it grows large.
+  const { data: existing, error } = await supabase
+    .from("products")
+    .select("id, name")
+    .is("deleted_at", null)
+    .order("created_at");
+  if (error) throw new Error(describePostgresError(error, "read the products"));
+
+  for (const product of existing ?? []) {
+    const key = nameKey(product.name);
+    if (wanted.has(key) && !ids.has(key)) ids.set(key, product.id);
+  }
+
+  const missing = [...wanted].filter(([key]) => !ids.has(key));
+  if (missing.length > 0) {
+    const { data: created, error: createError } = await supabase
+      .from("products")
+      .insert(
+        missing.map(([, name]) => ({
+          name,
+          category: "lenses" as ProductCategory,
+          is_rx: true,
+          tracks_stock: false,
+        })),
+      )
+      .select("id, name");
+    if (createError) {
+      throw new Error(describePostgresError(createError, "add the RX product"));
+    }
+    for (const product of created ?? [])
+      ids.set(nameKey(product.name), product.id);
+    logger.info("RX products added", { count: missing.length });
+  }
+
+  return ids;
+}
+
+/** Look up the id `resolveRxProducts` gave a typed name. */
+export function rxProductId(
+  ids: Map<string, string>,
+  name: string,
+): string | undefined {
+  return ids.get(nameKey(name));
+}
+
 export async function createProduct(payload: ProductPayload): Promise<Product> {
   const { supabase } = await requireUser();
 
