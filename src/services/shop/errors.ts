@@ -77,6 +77,13 @@ export function describePostgresError(error: unknown, action: string): string {
     case "PGRST301":
     case "PGRST302":
       return "Your session has expired. Please sign in again.";
+    // A column or table the app expects is not in the database (42703/42P01),
+    // or the API has not picked it up yet (PGRST204/PGRST205).
+    case "PGRST204":
+    case "PGRST205":
+    case "42703":
+    case "42P01":
+      return `We could not ${action}: the database is missing its latest update. Run the newest files in supabase/migrations in the Supabase SQL Editor, then try again. If you already ran them, run: notify pgrst, 'reload schema';`;
     default:
       return `We could not ${action}. Please try again — if it keeps happening, the error reference is ${code}.`;
   }
