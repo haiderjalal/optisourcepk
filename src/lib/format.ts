@@ -93,3 +93,8 @@ export function describeBin(bin: {
   if (bin.eye) parts.push(bin.eye);
   return parts.join(" ");
 }
+
+/** An RX order's number as printed: RX-0001. */
+export function formatRxNo(rxNo: number | null): string {
+  return rxNo === null ? "RX" : `RX-${String(rxNo).padStart(4, "0")}`;
+}

@@ -24,6 +24,18 @@ export interface OrderWithLines extends Order {
   customer: Customer | null;
 }
 
+/** The RX job card fields; all null on a stock order. */
+function rxCard(payload: OrderPayload) {
+  const rx = payload.isRx;
+  return {
+    patient_name: rx ? optional(payload.patientName) : null,
+    rx_lens_type: rx && payload.rxLensType ? payload.rxLensType : null,
+    rx_tint_reason: rx ? optional(payload.rxTintReason) : null,
+    frame_material: rx && payload.frameMaterial ? payload.frameMaterial : null,
+    frame_type: rx && payload.frameType ? payload.frameType : null,
+  };
+}
+
 /** Blank from a form means "not given", not "set to empty". */
 function optional(value: string | undefined): string | null {
   const trimmed = value?.trim();
@@ -39,6 +51,7 @@ export async function createOrder(payload: OrderPayload): Promise<Order> {
       bill_to_customer_id: payload.customerId,
       external_order_ref: optional(payload.externalOrderRef),
       priority: payload.priority,
+      ...rxCard(payload),
       is_rx: payload.isRx,
       order_by_name: optional(payload.orderByName),
       deliver_to_name: optional(payload.deliverToName),
@@ -82,6 +95,7 @@ export async function updateOrder(
       bill_to_customer_id: payload.customerId,
       external_order_ref: optional(payload.externalOrderRef),
       priority: payload.priority,
+      ...rxCard(payload),
       order_by_name: optional(payload.orderByName),
       deliver_to_name: optional(payload.deliverToName),
       deliver_to_address: optional(payload.deliverToAddress),
@@ -185,8 +199,8 @@ async function replaceLines(
     }
     // A lens always has an SPH, and every lens bin is held at one, so a blank
     // SPH is plano (0.00) — otherwise the line matches no stock.
-    // Every line of an RX order is a lab job; so is any line on an RX product.
-    const rx = payload.isRx || product.is_rx;
+    // Every line of an RX order is a lab job, and only those.
+    const rx = payload.isRx;
     const sph = line.sph ?? (product.tracks_power || rx ? 0 : null);
     // Zero cylinder or addition means none: stored as NULL so it prints
     // blank, and so it matches a stock bin received the same way.
@@ -210,7 +224,12 @@ async function replaceLines(
     return {
       order_id: orderId,
       line_no: index + 1,
-      order_ref: optional(line.orderRef) ?? optional(payload.externalOrderRef),
+      // On an RX order the patient's name is the reference, so it prints on
+      // the invoice against each lens.
+      order_ref:
+        optional(line.orderRef) ??
+        optional(payload.externalOrderRef) ??
+        (payload.isRx ? optional(payload.patientName) : null),
       product_id: product.id,
       product_name: product.name,
       unit: product.unit,

@@ -31,6 +31,10 @@ export type ProductCategory =
 
 export type Eye = "R" | "L";
 export type RxStatus = "ordered" | "received";
+export type RxStage = "booked" | "sent" | "back";
+export type RxLensType = "sv" | "nv" | "dbf" | "prog";
+export type FrameMaterial = "plastic" | "metal";
+export type FrameType = "rimmed" | "half" | "rimless";
 
 type CustomerRow = {
   id: string;
@@ -184,6 +188,17 @@ type OrderRow = {
   priority: OrderPriority;
   /** An RX order: lenses made by a lab; its lines never touch stock. */
   is_rx: boolean;
+  /** RX only: RX-0001 onwards, its own sequence. */
+  rx_no: number | null;
+  patient_name: string | null;
+  rx_lens_type: RxLensType | null;
+  rx_tint_reason: string | null;
+  frame_material: FrameMaterial | null;
+  frame_type: FrameType | null;
+  /** RX only: booked, sent to lab, back from lab. */
+  rx_stage: RxStage | null;
+  rx_sent_at: string | null;
+  rx_back_at: string | null;
   bill_to_customer_id: string;
   order_by_name: string | null;
   deliver_to_name: string | null;
@@ -431,6 +446,10 @@ export interface Database {
           p_level: number;
         };
         Returns: undefined;
+      };
+      set_rx_stage: {
+        Args: { p_order_id: string; p_stage: RxStage };
+        Returns: OrderRow;
       };
       issue_invoice: {
         Args: {

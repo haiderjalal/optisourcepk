@@ -3,23 +3,24 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/server/shop/dal";
-import { setRxReceived } from "@/services/shop/rx.service";
+import { setRxStage } from "@/services/shop/rx.service";
 
-const receiveSchema = z.object({
-  ids: z.array(z.uuid()).min(1).max(20),
-  received: z.enum(["true", "false"]).transform((v) => v === "true"),
+const stageSchema = z.object({
+  orderId: z.uuid(),
+  stage: z.enum(["booked", "sent", "back"]),
 });
 
-/** Mark an RX job's lenses as back from the lab, or undo a mistaken mark. */
-export async function setRxReceivedAction(formData: FormData): Promise<void> {
+/** Move an RX order to the next lab stage, or back a step to undo. */
+export async function setRxStageAction(formData: FormData): Promise<void> {
   await requireUser();
 
-  const parsed = receiveSchema.safeParse({
-    ids: formData.getAll("id"),
-    received: formData.get("received"),
+  const parsed = stageSchema.safeParse({
+    orderId: formData.get("orderId"),
+    stage: formData.get("stage"),
   });
   if (!parsed.success) return;
 
-  await setRxReceived(parsed.data.ids, parsed.data.received);
+  await setRxStage(parsed.data.orderId, parsed.data.stage);
   revalidatePath("/shop/rx");
+  revalidatePath(`/shop/orders/${parsed.data.orderId}`);
 }

@@ -5,7 +5,7 @@ import { requireUser } from "@/server/shop/dal";
 import { listCustomers } from "@/services/shop/customer.service";
 import { listSellableProducts } from "@/services/shop/product.service";
 import { listSuppliers } from "@/services/shop/supplier.service";
-import { OrderBuilder } from "@/features/shop/orders/OrderBuilder";
+import { RxOrderForm } from "@/features/shop/rx/RxOrderForm";
 import { ButtonLink } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "New RX order" };
@@ -24,7 +24,7 @@ export default async function NewRxOrderPage() {
   const blocked = customers.length === 0;
 
   return (
-    <div className="mx-auto max-w-6xl">
+    <div className="mx-auto max-w-4xl">
       <Link
         href="/shop/rx"
         className="text-navy-500 hover:text-navy-700 mb-5 inline-flex items-center gap-2 text-sm font-medium"
@@ -51,11 +51,10 @@ export default async function NewRxOrderPage() {
           </ButtonLink>
         </div>
       ) : (
-        <OrderBuilder
+        <RxOrderForm
           customers={customers}
           products={products}
           suppliers={suppliers}
-          isRx
         />
       )}
     </div>

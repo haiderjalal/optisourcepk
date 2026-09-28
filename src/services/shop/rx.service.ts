@@ -2,7 +2,7 @@ import "server-only";
 
 import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
-import type { OrderLine, RxMonth, RxStatus } from "@/types/database";
+import type { OrderLine, RxMonth, RxStage, RxStatus } from "@/types/database";
 import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
 
@@ -23,6 +23,11 @@ export interface RxJob extends OrderLine {
   supplierName: string | null;
   orderStatus: string;
   voided: boolean;
+  rxNo: number | null;
+  patientName: string | null;
+  rxStage: RxStage | null;
+  rxSentAt: string | null;
+  rxBackAt: string | null;
 }
 
 export interface RxSearch {
@@ -44,8 +49,8 @@ export const RX_LIMIT = 200;
 export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
   const { supabase } = await requireUser();
 
-  // A shop search narrows to that shop's orders first, so the limit below
-  // applies to its jobs rather than to everyone's.
+  // A name search narrows to the matching orders first — by the shop's name
+  // or the patient's — so the limit below applies to their jobs, not everyone's.
   let orderIds: string[] | null = null;
   if (search.shop) {
     const pattern = `%${search.shop.replace(/[%_\\]/g, "\\$&")}%`;
@@ -54,19 +59,37 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
       .select("id")
       .ilike("shop_name", pattern);
     if (error) throw new Error(describePostgresError(error, "search RX jobs"));
-    if (!customers?.length) return [];
 
-    const { data: orders, error: orderError } = await supabase
-      .from("orders")
-      .select("id")
-      .in(
-        "bill_to_customer_id",
-        customers.map((c) => c.id),
+    const [byShop, byPatient] = await Promise.all([
+      customers?.length
+        ? supabase
+            .from("orders")
+            .select("id")
+            .eq("is_rx", true)
+            .in(
+              "bill_to_customer_id",
+              customers.map((c) => c.id),
+            )
+        : Promise.resolve({ data: [], error: null }),
+      supabase
+        .from("orders")
+        .select("id")
+        .eq("is_rx", true)
+        .ilike("patient_name", pattern),
+    ]);
+    if (byShop.error || byPatient.error) {
+      throw new Error(
+        describePostgresError(
+          byShop.error ?? byPatient.error,
+          "search RX jobs",
+        ),
       );
-    if (orderError) {
-      throw new Error(describePostgresError(orderError, "search RX jobs"));
     }
-    orderIds = (orders ?? []).map((o) => o.id);
+    orderIds = [
+      ...new Set(
+        [...(byShop.data ?? []), ...(byPatient.data ?? [])].map((o) => o.id),
+      ),
+    ];
     if (orderIds.length === 0) return [];
   }
 
@@ -118,7 +141,7 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
     supabase
       .from("orders")
       .select(
-        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id",
+        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id, rx_no, patient_name, rx_stage, rx_sent_at, rx_back_at",
       )
       .in("id", [...new Set(lines.map((l) => l.order_id))]),
     supplierIds.length
@@ -165,32 +188,36 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
         : null,
       orderStatus: order?.status ?? "created",
       voided: Boolean(order?.voided_at),
+      rxNo: order?.rx_no ?? null,
+      patientName: order?.patient_name ?? null,
+      rxStage: order?.rx_stage ?? null,
+      rxSentAt: order?.rx_sent_at ?? null,
+      rxBackAt: order?.rx_back_at ?? null,
     };
   });
 
   return pairEyes(jobs, matchedIds);
 }
 
-/** Mark RX lenses (usually an R and L pair) as back from the lab, or undo. */
-export async function setRxReceived(
-  lineIds: string[],
-  received: boolean,
+/**
+ * Move an RX order through the lab: booked, sent to lab, back from lab. Both
+ * eyes move together; the invoice can be issued once it is back.
+ */
+export async function setRxStage(
+  orderId: string,
+  stage: RxStage,
 ): Promise<void> {
   const { supabase } = await requireUser();
 
-  const { error } = await supabase
-    .from("order_lines")
-    .update({
-      rx_status: received ? "received" : "ordered",
-      received_at: received ? new Date().toISOString() : null,
-    })
-    .in("id", lineIds)
-    .not("rx_status", "is", null);
+  const { error } = await supabase.rpc("set_rx_stage", {
+    p_order_id: orderId,
+    p_stage: stage,
+  });
 
   if (error) {
-    throw new Error(describePostgresError(error, "update the RX job"));
+    throw new Error(describePostgresError(error, "update the RX order"));
   }
-  logger.info("RX job updated", { lines: lineIds.length, received });
+  logger.info("RX stage set", { orderId, stage });
 }
 
 /** RX sales, cost and profit for the latest months, newest first. */

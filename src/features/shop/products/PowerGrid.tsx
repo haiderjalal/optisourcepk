@@ -201,7 +201,9 @@ export function PowerGrid({
         <SwapLayoutButton layout={layout} onSwap={swapLayout} />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-mist-200">
+      {/* Scrolls on its own so the power row can stay pinned at the top while
+          you work down the grid; sticky only sticks inside what scrolls. */}
+      <div className="max-h-[70vh] overflow-auto rounded-xl border border-mist-200">
         <table className="text-sm">
           <caption className="sr-only">
             Quantity received against each power
@@ -210,7 +212,7 @@ export function PowerGrid({
             <tr className="text-navy-500 bg-mist-100 text-xs">
               <th
                 scope="col"
-                className="sticky left-0 z-10 bg-mist-100 px-3 py-2.5 text-left font-medium whitespace-nowrap"
+                className="sticky top-0 left-0 z-30 bg-mist-100 px-3 py-2.5 text-left font-medium whitespace-nowrap"
               >
                 {corner}
               </th>
@@ -218,7 +220,7 @@ export function PowerGrid({
                 <th
                   key={value ?? "none"}
                   scope="col"
-                  className="px-2 py-2.5 text-center font-mono font-medium"
+                  className="sticky top-0 z-20 bg-mist-100 px-2 py-2.5 text-center font-mono font-medium shadow-[inset_0_-1px_0_var(--color-mist-200)]"
                 >
                   {label(value)}
                 </th>

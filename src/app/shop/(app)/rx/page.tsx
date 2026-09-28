@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, Glasses, Plus, RotateCcw, Search } from "lucide-react";
+import { Glasses, Plus, Search } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import {
   listRxJobs,
@@ -9,10 +9,10 @@ import {
   type RxJob,
   type RxSearch,
 } from "@/services/shop/rx.service";
-import { setRxReceivedAction } from "@/features/shop/rx/actions";
+import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { ButtonLink } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
-import { formatAmount, formatDate, formatPkr, formatPower } from "@/lib/format";
+import { formatAmount, formatPkr, formatPower, formatRxNo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "RX orders" };
 
@@ -23,7 +23,7 @@ const MONTH_NAME = new Intl.DateTimeFormat("en-PK", {
 });
 
 const STATUSES = [
-  { value: "ordered", label: "Waiting for lab" },
+  { value: "ordered", label: "Not back yet" },
   { value: "received", label: "Received" },
   { value: "all", label: "All" },
 ] as const;
@@ -106,12 +106,14 @@ export default async function RxOrdersPage({
           </label>
         ))}
         <label className="text-sm">
-          <span className="text-navy-600 mb-1 block font-medium">Shop</span>
+          <span className="text-navy-600 mb-1 block font-medium">
+            Shop or patient
+          </span>
           <input
             name="shop"
             type="search"
             defaultValue={search.shop}
-            placeholder="Shop name"
+            placeholder="Name"
             className={inputClass}
           />
         </label>
@@ -168,10 +170,10 @@ export default async function RxOrdersPage({
               <thead>
                 <tr className="text-navy-500 bg-mist-100 text-left text-xs">
                   <th scope="col" className="px-4 py-2.5 font-medium">
-                    Shop
+                    Patient / shop
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
-                    Order
+                    RX no.
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Product
@@ -223,14 +225,6 @@ export default async function RxOrdersPage({
               <tbody>
                 {jobs.map((pair) => {
                   const job = pair[0];
-                  const waiting = pair.filter(
-                    (l) => l.rx_status !== "received",
-                  );
-                  const lastReceived = pair
-                    .map((l) => l.received_at)
-                    .filter((d) => d !== null)
-                    .sort()
-                    .at(-1);
 
                   return (
                     <tr
@@ -238,40 +232,30 @@ export default async function RxOrdersPage({
                       className="border-t border-mist-200 align-top"
                     >
                       <td className="px-4 py-2.5">
-                        <span className="font-medium">{job.shopName}</span>
-                        {job.area && (
-                          <span className="text-navy-400 block text-xs">
-                            {job.area}
-                          </span>
-                        )}
+                        <span className="font-medium">
+                          {job.patientName ?? "—"}
+                        </span>
+                        <span className="text-navy-400 block text-xs">
+                          {job.shopName}
+                          {job.area && ` · ${job.area}`}
+                        </span>
                       </td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         <Link
                           href={`/shop/orders/${job.orderId}`}
                           className="text-accent-700 font-medium hover:underline"
                         >
-                          {job.invoiceNo
-                            ? `Invoice ${job.invoiceNo}`
-                            : `Order ${job.orderNo}`}
+                          {formatRxNo(job.rxNo)}
                         </Link>
                         <span className="text-navy-400 block text-xs">
                           {job.voided
                             ? "void"
                             : job.invoiceNo
-                              ? job.orderStatus === "delivered"
-                                ? "delivered"
-                                : "invoiced"
-                              : "draft"}
+                              ? `Invoice ${job.invoiceNo}${job.orderStatus === "delivered" ? " · delivered" : ""}`
+                              : "not invoiced"}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5">
-                        {job.product_name}
-                        {job.order_ref && (
-                          <span className="text-navy-400 block text-xs">
-                            Ref {job.order_ref}
-                          </span>
-                        )}
-                      </td>
+                      <td className="px-3 py-2.5">{job.product_name}</td>
                       <Stack
                         pair={pair}
                         align="left"
@@ -299,64 +283,16 @@ export default async function RxOrdersPage({
                         }
                       />
                       <td className="px-4 py-2 text-right">
-                        <form action={setRxReceivedAction}>
-                          {(waiting.length === 0 ? pair : waiting).map((l) => (
-                            <input
-                              key={l.id}
-                              type="hidden"
-                              name="id"
-                              value={l.id}
-                            />
-                          ))}
-                          {waiting.length === 0 ? (
-                            <span className="inline-flex items-center gap-2">
-                              <span className="text-xs text-emerald-700">
-                                Received {formatDate(lastReceived ?? null)}
-                              </span>
-                              <input
-                                type="hidden"
-                                name="received"
-                                value="false"
-                              />
-                              <button
-                                type="submit"
-                                className="text-navy-400 hover:text-navy-600 rounded p-1 transition-colors hover:bg-mist-100"
-                                title="Undo received"
-                              >
-                                <RotateCcw className="size-3.5" aria-hidden />
-                                <span className="sr-only">
-                                  Undo received for {job.shopName}
-                                </span>
-                              </button>
-                            </span>
-                          ) : (
-                            <>
-                              <input
-                                type="hidden"
-                                name="received"
-                                value="true"
-                              />
-                              <button
-                                type="submit"
-                                className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-800 transition-colors hover:bg-emerald-100"
-                              >
-                                <Check className="size-3.5" aria-hidden />
-                                {waiting.length > 1
-                                  ? "Mark both received"
-                                  : "Mark received"}
-                              </button>
-                              {waiting.length < pair.length && (
-                                <span className="mt-1 block text-xs text-emerald-700">
-                                  {pair
-                                    .filter((l) => l.rx_status === "received")
-                                    .map((l) => l.eye ?? "One")
-                                    .join(" + ")}{" "}
-                                  received
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </form>
+                        {job.rxStage && (
+                          <RxStageControl
+                            orderId={job.orderId}
+                            stage={job.rxStage}
+                            sentAt={job.rxSentAt}
+                            backAt={job.rxBackAt}
+                            final={job.invoiceNo !== null || job.voided}
+                            compact
+                          />
+                        )}
                       </td>
                     </tr>
                   );
