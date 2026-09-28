@@ -24,15 +24,19 @@ export interface OrderWithLines extends Order {
   customer: Customer | null;
 }
 
-/** The RX job card fields; all null on a stock order. */
+/**
+ * The RX job card fields — sent only for an RX order. A stock order sends
+ * none of them, so it saves even on a database that has not had the RX
+ * migrations yet.
+ */
 function rxCard(payload: OrderPayload) {
-  const rx = payload.isRx;
+  if (!payload.isRx) return {};
   return {
-    patient_name: rx ? optional(payload.patientName) : null,
-    rx_lens_type: rx && payload.rxLensType ? payload.rxLensType : null,
-    rx_tint_reason: rx ? optional(payload.rxTintReason) : null,
-    frame_material: rx && payload.frameMaterial ? payload.frameMaterial : null,
-    frame_type: rx && payload.frameType ? payload.frameType : null,
+    patient_name: optional(payload.patientName),
+    rx_lens_type: payload.rxLensType ? payload.rxLensType : null,
+    rx_tint_reason: optional(payload.rxTintReason),
+    frame_material: payload.frameMaterial ? payload.frameMaterial : null,
+    frame_type: payload.frameType ? payload.frameType : null,
   };
 }
 
@@ -52,7 +56,7 @@ export async function createOrder(payload: OrderPayload): Promise<Order> {
       external_order_ref: optional(payload.externalOrderRef),
       priority: payload.priority,
       ...rxCard(payload),
-      is_rx: payload.isRx,
+      ...(payload.isRx ? { is_rx: true } : {}),
       order_by_name: optional(payload.orderByName),
       deliver_to_name: optional(payload.deliverToName),
       deliver_to_address: optional(payload.deliverToAddress),
@@ -132,10 +136,12 @@ async function replaceLines(
 
   // Lines are replaced wholesale, so an RX lens already back from the lab
   // would lose its "received" mark on every edit. Carry it over by position.
-  const { data: previous, error: readError } = await supabase
-    .from("order_lines")
-    .select("product_id, sph, cyl, add_power, eye, rx_status, received_at")
-    .eq("order_id", orderId);
+  const { data: previous, error: readError } = payload.isRx
+    ? await supabase
+        .from("order_lines")
+        .select("product_id, sph, cyl, add_power, eye, rx_status, received_at")
+        .eq("order_id", orderId)
+    : { data: [], error: null };
 
   if (readError) {
     throw new Error(describePostgresError(readError, "update the lines"));
@@ -182,7 +188,7 @@ async function replaceLines(
   ];
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, unit, tracks_power, is_rx")
+    .select("id, name, unit, tracks_power")
     .in("id", productIds);
 
   if (productError) {
@@ -241,11 +247,18 @@ async function replaceLines(
       unit_price: line.unitPrice,
       discount_pct: line.discountPct,
       quantity: line.quantity,
-      unit_cost: line.unitCost,
-      supplier_id: rx ? line.supplierId : null,
-      rx_status: rx ? (receivedAt ? "received" : "ordered") : null,
-      received_at: receivedAt,
-    } as const;
+      // The lab job fields exist only on RX lines.
+      ...(rx
+        ? {
+            unit_cost: line.unitCost,
+            supplier_id: line.supplierId,
+            rx_status: receivedAt
+              ? ("received" as const)
+              : ("ordered" as const),
+            received_at: receivedAt,
+          }
+        : {}),
+    };
   });
 
   const { error: insertError } = await supabase
