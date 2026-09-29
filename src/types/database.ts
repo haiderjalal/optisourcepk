@@ -32,7 +32,8 @@ export type ProductCategory =
 export type Eye = "R" | "L";
 export type RxStatus = "ordered" | "received";
 export type RxStage = "booked" | "sent" | "back";
-export type RxLensType = "sv" | "nv" | "dbf" | "prog";
+/** "nv" only on orders booked before KRY replaced it. */
+export type RxLensType = "sv" | "kry" | "nv" | "dbf" | "prog";
 export type FrameMaterial = "plastic" | "metal";
 export type FrameType = "rimmed" | "half" | "rimless";
 

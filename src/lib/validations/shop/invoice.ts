@@ -97,9 +97,11 @@ export const orderLineSchema = z
     error: "Pick or type a product for every line.",
     path: ["productId"],
   })
-  // Mirrors order_lines_ax_needs_cyl: an axis without a cylinder is meaningless.
+  // Mirrors order_lines_ax_needs_cyl: an axis without a cylinder is
+  // meaningless. A CYL of 0 means "no cylinder", so its axis is dropped on
+  // save; a blank CYL with an axis is more likely a CYL forgotten, so ask.
   .refine((line) => line.ax === null || line.cyl !== null, {
-    error: "An axis needs a cylinder value.",
+    error: "An axis needs a cylinder value. Enter the CYL, or clear the axis.",
     path: ["ax"],
   });
 
@@ -113,7 +115,8 @@ export const orderSchema = z
 
     // The RX job card. Blank means not given; the patient is required on RX.
     patientName: z.string().trim().max(120).optional().or(z.literal("")),
-    rxLensType: z.enum(["", "sv", "nv", "dbf", "prog"]).optional(),
+    // "nv" is kept only so orders booked before KRY replaced it still save.
+    rxLensType: z.enum(["", "sv", "kry", "nv", "dbf", "prog"]).optional(),
     rxTintReason: z.string().trim().max(400).optional().or(z.literal("")),
     frameMaterial: z.enum(["", "plastic", "metal"]).optional(),
     frameType: z.enum(["", "rimmed", "half", "rimless"]).optional(),
