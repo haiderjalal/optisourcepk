@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listCustomers } from "@/services/shop/customer.service";
-import { listSellableProducts } from "@/services/shop/product.service";
+import { listRxProducts } from "@/services/shop/product.service";
 import { listSuppliers } from "@/services/shop/supplier.service";
 import { RxOrderForm } from "@/features/shop/rx/RxOrderForm";
 import { ButtonLink } from "@/components/ui/button";
@@ -16,7 +16,7 @@ export default async function NewRxOrderPage() {
 
   const [customers, products, suppliers] = await Promise.all([
     listCustomers(),
-    listSellableProducts(),
+    listRxProducts(),
     listSuppliers(),
   ]);
 

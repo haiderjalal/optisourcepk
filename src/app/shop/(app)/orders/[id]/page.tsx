@@ -17,7 +17,6 @@ import {
 } from "@/features/shop/orders/InvoiceActions";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
-import { getSupplier } from "@/services/shop/supplier.service";
 import {
   formatAmount,
   formatDateTime,
@@ -47,12 +46,6 @@ export default async function OrderPage({
         getBalance(order.bill_to_customer_id),
       ])
     : [[], null];
-
-  // The lab an RX job went to, for its WhatsApp number.
-  const labId = order.is_rx
-    ? (order.lines.find((l) => l.supplier_id)?.supplier_id ?? null)
-    : null;
-  const lab = labId ? await getSupplier(labId) : null;
 
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
@@ -162,8 +155,6 @@ export default async function OrderPage({
             shopName={
               order.customer?.shop_name ?? order.bill_to_shop ?? "the shop"
             }
-            shopPhone={order.customer?.phone ?? order.bill_to_phone ?? null}
-            lab={lab}
           />
         </section>
       )}
