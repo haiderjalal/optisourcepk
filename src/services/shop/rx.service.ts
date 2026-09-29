@@ -5,7 +5,6 @@ import { logger } from "@/lib/logger";
 import type { OrderLine, RxMonth, RxStage, RxStatus } from "@/types/database";
 import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
-import { issueInvoice } from "./invoice.service";
 
 /**
  * RX jobs: lenses made to a prescription and ordered from a lab.
@@ -29,6 +28,8 @@ export interface RxJob extends OrderLine {
   rxStage: RxStage | null;
   rxSentAt: string | null;
   rxBackAt: string | null;
+  /** The combined invoice this RX order was billed on, if any. */
+  billedIn: string | null;
 }
 
 export interface RxSearch {
@@ -156,7 +157,7 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
     supabase
       .from("orders")
       .select(
-        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id, rx_no, patient_name, rx_stage, rx_sent_at, rx_back_at",
+        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id, rx_no, patient_name, rx_stage, rx_sent_at, rx_back_at, billed_in, combines_rx",
       )
       .in("id", [...new Set(lines.map((l) => l.order_id))]),
     supplierIds.length
@@ -181,12 +182,36 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
   }
 
   const orderById = new Map((orders.data ?? []).map((o) => [o.id, o]));
+
+  // A billed RX order shows the combined invoice it went on.
+  const billedIds = [
+    ...new Set(
+      (orders.data ?? []).map((o) => o.billed_in).filter((id) => id !== null),
+    ),
+  ];
+  const billedNo = new Map<string, number | null>();
+  if (billedIds.length > 0) {
+    const { data: billed, error: billedError } = await supabase
+      .from("orders")
+      .select("id, invoice_no")
+      .in("id", billedIds);
+    if (billedError) {
+      throw new Error(describePostgresError(billedError, "load RX jobs"));
+    }
+    for (const b of billed ?? []) billedNo.set(b.id, b.invoice_no);
+  }
   const customerById = new Map((customers ?? []).map((c) => [c.id, c]));
   const supplierById = new Map(
     (suppliers.data ?? []).map((s) => [s.id, s.name]),
   );
 
-  const jobs = lines.map((line): RxJob => {
+  // A combined invoice's lines are copies of RX orders already listed.
+  // ponytail: filtered after the limit, so a page can come back a little short.
+  const ownLines = lines.filter(
+    (line) => !orderById.get(line.order_id)?.combines_rx,
+  );
+
+  const jobs = ownLines.map((line): RxJob => {
     const order = orderById.get(line.order_id);
     const customer = order
       ? customerById.get(order.bill_to_customer_id)
@@ -195,7 +220,10 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
       ...line,
       orderId: line.order_id,
       orderNo: order?.order_no ?? 0,
-      invoiceNo: order?.invoice_no ?? null,
+      invoiceNo:
+        order?.invoice_no ??
+        (order?.billed_in ? (billedNo.get(order.billed_in) ?? null) : null),
+      billedIn: order?.billed_in ?? null,
       shopName: customer?.shop_name ?? "—",
       area: customer?.area ?? "",
       supplierName: line.supplier_id
@@ -243,21 +271,20 @@ export interface RxPricing {
 }
 
 /**
- * Price an RX order and issue its invoice in one go — the lens is in hand, so
- * it is back from the lab. The invoice posts to the shop's ledger like any
- * other; freight and tax are none here (use the order page for those).
+ * Enter an RX order's prices. The lens is in hand, so it is marked back from
+ * the lab; it is then ready for the shop's combined invoice.
  */
-export async function priceAndInvoiceRx(pricing: RxPricing): Promise<number> {
+export async function priceRx(pricing: RxPricing): Promise<void> {
   const { supabase } = await requireUser();
 
   const { data: order, error } = await supabase
     .from("orders")
-    .select("id, is_rx, issued_at, voided_at, rx_stage")
+    .select("id, is_rx, issued_at, voided_at, billed_in, rx_stage")
     .eq("id", pricing.orderId)
     .maybeSingle();
   if (error) throw new Error(describePostgresError(error, "load the RX order"));
   if (!order?.is_rx) throw new Error("That is not an RX order.");
-  if (order.issued_at || order.voided_at) {
+  if (order.issued_at || order.voided_at || order.billed_in) {
     throw new Error("This RX order is already invoiced.");
   }
 
@@ -274,18 +301,117 @@ export async function priceAndInvoiceRx(pricing: RxPricing): Promise<number> {
   }
 
   if (order.rx_stage !== "back") await setRxStage(pricing.orderId, "back");
+  logger.info("RX priced", { orderId: pricing.orderId });
+}
 
-  const invoice = await issueInvoice({
-    orderId: pricing.orderId,
-    freight: 0,
-    gstRate: 0,
-    additionalTaxRate: 0,
+export interface ReadyRxOrder {
+  id: string;
+  rxNo: number | null;
+  patientName: string | null;
+  externalRef: string | null;
+  total: number;
+  /** Every lens has a sale price. */
+  priced: boolean;
+}
+
+export interface ReadyShop {
+  customerId: string;
+  shopName: string;
+  orders: ReadyRxOrder[];
+  total: number;
+}
+
+/**
+ * RX orders back from the lab and not yet invoiced, grouped by shop — what
+ * "Generate invoice" will put on each shop's one invoice.
+ */
+export async function listReadyToInvoice(): Promise<ReadyShop[]> {
+  const { supabase } = await requireUser();
+
+  const { data: orders, error } = await supabase
+    .from("orders")
+    .select("id, rx_no, patient_name, external_order_ref, bill_to_customer_id")
+    .eq("is_rx", true)
+    .eq("rx_stage", "back")
+    .is("issued_at", null)
+    .is("voided_at", null)
+    .is("billed_in", null)
+    .order("rx_no");
+  if (error) {
+    throw new Error(describePostgresError(error, "load RX orders to invoice"));
+  }
+  if (!orders || orders.length === 0) return [];
+
+  const [lines, customers] = await Promise.all([
+    supabase
+      .from("order_lines")
+      .select("order_id, unit_price, line_total")
+      .in(
+        "order_id",
+        orders.map((o) => o.id),
+      ),
+    supabase
+      .from("customers")
+      .select("id, shop_name")
+      .in("id", [...new Set(orders.map((o) => o.bill_to_customer_id))]),
+  ]);
+  if (lines.error || customers.error) {
+    throw new Error(
+      describePostgresError(
+        lines.error ?? customers.error,
+        "load RX orders to invoice",
+      ),
+    );
+  }
+
+  const shopName = new Map(
+    (customers.data ?? []).map((c) => [c.id, c.shop_name]),
+  );
+  const byShop = new Map<string, ReadyShop>();
+
+  for (const order of orders) {
+    const own = (lines.data ?? []).filter((l) => l.order_id === order.id);
+    const total = own.reduce((sum, l) => sum + l.line_total, 0);
+    const shop = byShop.get(order.bill_to_customer_id) ?? {
+      customerId: order.bill_to_customer_id,
+      shopName: shopName.get(order.bill_to_customer_id) ?? "—",
+      orders: [],
+      total: 0,
+    };
+    shop.orders.push({
+      id: order.id,
+      rxNo: order.rx_no,
+      patientName: order.patient_name,
+      externalRef: order.external_order_ref,
+      total,
+      priced: own.length > 0 && own.every((l) => l.unit_price > 0),
+    });
+    shop.total += total;
+    byShop.set(order.bill_to_customer_id, shop);
+  }
+
+  return [...byShop.values()].sort((a, b) =>
+    a.shopName.localeCompare(b.shopName),
+  );
+}
+
+/**
+ * One invoice for all of a shop's ready RX orders, posted to its ledger.
+ * Returns the new invoice's order id.
+ */
+export async function issueRxInvoice(customerId: string): Promise<string> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase.rpc("issue_rx_invoice", {
+    p_customer_id: customerId,
   });
-  logger.info("RX priced and invoiced", {
-    orderId: pricing.orderId,
-    invoiceNo: invoice.invoice_no,
+  if (error) throw new Error(describePostgresError(error, "issue the invoice"));
+
+  logger.info("RX invoice issued", {
+    customerId,
+    invoiceNo: data.invoice_no,
   });
-  return invoice.invoice_no ?? 0;
+  return data.id;
 }
 
 /** RX sales, cost and profit for the latest months, newest first. */

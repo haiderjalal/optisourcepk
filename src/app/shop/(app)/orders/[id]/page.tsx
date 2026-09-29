@@ -47,6 +47,10 @@ export default async function OrderPage({
       ])
     : [[], null];
 
+  // An RX order billed on its shop's combined invoice is as final as issued.
+  const billedOn = order.billed_in ? await getOrder(order.billed_in) : null;
+  const billed = billedOn !== null;
+
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
   const subtotal = order.lines.reduce((sum, line) => sum + line.line_total, 0);
@@ -106,7 +110,7 @@ export default async function OrderPage({
               </ButtonLink>
             </>
           )}
-          {!issued && (
+          {!issued && !billed && (
             <ButtonLink
               href={`/shop/orders/${order.id}/edit`}
               variant="outline"
@@ -127,7 +131,7 @@ export default async function OrderPage({
               stage={order.rx_stage}
               sentAt={order.rx_sent_at}
               backAt={order.rx_back_at}
-              final={issued || voided}
+              final={issued || voided || billed}
             />
           </div>
           <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
@@ -209,8 +213,8 @@ export default async function OrderPage({
                   <td className="px-3 py-2.5 font-medium">
                     {line.product_name}
                   </td>
-                  <td className="text-navy-600 px-2 py-2.5 font-mono text-xs">
-                    {line.eye ?? ""}
+                  <td className="text-navy-600 px-2 py-2.5 text-xs whitespace-nowrap">
+                    {line.order_ref ?? ""}
                   </td>
                   <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
                     {formatPower(line.sph)}
@@ -290,14 +294,33 @@ export default async function OrderPage({
         </div>
       </section>
 
-      {!issued && !voided && (
+      {billedOn && (
+        <p className="rounded-2xl bg-emerald-50 px-5 py-4 text-sm text-emerald-900 ring-1 ring-emerald-200 ring-inset">
+          Billed on{" "}
+          <Link
+            href={`/shop/orders/${billedOn.id}`}
+            className="font-semibold underline underline-offset-2"
+          >
+            invoice {billedOn.invoice_no}
+          </Link>
+          , together with the shop&rsquo;s other RX orders that day.
+        </p>
+      )}
+
+      {!issued && !voided && !billed && (
         <div className="space-y-5">
           <StockCheck lines={availability} />
-          {order.is_rx && order.rx_stage !== "back" ? (
+          {order.is_rx ? (
             <p className="text-navy-600 rounded-2xl border border-dashed border-mist-300 bg-white/60 px-5 py-4 text-sm">
-              The invoice can be issued once the lens is back from the lab. Mark
-              it back from the lab above, check the prices with Edit, then
-              issue.
+              RX orders are invoiced together — one invoice per shop. When the
+              lens is back from the lab, enter its prices, then use{" "}
+              <Link
+                href="/shop/rx"
+                className="text-accent-700 font-medium underline underline-offset-2"
+              >
+                Generate invoice under Ready to invoice
+              </Link>
+              .
             </p>
           ) : (
             <IssuePanel order={order} subtotal={subtotal} />

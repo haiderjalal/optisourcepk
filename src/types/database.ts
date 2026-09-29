@@ -200,6 +200,10 @@ type OrderRow = {
   rx_stage: RxStage | null;
   rx_sent_at: string | null;
   rx_back_at: string | null;
+  /** RX order: the combined invoice it was billed on. */
+  billed_in: string | null;
+  /** A combined RX invoice, holding copies of the RX orders billed in it. */
+  combines_rx: boolean;
   bill_to_customer_id: string;
   order_by_name: string | null;
   deliver_to_name: string | null;
@@ -376,6 +380,7 @@ type Defaulted =
   | "tracks_eye"
   | "tracks_stock"
   | "is_rx"
+  | "combines_rx"
   | "purchase_price"
   | "list_price"
   | "default_discount_pct"
@@ -453,6 +458,15 @@ export interface Database {
           p_level: number;
         };
         Returns: undefined;
+      };
+      issue_rx_invoice: {
+        Args: {
+          p_customer_id: string;
+          p_freight?: number;
+          p_gst_rate?: number;
+          p_additional_tax_rate?: number;
+        };
+        Returns: OrderRow;
       };
       set_rx_stage: {
         Args: { p_order_id: string; p_stage: RxStage };
