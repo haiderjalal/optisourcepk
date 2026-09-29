@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import type { OrderLine, RxMonth, RxStage, RxStatus } from "@/types/database";
 import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
+import { issueInvoice } from "./invoice.service";
 
 /**
  * RX jobs: lenses made to a prescription and ordered from a lab.
@@ -36,6 +37,8 @@ export interface RxSearch {
   cyl: number | null;
   add: number | null;
   shop: string;
+  /** An RX number (RX006 → 6) finds that one order, whatever its status. */
+  rxNo: number | null;
   status: RxStatus | "all";
 }
 
@@ -52,6 +55,16 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
   // A name search narrows to the matching orders first — by the shop's name
   // or the patient's — so the limit below applies to their jobs, not everyone's.
   let orderIds: string[] | null = null;
+  if (search.rxNo !== null) {
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("is_rx", true)
+      .eq("rx_no", search.rxNo);
+    if (error) throw new Error(describePostgresError(error, "search RX jobs"));
+    orderIds = (data ?? []).map((o) => o.id);
+    if (orderIds.length === 0) return [];
+  }
   if (search.shop) {
     const pattern = `%${search.shop.replace(/[%_\\]/g, "\\$&")}%`;
     const { data: customers, error } = await supabase
@@ -85,11 +98,10 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
         ),
       );
     }
-    orderIds = [
-      ...new Set(
-        [...(byShop.data ?? []), ...(byPatient.data ?? [])].map((o) => o.id),
-      ),
-    ];
+    const byName = new Set(
+      [...(byShop.data ?? []), ...(byPatient.data ?? [])].map((o) => o.id),
+    );
+    orderIds = orderIds ? orderIds.filter((id) => byName.has(id)) : [...byName];
     if (orderIds.length === 0) return [];
   }
 
@@ -100,7 +112,10 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
     .order("created_at", { ascending: false })
     .limit(RX_LIMIT);
 
-  if (search.status !== "all") query = query.eq("rx_status", search.status);
+  // Looking up one RX number shows it whatever its status.
+  if (search.status !== "all" && search.rxNo === null) {
+    query = query.eq("rx_status", search.status);
+  }
   if (search.sph !== null) query = query.eq("sph", search.sph);
   if (search.cyl !== null) {
     query =
@@ -218,6 +233,59 @@ export async function setRxStage(
     throw new Error(describePostgresError(error, "update the RX order"));
   }
   logger.info("RX stage set", { orderId, stage });
+}
+
+export interface RxPricing {
+  orderId: string;
+  /** Per lens. */
+  salePrice: number;
+  purchasePrice: number | null;
+}
+
+/**
+ * Price an RX order and issue its invoice in one go — the lens is in hand, so
+ * it is back from the lab. The invoice posts to the shop's ledger like any
+ * other; freight and tax are none here (use the order page for those).
+ */
+export async function priceAndInvoiceRx(pricing: RxPricing): Promise<number> {
+  const { supabase } = await requireUser();
+
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select("id, is_rx, issued_at, voided_at, rx_stage")
+    .eq("id", pricing.orderId)
+    .maybeSingle();
+  if (error) throw new Error(describePostgresError(error, "load the RX order"));
+  if (!order?.is_rx) throw new Error("That is not an RX order.");
+  if (order.issued_at || order.voided_at) {
+    throw new Error("This RX order is already invoiced.");
+  }
+
+  const { error: priceError } = await supabase
+    .from("order_lines")
+    .update({
+      unit_price: pricing.salePrice,
+      unit_cost: pricing.purchasePrice,
+    })
+    .eq("order_id", pricing.orderId)
+    .not("rx_status", "is", null);
+  if (priceError) {
+    throw new Error(describePostgresError(priceError, "save the RX prices"));
+  }
+
+  if (order.rx_stage !== "back") await setRxStage(pricing.orderId, "back");
+
+  const invoice = await issueInvoice({
+    orderId: pricing.orderId,
+    freight: 0,
+    gstRate: 0,
+    additionalTaxRate: 0,
+  });
+  logger.info("RX priced and invoiced", {
+    orderId: pricing.orderId,
+    invoiceNo: invoice.invoice_no,
+  });
+  return invoice.invoice_no ?? 0;
 }
 
 /** RX sales, cost and profit for the latest months, newest first. */

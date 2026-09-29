@@ -254,6 +254,11 @@ async function replaceLines(
         ? {
             unit_cost: line.unitCost,
             supplier_id: line.supplierId,
+            rx_dia: line.rxDia,
+            rx_base: line.rxBase,
+            rx_fitting_height: line.rxFittingHeight,
+            rx_prism: line.rxPrism,
+            rx_ipd: line.rxIpd,
             rx_status: receivedAt
               ? ("received" as const)
               : ("ordered" as const),

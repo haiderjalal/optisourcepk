@@ -10,7 +10,6 @@ export interface RxMessageOrder {
   rxNo: number | null;
   patientName: string | null;
   lensType: string | null;
-  tintReason: string | null;
   frameMaterial: string | null;
   frameType: string | null;
   shopName: string;
@@ -25,6 +24,11 @@ export interface RxMessageLine {
   ax: number | null;
   add_power: number | null;
   product_name: string;
+  rx_dia: string | null;
+  rx_base: string | null;
+  rx_fitting_height: string | null;
+  rx_prism: string | null;
+  rx_ipd: string | null;
 }
 
 /**
@@ -52,13 +56,30 @@ function eyeLine(line: RxMessageLine): string {
   return `${line.eye === "L" ? "L.E" : "R.E"}: ${parts.join("  ")}`;
 }
 
+/** Dia, base, fitting height, prism and IPD for one eye, when any is given. */
+function fittingLine(line: RxMessageLine): string | null {
+  const parts = [
+    line.rx_dia && `Dia ${line.rx_dia}`,
+    line.rx_base && `Base ${line.rx_base}`,
+    line.rx_fitting_height && `Fitting height ${line.rx_fitting_height}`,
+    line.rx_prism && `Prism ${line.rx_prism}`,
+    line.rx_ipd && `IPD ${line.rx_ipd}`,
+  ].filter(Boolean);
+  if (parts.length === 0) return null;
+  return `     ${parts.join("  ")}`;
+}
+
 const capital = (v: string | null) =>
   v ? v.charAt(0).toUpperCase() + v.slice(1) : null;
 
-/** The job as the lab needs it — no prices. */
+/**
+ * The job as the lab needs it: no prices, no tint reason (that is for our
+ * records), and the optician only when the operator chooses to send it.
+ */
 export function labMessage(
   order: RxMessageOrder,
   lines: RxMessageLine[],
+  { includeOptician = false }: { includeOptician?: boolean } = {},
 ): string {
   const rank = (l: RxMessageLine) => (l.eye === "R" ? 0 : 1);
   const eyes = [...lines].sort((a, b) => rank(a) - rank(b));
@@ -67,17 +88,15 @@ export function labMessage(
     .join(", ");
 
   return [
-    `*${rxNo(order.rxNo)}* — new RX order`,
+    `*${rxNo(order.rxNo)}*`,
+    includeOptician ? `Optician: ${order.shopName}` : null,
     `Patient: ${order.patientName ?? "—"}`,
     order.lensType ? `Lens type: ${order.lensType.toUpperCase()}` : null,
     "",
-    ...eyes.map(eyeLine),
+    ...eyes.flatMap((line) => [eyeLine(line), fittingLine(line)]),
     "",
     `Lens: ${lines[0]?.product_name ?? "—"}`,
-    order.tintReason ? `Tint / photo / antiglare: ${order.tintReason}` : null,
     frame ? `Frame: ${frame}` : null,
-    "",
-    `Please confirm and quote the price. Ref ${rxNo(order.rxNo)}.`,
   ]
     .filter((line) => line !== null)
     .join("\n");

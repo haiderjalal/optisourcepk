@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { MessageCircle } from "lucide-react";
 import type { Order, OrderLine } from "@/types/database";
 import {
@@ -11,6 +14,9 @@ import {
  * Share an RX job on WhatsApp: the order for the lab (no prices), then
  * "ready" for the shop once it is back. Each opens WhatsApp with the message
  * typed; the operator chooses who to send it to.
+ *
+ * A Client Component only for the "include optician" tick: the optician is
+ * always on the order, but whether the lab sees it is the operator's call.
  */
 export function RxWhatsAppButtons({
   order,
@@ -21,13 +27,14 @@ export function RxWhatsAppButtons({
   lines: OrderLine[];
   shopName: string;
 }) {
+  const [includeOptician, setIncludeOptician] = useState(false);
+
   if (order.voided_at) return null;
 
   const message: RxMessageOrder = {
     rxNo: order.rx_no,
     patientName: order.patient_name,
     lensType: order.rx_lens_type,
-    tintReason: order.rx_tint_reason,
     frameMaterial: order.frame_material,
     frameType: order.frame_type,
     shopName,
@@ -37,12 +44,21 @@ export function RxWhatsAppButtons({
   const back = order.rx_stage === "back";
 
   return (
-    <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-mist-200 pt-4">
+    <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-mist-200 pt-4">
       <WhatsAppLink
-        href={whatsappLink(labMessage(message, lines))}
+        href={whatsappLink(labMessage(message, lines, { includeOptician }))}
         label="Send order on WhatsApp"
         primary={!back}
       />
+      <label className="text-navy-600 inline-flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={includeOptician}
+          onChange={(e) => setIncludeOptician(e.target.checked)}
+          className="size-4"
+        />
+        Include optician name ({shopName})
+      </label>
       {back && (
         <WhatsAppLink
           href={whatsappLink(shopMessage(message))}

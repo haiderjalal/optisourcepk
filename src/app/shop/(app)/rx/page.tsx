@@ -10,6 +10,7 @@ import {
   type RxSearch,
 } from "@/services/shop/rx.service";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
+import { RxInvoiceForm } from "@/features/shop/rx/RxInvoiceForm";
 import { ButtonLink } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 import { formatAmount, formatPkr, formatPower, formatRxNo } from "@/lib/format";
@@ -36,6 +37,15 @@ function dioptre(raw: string | string[] | undefined): number | null {
   return Math.round(value * 4) / 4 === value ? value : null;
 }
 
+/** An RX number as typed: RX006, RX-0006, rx 6 and 6 all mean 6. */
+function rxNumber(raw: string | string[] | undefined): number | null {
+  if (typeof raw !== "string") return null;
+  const digits = raw.replace(/\D/g, "");
+  if (digits === "") return null;
+  const n = Number(digits);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
 export default async function RxOrdersPage({
   searchParams,
 }: PageProps<"/shop/rx">) {
@@ -51,6 +61,7 @@ export default async function RxOrdersPage({
     add: dioptre(params.add),
     shop:
       typeof params.shop === "string" ? params.shop.trim().slice(0, 80) : "",
+    rxNo: rxNumber(params.rx),
     status,
   };
 
@@ -63,7 +74,8 @@ export default async function RxOrdersPage({
     search.sph !== null ||
     search.cyl !== null ||
     search.add !== null ||
-    search.shop !== "";
+    search.shop !== "" ||
+    search.rxNo !== null;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -83,7 +95,17 @@ export default async function RxOrdersPage({
       </div>
 
       {/* A GET form: the search lives in the URL, so back and refresh work. */}
-      <form className="shadow-lift mb-5 grid gap-3 rounded-2xl bg-white p-5 sm:grid-cols-3 lg:grid-cols-6">
+      <form className="shadow-lift mb-5 grid gap-3 rounded-2xl bg-white p-5 sm:grid-cols-4 lg:grid-cols-7">
+        <label className="text-sm">
+          <span className="text-navy-600 mb-1 block font-medium">RX no.</span>
+          <input
+            name="rx"
+            type="search"
+            defaultValue={search.rxNo === null ? "" : formatRxNo(search.rxNo)}
+            placeholder="RX006"
+            className={inputClass}
+          />
+        </label>
         {(
           [
             ["sph", "SPH", search.sph],
@@ -144,7 +166,7 @@ export default async function RxOrdersPage({
             </Link>
           )}
         </div>
-        <p className="text-navy-400 text-xs sm:col-span-3 lg:col-span-6">
+        <p className="text-navy-400 text-xs sm:col-span-4 lg:col-span-7">
           Enter 0 in CYL or ADD to find lenses with none. Leave a box blank to
           match any value.
         </p>
@@ -291,6 +313,13 @@ export default async function RxOrdersPage({
                             backAt={job.rxBackAt}
                             final={job.invoiceNo !== null || job.voided}
                             compact
+                          />
+                        )}
+                        {job.invoiceNo === null && !job.voided && (
+                          <RxInvoiceForm
+                            orderId={job.orderId}
+                            salePrice={job.unit_price}
+                            purchasePrice={job.unit_cost}
                           />
                         )}
                       </td>
