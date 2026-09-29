@@ -279,7 +279,7 @@ export default async function RxOrdersPage({
                         pair={pair}
                         mono={false}
                         value={(l) =>
-                          `${l.unit_cost === null ? "—" : formatAmount(l.unit_cost)} / ${formatAmount(l.unit_price)}`
+                          `${l.unit_cost === null ? "—" : formatAmount(l.unit_cost)} / ${l.unit_price > 0 ? formatAmount(l.unit_price) : "—"}`
                         }
                       />
                       <td className="px-4 py-2 text-right">
