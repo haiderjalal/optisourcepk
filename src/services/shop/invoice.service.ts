@@ -242,7 +242,9 @@ async function replaceLines(
       eye,
       sph,
       cyl,
-      ax: line.ax,
+      // CYL 0 is stored as none, and an axis means nothing without a
+      // cylinder — the database refuses the pair — so it goes with it.
+      ax: cyl === null ? null : line.ax,
       add_power: addPower,
       unit_price: line.unitPrice,
       discount_pct: line.discountPct,

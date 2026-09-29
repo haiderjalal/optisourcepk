@@ -38,6 +38,14 @@ const CONSTRAINTS: Record<string, string> = {
     "Power-tracked products need an SPH, and products that are not power-tracked must not have one.",
   ledger_one_per_invoice: "That invoice has already been posted to the ledger.",
   suppliers_name_uq: "A supplier with that name already exists.",
+  order_lines_ax_needs_cyl:
+    "An axis needs a cylinder value. Enter the CYL, or clear the axis.",
+  order_lines_ax_range: "Axis runs from 0 to 180.",
+  order_lines_sph_step: "SPH runs from -30 to +30 in 0.25 steps.",
+  order_lines_cyl_step: "CYL runs from -12 to +12 in 0.25 steps.",
+  order_lines_add_step: "ADD runs from 0 to 6 in 0.25 steps.",
+  orders_rx_lens_type_valid:
+    "Pick SV, KRY, DBF or PROG for the lens type — the database needs the latest update (migration 0022).",
   stock_bins_qty_on_hand_check:
     "That would take the stock below zero. Check the quantity on hand first.",
 };

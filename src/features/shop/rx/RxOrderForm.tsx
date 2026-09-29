@@ -37,7 +37,7 @@ const EMPTY_EYE: EyeDraft = { sph: "", cyl: "", ax: "", add: "" };
 
 const LENS_TYPES = [
   { value: "sv", label: "SV" },
-  { value: "nv", label: "NV" },
+  { value: "kry", label: "KRY" },
   { value: "dbf", label: "DBF" },
   { value: "prog", label: "PROG" },
 ] as const;

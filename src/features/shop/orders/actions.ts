@@ -80,6 +80,9 @@ export async function saveOrder(
     return {
       error:
         flat.formErrors[0] ??
+        // A line's own message ("SPH goes in 0.25 steps.") says what to fix;
+        // the RX job card has no per-line fields to highlight.
+        parsed.error.issues[0]?.message ??
         "Check the highlighted fields — every line needs a product and a quantity.",
       fieldErrors: flat.fieldErrors as Record<string, string[]>,
     };
