@@ -32,6 +32,9 @@ interface EyeDraft {
   ax: string;
   add: string;
   /** Fitting details, passed to the lab as typed. */
+  dia: string;
+  base: string;
+  fittingHeight: string;
   prism: string;
   ipd: string;
 }
@@ -41,12 +44,18 @@ const EMPTY_EYE: EyeDraft = {
   cyl: "",
   ax: "",
   add: "",
+  dia: "",
+  base: "",
+  fittingHeight: "",
   prism: "",
   ipd: "",
 };
 
 /** The fitting columns, each its own field. */
 const FITTING = [
+  ["dia", "Dia"],
+  ["fittingHeight", "Fitting height"],
+  ["base", "Base"],
   ["prism", "Prism"],
   ["ipd", "IPD"],
 ] as const;
@@ -81,6 +90,9 @@ function eyeFrom(line: OrderLine | undefined): EyeDraft {
     cyl: text(line.cyl),
     ax: text(line.ax),
     add: text(line.add_power),
+    dia: line.rx_dia ?? "",
+    base: line.rx_base ?? "",
+    fittingHeight: line.rx_fitting_height ?? "",
     prism: line.rx_prism ?? "",
     ipd: line.rx_ipd ?? "",
   };
@@ -169,6 +181,9 @@ export function RxOrderForm({
     cyl: eyes[eye].cyl,
     ax: eyes[eye].ax,
     addPower: eyes[eye].add,
+    rxDia: eyes[eye].dia,
+    rxBase: eyes[eye].base,
+    rxFittingHeight: eyes[eye].fittingHeight,
     rxPrism: eyes[eye].prism,
     rxIpd: eyes[eye].ipd,
     // Blank until the lab has quoted; the invoice cannot be issued at 0.

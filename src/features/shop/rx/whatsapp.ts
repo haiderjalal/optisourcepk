@@ -24,6 +24,9 @@ export interface RxMessageLine {
   ax: number | null;
   add_power: number | null;
   product_name: string;
+  rx_dia: string | null;
+  rx_base: string | null;
+  rx_fitting_height: string | null;
   rx_prism: string | null;
   rx_ipd: string | null;
 }
@@ -53,9 +56,12 @@ function eyeLine(line: RxMessageLine): string {
   return `${line.eye === "L" ? "L.E" : "R.E"}: ${parts.join("  ")}`;
 }
 
-/** Prism and IPD for one eye, when either is given. */
+/** Dia, fitting height, base, prism and IPD for one eye, when any is given. */
 function fittingLine(line: RxMessageLine): string | null {
   const parts = [
+    line.rx_dia && `Dia ${line.rx_dia}`,
+    line.rx_fitting_height && `Fitting height ${line.rx_fitting_height}`,
+    line.rx_base && `Base ${line.rx_base}`,
     line.rx_prism && `Prism ${line.rx_prism}`,
     line.rx_ipd && `IPD ${line.rx_ipd}`,
   ].filter(Boolean);
