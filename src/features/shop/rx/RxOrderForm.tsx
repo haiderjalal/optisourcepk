@@ -31,9 +31,34 @@ interface EyeDraft {
   cyl: string;
   ax: string;
   add: string;
+  /** Fitting details, passed to the lab as typed. */
+  dia: string;
+  base: string;
+  fittingHeight: string;
+  prism: string;
+  ipd: string;
 }
 
-const EMPTY_EYE: EyeDraft = { sph: "", cyl: "", ax: "", add: "" };
+const EMPTY_EYE: EyeDraft = {
+  sph: "",
+  cyl: "",
+  ax: "",
+  add: "",
+  dia: "",
+  base: "",
+  fittingHeight: "",
+  prism: "",
+  ipd: "",
+};
+
+/** The fitting columns, each its own field. */
+const FITTING = [
+  ["dia", "Dia"],
+  ["base", "Base"],
+  ["fittingHeight", "Fitting height"],
+  ["prism", "Prism"],
+  ["ipd", "IPD"],
+] as const;
 
 const LENS_TYPES = [
   { value: "sv", label: "SV" },
@@ -64,6 +89,11 @@ function eyeFrom(line: OrderLine | undefined): EyeDraft {
     cyl: text(line.cyl),
     ax: text(line.ax),
     add: text(line.add_power),
+    dia: line.rx_dia ?? "",
+    base: line.rx_base ?? "",
+    fittingHeight: line.rx_fitting_height ?? "",
+    prism: line.rx_prism ?? "",
+    ipd: line.rx_ipd ?? "",
   };
 }
 
@@ -150,6 +180,11 @@ export function RxOrderForm({
     cyl: eyes[eye].cyl,
     ax: eyes[eye].ax,
     addPower: eyes[eye].add,
+    rxDia: eyes[eye].dia,
+    rxBase: eyes[eye].base,
+    rxFittingHeight: eyes[eye].fittingHeight,
+    rxPrism: eyes[eye].prism,
+    rxIpd: eyes[eye].ipd,
     // Blank until the lab has quoted; the invoice cannot be issued at 0.
     unitPrice: rate || "0",
     discountPct,
@@ -288,6 +323,53 @@ export function RxOrderForm({
           Leave an eye blank if it is not being made. Type 0 in Sphere for a
           plano lens.
         </p>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full max-w-3xl text-sm">
+            <caption className="text-navy-600 mb-2 text-left text-sm font-medium">
+              Fitting details
+              <span className="text-navy-400 ml-2 text-xs font-normal">
+                optional, sent to the lab as typed
+              </span>
+            </caption>
+            <thead>
+              <tr className="text-navy-600 bg-mist-100 text-xs">
+                <th scope="col" className="w-20 px-3 py-2 text-left">
+                  Eye
+                </th>
+                {FITTING.map(([key, label]) => (
+                  <th key={key} scope="col" className="px-2 py-2">
+                    {label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(["R", "L"] as const).map((eye) => (
+                <tr key={eye} className="border-t border-mist-200">
+                  <th
+                    scope="row"
+                    className="text-navy-700 px-3 py-2 text-left font-medium"
+                  >
+                    {eye}.E
+                  </th>
+                  {FITTING.map(([key, label]) => (
+                    <td key={key} className="px-2 py-2">
+                      <input
+                        aria-label={`${label}, ${eye === "R" ? "right" : "left"} eye`}
+                        className={cell}
+                        type="text"
+                        maxLength={20}
+                        value={eyes[eye][key]}
+                        onChange={(e) => setEye(eye, { [key]: e.target.value })}
+                      />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <Field
           name="productName"

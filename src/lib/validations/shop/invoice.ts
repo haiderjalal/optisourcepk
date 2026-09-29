@@ -33,6 +33,16 @@ function dioptre(min: number, max: number, label: string) {
     });
 }
 
+/** A short RX fitting detail (dia, base, prism…), passed on as typed. */
+function fitting(label: string) {
+  return z
+    .string()
+    .trim()
+    .max(20, `Keep ${label} under 20 characters.`)
+    .optional()
+    .transform((value) => value || null);
+}
+
 export const orderLineSchema = z
   .object({
     // A stock order picks a product. An RX order may type one instead; a name
@@ -92,6 +102,12 @@ export const orderLineSchema = z
       .union([z.uuid("Pick a lab from the list."), z.literal("")])
       .optional()
       .transform((value) => value || null),
+    // RX fitting details, kept as written. Blank means not given.
+    rxDia: fitting("Dia"),
+    rxBase: fitting("Base"),
+    rxFittingHeight: fitting("Fitting height"),
+    rxPrism: fitting("Prism"),
+    rxIpd: fitting("IPD"),
   })
   .refine((line) => line.productId !== null || line.productName !== null, {
     error: "Pick or type a product for every line.",

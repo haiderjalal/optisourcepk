@@ -270,6 +270,12 @@ type OrderLineRow = {
   /** RX lines only; NULL for everything else. */
   rx_status: RxStatus | null;
   received_at: string | null;
+  /** RX fitting details, as written: dia, base, fitting height, prism, IPD. */
+  rx_dia: string | null;
+  rx_base: string | null;
+  rx_fitting_height: string | null;
+  rx_prism: string | null;
+  rx_ipd: string | null;
   created_at: string;
   updated_at: string;
 };
