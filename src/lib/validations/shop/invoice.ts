@@ -103,9 +103,6 @@ export const orderLineSchema = z
       .optional()
       .transform((value) => value || null),
     // RX fitting details, kept as written. Blank means not given.
-    rxDia: fitting("Dia"),
-    rxBase: fitting("Base"),
-    rxFittingHeight: fitting("Fitting height"),
     rxPrism: fitting("Prism"),
     rxIpd: fitting("IPD"),
   })

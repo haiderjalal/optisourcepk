@@ -2,14 +2,14 @@
 
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
-import { FileText } from "lucide-react";
-import { priceAndInvoiceRxAction, type RxInvoiceState } from "./actions";
+import { Save } from "lucide-react";
+import { priceRxAction, type RxActionState } from "./actions";
 
 /**
- * Enter an RX order's prices (per lens) and issue its invoice in one step,
- * from the RX search. The invoice posts to the shop's ledger as usual.
+ * Enter an RX order's prices (per lens) from the RX search. Saving marks it
+ * back from the lab, ready for the shop's combined invoice.
  */
-export function RxInvoiceForm({
+export function RxPriceForm({
   orderId,
   salePrice,
   purchasePrice,
@@ -18,8 +18,8 @@ export function RxInvoiceForm({
   salePrice: number;
   purchasePrice: number | null;
 }) {
-  const [state, formAction] = useActionState<RxInvoiceState, FormData>(
-    priceAndInvoiceRxAction,
+  const [state, formAction] = useActionState<RxActionState, FormData>(
+    priceRxAction,
     {},
   );
 
@@ -55,7 +55,7 @@ export function RxInvoiceForm({
             className={`${box} mt-0.5 block`}
           />
         </label>
-        <InvoiceButton />
+        <SaveButton />
       </div>
       <p className="text-navy-400 text-right text-xs">Per lens.</p>
       {state.error && (
@@ -63,20 +63,25 @@ export function RxInvoiceForm({
           {state.error}
         </p>
       )}
+      {state.message && (
+        <p role="status" className="text-right text-xs text-emerald-700">
+          {state.message}
+        </p>
+      )}
     </form>
   );
 }
 
-function InvoiceButton() {
+function SaveButton() {
   const { pending } = useFormStatus();
   return (
     <button
       type="submit"
       disabled={pending}
-      className="bg-accent-600 hover:bg-accent-700 inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium text-white transition-colors disabled:opacity-60"
+      className="text-navy-700 inline-flex items-center gap-1.5 rounded-lg border border-mist-300 bg-white px-3 py-2 text-xs font-medium transition-colors hover:bg-mist-100 disabled:opacity-60"
     >
-      <FileText className="size-3.5" aria-hidden />
-      {pending ? "Invoicing…" : "Generate invoice"}
+      <Save className="size-3.5" aria-hidden />
+      {pending ? "Saving…" : "Save prices"}
     </button>
   );
 }

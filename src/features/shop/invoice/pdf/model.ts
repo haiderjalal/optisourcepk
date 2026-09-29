@@ -17,7 +17,6 @@ export interface InvoicePdfParty {
 export interface InvoicePdfLine {
   no: number;
   orderRef: string;
-  eye: string;
   product: string;
   sph: string;
   cyl: string;
@@ -129,7 +128,6 @@ export function buildInvoicePdfModel(order: OrderWithLines): InvoicePdfModel {
     lines: order.lines.map((line) => ({
       no: line.line_no,
       orderRef: line.order_ref ?? "",
-      eye: line.eye ?? "",
       product: line.product_name,
       sph: power(line.sph),
       cyl: power(line.cyl),

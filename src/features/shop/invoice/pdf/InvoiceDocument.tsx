@@ -22,9 +22,9 @@ import type { InvoicePdfLine, InvoicePdfModel } from "./model";
 
 const COLUMNS = {
   no: "3%",
-  order: "8%",
-  ref: "4%",
-  product: "27%",
+  // The optician's order no. and ours, e.g. "9493 · RX-0006".
+  ref: "14%",
+  product: "25%",
   sph: "7%",
   cyl: "7%",
   ax: "5%",
@@ -234,12 +234,7 @@ function Row({ line }: { line: InvoicePdfLine }) {
   return (
     <View style={styles.row} wrap={false}>
       <Text style={[styles.cell, { width: COLUMNS.no }]}>{line.no}</Text>
-      <Text style={[styles.cell, { width: COLUMNS.order }]}>
-        {line.orderRef}
-      </Text>
-      <Text style={[styles.cell, { width: COLUMNS.ref }, styles.centre]}>
-        {line.eye}
-      </Text>
+      <Text style={[styles.cell, { width: COLUMNS.ref }]}>{line.orderRef}</Text>
       <Text style={[styles.cell, { width: COLUMNS.product }]}>
         {line.product}
       </Text>
@@ -365,8 +360,7 @@ export function InvoiceDocument({
         {/* `fixed` repeats the header on every page of a long invoice. */}
         <View style={styles.tableHead} fixed>
           <HeadCell width={COLUMNS.no} label="#" />
-          <HeadCell width={COLUMNS.order} label="Order" />
-          <HeadCell width={COLUMNS.ref} label="Ref" align="center" />
+          <HeadCell width={COLUMNS.ref} label="Ref" />
           <HeadCell width={COLUMNS.product} label="Product" />
           <HeadCell width={COLUMNS.sph} label="SPH" align="right" />
           <HeadCell width={COLUMNS.cyl} label="CYL" align="right" />

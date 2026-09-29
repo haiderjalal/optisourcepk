@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireUser } from "@/server/shop/dal";
-import { priceAndInvoiceRx, setRxStage } from "@/services/shop/rx.service";
+import {
+  issueRxInvoice,
+  priceRx,
+  setRxStage,
+} from "@/services/shop/rx.service";
 
 const stageSchema = z.object({
   orderId: z.uuid(),
@@ -41,15 +45,16 @@ const pricingSchema = z.object({
     }),
 });
 
-export interface RxInvoiceState {
+export interface RxActionState {
   error?: string;
+  message?: string;
 }
 
-/** Enter an RX order's prices and issue its invoice, then open the invoice. */
-export async function priceAndInvoiceRxAction(
-  _previous: RxInvoiceState,
+/** Save an RX order's prices; it is then ready for the shop's invoice. */
+export async function priceRxAction(
+  _previous: RxActionState,
   formData: FormData,
-): Promise<RxInvoiceState> {
+): Promise<RxActionState> {
   await requireUser();
 
   const parsed = pricingSchema.safeParse({
@@ -62,7 +67,31 @@ export async function priceAndInvoiceRxAction(
   }
 
   try {
-    await priceAndInvoiceRx(parsed.data);
+    await priceRx(parsed.data);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not save.",
+    };
+  }
+
+  revalidatePath("/shop/rx");
+  revalidatePath(`/shop/orders/${parsed.data.orderId}`);
+  return { message: "Saved — ready to invoice." };
+}
+
+/** One invoice for all of a shop's ready RX orders, then open it. */
+export async function issueRxInvoiceAction(
+  _previous: RxActionState,
+  formData: FormData,
+): Promise<RxActionState> {
+  await requireUser();
+
+  const customerId = z.uuid().safeParse(formData.get("customerId"));
+  if (!customerId.success) return { error: "Pick a shop." };
+
+  let invoiceId: string;
+  try {
+    invoiceId = await issueRxInvoice(customerId.data);
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Could not invoice.",
@@ -71,5 +100,5 @@ export async function priceAndInvoiceRxAction(
 
   revalidatePath("/shop/rx");
   revalidatePath("/shop/invoices");
-  redirect(`/shop/orders/${parsed.data.orderId}`);
+  redirect(`/shop/orders/${invoiceId}`);
 }

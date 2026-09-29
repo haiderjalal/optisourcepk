@@ -4,13 +4,15 @@ import { Glasses, Plus, Search } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import {
   listRxJobs,
+  listReadyToInvoice,
   listRxMonthly,
   RX_LIMIT,
   type RxJob,
   type RxSearch,
 } from "@/services/shop/rx.service";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
-import { RxInvoiceForm } from "@/features/shop/rx/RxInvoiceForm";
+import { RxPriceForm } from "@/features/shop/rx/RxPriceForm";
+import { ReadyToInvoice } from "@/features/shop/rx/ReadyToInvoice";
 import { ButtonLink } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 import { formatAmount, formatPkr, formatPower, formatRxNo } from "@/lib/format";
@@ -65,9 +67,10 @@ export default async function RxOrdersPage({
     status,
   };
 
-  const [jobs, months] = await Promise.all([
+  const [jobs, months, ready] = await Promise.all([
     listRxJobs(search),
     listRxMonthly(),
+    listReadyToInvoice(),
   ]);
 
   const searching =
@@ -93,6 +96,8 @@ export default async function RxOrdersPage({
           New RX order
         </ButtonLink>
       </div>
+
+      <ReadyToInvoice shops={ready} />
 
       {/* A GET form: the search lives in the URL, so back and refresh work. */}
       <form className="shadow-lift mb-5 grid gap-3 rounded-2xl bg-white p-5 sm:grid-cols-4 lg:grid-cols-7">
@@ -316,7 +321,7 @@ export default async function RxOrdersPage({
                           />
                         )}
                         {job.invoiceNo === null && !job.voided && (
-                          <RxInvoiceForm
+                          <RxPriceForm
                             orderId={job.orderId}
                             salePrice={job.unit_price}
                             purchasePrice={job.unit_cost}

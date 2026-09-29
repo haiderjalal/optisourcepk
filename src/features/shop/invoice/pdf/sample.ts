@@ -34,7 +34,6 @@ export const SAMPLE_INVOICE: InvoicePdfModel = {
     {
       no: 1,
       orderRef: "431110",
-      eye: "R",
       product: "E-Series Progressive Clear 1.50",
       sph: "-0.75",
       cyl: "-0.50",
@@ -48,7 +47,6 @@ export const SAMPLE_INVOICE: InvoicePdfModel = {
     {
       no: 2,
       orderRef: "431110",
-      eye: "L",
       product: "E-Series Progressive Clear 1.50",
       sph: "-1.00",
       cyl: "-0.25",
@@ -62,7 +60,6 @@ export const SAMPLE_INVOICE: InvoicePdfModel = {
     {
       no: 3,
       orderRef: "431110",
-      eye: "",
       product: "UNCOAT",
       sph: "",
       cyl: "",
@@ -76,7 +73,6 @@ export const SAMPLE_INVOICE: InvoicePdfModel = {
     {
       no: 4,
       orderRef: "431110",
-      eye: "",
       product: "GRADIAL GREY",
       sph: "",
       cyl: "",

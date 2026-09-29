@@ -254,9 +254,6 @@ async function replaceLines(
         ? {
             unit_cost: line.unitCost,
             supplier_id: line.supplierId,
-            rx_dia: line.rxDia,
-            rx_base: line.rxBase,
-            rx_fitting_height: line.rxFittingHeight,
             rx_prism: line.rxPrism,
             rx_ipd: line.rxIpd,
             rx_status: receivedAt
@@ -356,24 +353,6 @@ export async function issueInvoice(
   payload: IssueInvoicePayload,
 ): Promise<Order> {
   const { supabase } = await requireUser();
-
-  // An RX order is booked before the lab quotes, so its sale price starts at
-  // 0. Billing a lens at nothing is a mistake, not a discount.
-  const { data: unpriced, error: priceError } = await supabase
-    .from("order_lines")
-    .select("id")
-    .eq("order_id", payload.orderId)
-    .not("rx_status", "is", null)
-    .lte("unit_price", 0)
-    .limit(1);
-  if (priceError) {
-    throw new Error(describePostgresError(priceError, "issue the invoice"));
-  }
-  if (unpriced && unpriced.length > 0) {
-    throw new Error(
-      "Enter the sale price for this RX order first: open it with Edit, add the lab's price and the sale price, then issue.",
-    );
-  }
 
   const { data, error } = await supabase.rpc("issue_invoice", {
     p_order_id: payload.orderId,

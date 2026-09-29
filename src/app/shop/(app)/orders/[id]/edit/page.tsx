@@ -27,7 +27,7 @@ export default async function EditOrderPage({
 
   // An issued invoice is frozen by the database. Send them to the read-only
   // view rather than showing a form whose save would be refused.
-  if (order.issued_at) redirect(`/shop/orders/${id}`);
+  if (order.issued_at || order.billed_in) redirect(`/shop/orders/${id}`);
 
   const [customers, products, suppliers] = await Promise.all([
     listCustomers(),
