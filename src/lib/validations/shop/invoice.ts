@@ -132,7 +132,9 @@ export const orderSchema = z
     // The RX job card. Blank means not given; the patient is required on RX.
     patientName: z.string().trim().max(120).optional().or(z.literal("")),
     // "nv" is kept only so orders booked before KRY replaced it still save.
-    rxLensType: z.enum(["", "sv", "kry", "nv", "dbf", "prog"]).optional(),
+    rxLensType: z
+      .enum(["", "sv", "kry", "nv", "dbf", "prog", "blended"])
+      .optional(),
     rxTintReason: z.string().trim().max(400).optional().or(z.literal("")),
     frameMaterial: z.enum(["", "plastic", "metal"]).optional(),
     frameType: z.enum(["", "rimmed", "half", "rimless"]).optional(),

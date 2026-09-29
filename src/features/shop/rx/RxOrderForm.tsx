@@ -65,6 +65,7 @@ const LENS_TYPES = [
   { value: "kry", label: "KRY" },
   { value: "dbf", label: "DBF" },
   { value: "prog", label: "PROG" },
+  { value: "blended", label: "Blended" },
 ] as const;
 
 const MATERIALS = [
