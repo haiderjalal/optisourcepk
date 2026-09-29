@@ -135,6 +135,8 @@ export function RxOrderForm({
   );
 
   const ordered = (["R", "L"] as const).filter((eye) => typed(eyes[eye]));
+  // The lab quotes once the lens is made, so prices are asked for only then.
+  const pricing = order?.rx_stage === "back";
   const perLens = (Number(rate) || 0) * (1 - (Number(discountPct) || 0) / 100);
   const total = Math.round(perLens * ordered.length * 100) / 100;
 
@@ -148,7 +150,8 @@ export function RxOrderForm({
     cyl: eyes[eye].cyl,
     ax: eyes[eye].ax,
     addPower: eyes[eye].add,
-    unitPrice: rate,
+    // Blank until the lab has quoted; the invoice cannot be issued at 0.
+    unitPrice: rate || "0",
     discountPct,
     quantity: "1",
     unitCost: cost,
@@ -347,10 +350,13 @@ export function RxOrderForm({
       </section>
 
       <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
-        <h2 className="text-base font-semibold">Lab and prices</h2>
+        <h2 className="text-base font-semibold">
+          {pricing ? "Lab and prices" : "Lab"}
+        </h2>
         <p className="text-navy-500 mt-1 text-xs">
-          Per lens. You can change these until the invoice is issued — usually
-          once the lens is back from the lab.
+          {pricing
+            ? "Per lens. The lab's price and the sale price, before you issue the invoice."
+            : "Prices are added once the lens is back from the lab."}
         </p>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Field name="rxSupplierId" label="Lab">
@@ -369,56 +375,62 @@ export function RxOrderForm({
               </select>
             )}
           </Field>
-          <Field name="rxCost" label="Purchase price" hint="Not printed.">
-            {(p) => (
-              <input
-                {...p}
-                type="number"
-                step="0.01"
-                min={0}
-                inputMode="decimal"
-                value={cost}
-                onChange={(e) => setCost(e.target.value)}
-              />
-            )}
-          </Field>
-          <Field name="rxRate" label="Sale price" required>
-            {(p) => (
-              <input
-                {...p}
-                type="number"
-                step="0.01"
-                min={0}
-                inputMode="decimal"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-              />
-            )}
-          </Field>
-          <Field name="rxDiscount" label="Discount %">
-            {(p) => (
-              <input
-                {...p}
-                type="number"
-                step="0.01"
-                min={0}
-                max={100}
-                inputMode="decimal"
-                value={discountPct}
-                onChange={(e) => setDiscount(e.target.value)}
-              />
-            )}
-          </Field>
+          {pricing && (
+            <>
+              <Field name="rxCost" label="Purchase price" hint="Not printed.">
+                {(p) => (
+                  <input
+                    {...p}
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    inputMode="decimal"
+                    value={cost}
+                    onChange={(e) => setCost(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Field name="rxRate" label="Sale price" required>
+                {(p) => (
+                  <input
+                    {...p}
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    inputMode="decimal"
+                    value={rate}
+                    onChange={(e) => setRate(e.target.value)}
+                  />
+                )}
+              </Field>
+              <Field name="rxDiscount" label="Discount %">
+                {(p) => (
+                  <input
+                    {...p}
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    max={100}
+                    inputMode="decimal"
+                    value={discountPct}
+                    onChange={(e) => setDiscount(e.target.value)}
+                  />
+                )}
+              </Field>
+            </>
+          )}
         </div>
-        <p className="mt-4 text-right text-sm">
-          <span className="text-navy-500">
-            {ordered.length} {ordered.length === 1 ? "lens" : "lenses"} ·
-            Total{" "}
-          </span>
-          <span className="text-lg font-semibold tabular-nums">
-            Rs {formatAmount(total)}
-          </span>
-        </p>
+        {pricing && (
+          <p className="mt-4 text-right text-sm">
+            <span className="text-navy-500">
+              {ordered.length} {ordered.length === 1 ? "lens" : "lenses"} ·
+              Total{" "}
+            </span>
+            <span className="text-lg font-semibold tabular-nums">
+              Rs {formatAmount(total)}
+            </span>
+          </p>
+        )}
       </section>
 
       <details className="shadow-lift rounded-2xl bg-white p-5">
