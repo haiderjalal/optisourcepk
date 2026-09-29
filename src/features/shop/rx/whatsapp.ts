@@ -66,6 +66,27 @@ function fittingLine(line: RxMessageLine): string | null {
 const capital = (v: string | null) =>
   v ? v.charAt(0).toUpperCase() + v.slice(1) : null;
 
+/** One RX job's lines for the lab: lens type, both eyes, lens and frame. */
+function jobBlock(
+  order: RxMessageOrder,
+  lines: RxMessageLine[],
+): (string | null)[] {
+  const rank = (l: RxMessageLine) => (l.eye === "R" ? 0 : 1);
+  const eyes = [...lines].sort((a, b) => rank(a) - rank(b));
+  const frame = [capital(order.frameMaterial), capital(order.frameType)]
+    .filter(Boolean)
+    .join(", ");
+
+  return [
+    order.lensType ? `Lens type: ${order.lensType.toUpperCase()}` : null,
+    "",
+    ...eyes.flatMap((line) => [eyeLine(line), fittingLine(line)]),
+    "",
+    `Lens: ${lines[0]?.product_name ?? "—"}`,
+    frame ? `Frame: ${frame}` : null,
+  ];
+}
+
 /**
  * The job as the lab needs it: no prices, no tint reason (that is for our
  * records), and the optician only when the operator chooses to send it.
@@ -75,22 +96,45 @@ export function labMessage(
   lines: RxMessageLine[],
   { includeOptician = false }: { includeOptician?: boolean } = {},
 ): string {
-  const rank = (l: RxMessageLine) => (l.eye === "R" ? 0 : 1);
-  const eyes = [...lines].sort((a, b) => rank(a) - rank(b));
-  const frame = [capital(order.frameMaterial), capital(order.frameType)]
-    .filter(Boolean)
-    .join(", ");
-
   return [
     `*${rxNo(order.rxNo)}*`,
     includeOptician ? `Optician: ${order.shopName}` : null,
     `Patient: ${order.patientName ?? "—"}`,
-    order.lensType ? `Lens type: ${order.lensType.toUpperCase()}` : null,
-    "",
-    ...eyes.flatMap((line) => [eyeLine(line), fittingLine(line)]),
-    "",
-    `Lens: ${lines[0]?.product_name ?? "—"}`,
-    frame ? `Frame: ${frame}` : null,
+    ...jobBlock(order, lines),
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+}
+
+export interface RxMessageJob {
+  order: RxMessageOrder;
+  lines: RxMessageLine[];
+}
+
+/**
+ * Every job for one patient booked the same day, in one message: the patient
+ * once, then each job under its own RX number. One job reads exactly as
+ * `labMessage`.
+ */
+export function patientLabMessage(
+  jobs: RxMessageJob[],
+  { includeOptician = false }: { includeOptician?: boolean } = {},
+): string {
+  if (jobs.length === 0) return "";
+  if (jobs.length === 1) {
+    return labMessage(jobs[0].order, jobs[0].lines, { includeOptician });
+  }
+
+  const first = jobs[0].order;
+  return [
+    includeOptician ? `Optician: ${first.shopName}` : null,
+    `Patient: ${first.patientName ?? "—"}`,
+    `${jobs.length} orders`,
+    ...jobs.flatMap((job) => [
+      "",
+      `*${rxNo(job.order.rxNo)}*`,
+      ...jobBlock(job.order, job.lines),
+    ]),
   ]
     .filter((line) => line !== null)
     .join("\n");

@@ -17,6 +17,7 @@ import {
 } from "@/features/shop/orders/InvoiceActions";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
+import { listSamePatientSameDay } from "@/services/shop/rx.service";
 import {
   formatAmount,
   formatDateTime,
@@ -49,6 +50,8 @@ export default async function OrderPage({
 
   // An RX order billed on its shop's combined invoice is as final as issued.
   const billedOn = order.billed_in ? await getOrder(order.billed_in) : null;
+  // The patient's other RX orders from the same day go to the lab together.
+  const sameDay = order.is_rx ? await listSamePatientSameDay(order) : [];
   const billed = billedOn !== null;
 
   const issued = order.issued_at !== null;
@@ -155,7 +158,7 @@ export default async function OrderPage({
           </dl>
           <RxWhatsAppButtons
             order={order}
-            lines={order.lines}
+            jobs={sameDay}
             shopName={
               order.customer?.shop_name ?? order.bill_to_shop ?? "the shop"
             }

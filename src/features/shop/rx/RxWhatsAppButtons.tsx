@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { MessageCircle } from "lucide-react";
+import Link from "next/link";
 import type { Order, OrderLine } from "@/types/database";
+import { formatRxNo } from "@/lib/format";
 import {
-  labMessage,
+  patientLabMessage,
   shopMessage,
   whatsappLink,
   type RxMessageOrder,
@@ -20,34 +22,45 @@ import {
  */
 export function RxWhatsAppButtons({
   order,
-  lines,
+  jobs,
   shopName,
 }: {
   order: Order;
-  lines: OrderLine[];
+  /** This order and the patient's other RX orders booked the same day. */
+  jobs: { order: Order; lines: OrderLine[] }[];
   shopName: string;
 }) {
   const [includeOptician, setIncludeOptician] = useState(false);
 
   if (order.voided_at) return null;
 
-  const message: RxMessageOrder = {
-    rxNo: order.rx_no,
-    patientName: order.patient_name,
-    lensType: order.rx_lens_type,
-    frameMaterial: order.frame_material,
-    frameType: order.frame_type,
+  const toMessage = (o: Order): RxMessageOrder => ({
+    rxNo: o.rx_no,
+    patientName: o.patient_name,
+    lensType: o.rx_lens_type,
+    frameMaterial: o.frame_material,
+    frameType: o.frame_type,
     shopName,
-    invoiceNo: order.invoice_no,
-    amount: order.amount_incl_tax,
-  };
+    invoiceNo: o.invoice_no,
+    amount: o.amount_incl_tax,
+  });
+  const message = toMessage(order);
+  const labJobs = jobs.map((job) => ({
+    order: toMessage(job.order),
+    lines: job.lines,
+  }));
+  const others = jobs.filter((job) => job.order.id !== order.id);
   const back = order.rx_stage === "back";
 
   return (
     <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-mist-200 pt-4">
       <WhatsAppLink
-        href={whatsappLink(labMessage(message, lines, { includeOptician }))}
-        label="Send order on WhatsApp"
+        href={whatsappLink(patientLabMessage(labJobs, { includeOptician }))}
+        label={
+          labJobs.length > 1
+            ? `Send ${labJobs.length} orders on WhatsApp`
+            : "Send order on WhatsApp"
+        }
         primary={!back}
       />
       <label className="text-navy-600 inline-flex items-center gap-2 text-sm">
@@ -67,6 +80,24 @@ export function RxWhatsAppButtons({
         />
       )}
       <p className="text-navy-400 w-full text-xs">
+        {others.length > 0 && (
+          <>
+            Includes {order.patient_name}&rsquo;s other RX{" "}
+            {others.length === 1 ? "order" : "orders"} from the same day:{" "}
+            {others.map((job, i) => (
+              <span key={job.order.id}>
+                {i > 0 && ", "}
+                <Link
+                  href={`/shop/orders/${job.order.id}`}
+                  className="text-accent-700 underline underline-offset-2"
+                >
+                  {formatRxNo(job.order.rx_no)}
+                </Link>
+              </span>
+            ))}
+            .{" "}
+          </>
+        )}
         Opens WhatsApp with the message ready. You choose who to send it to.
       </p>
     </div>

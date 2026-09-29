@@ -2,7 +2,13 @@ import "server-only";
 
 import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
-import type { OrderLine, RxMonth, RxStage, RxStatus } from "@/types/database";
+import type {
+  Order,
+  OrderLine,
+  RxMonth,
+  RxStage,
+  RxStatus,
+} from "@/types/database";
 import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
 
@@ -240,6 +246,82 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
   });
 
   return pairEyes(jobs, matchedIds);
+}
+
+export interface RxSameDayJob {
+  order: Order;
+  lines: OrderLine[];
+}
+
+/** The Karachi calendar day an instant falls on, as its start and end. */
+function karachiDay(at: string): { from: string; to: string } {
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Karachi",
+  }).format(new Date(at));
+  const next = new Date(`${day}T00:00:00+05:00`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return { from: `${day}T00:00:00+05:00`, to: next.toISOString() };
+}
+
+/**
+ * Every RX order for the same patient at the same optician booked the same
+ * day — this one included — so the lab gets them in one message. Matched by
+ * name, ignoring case and spacing; voided orders are left out.
+ */
+export async function listSamePatientSameDay(
+  order: Order,
+): Promise<RxSameDayJob[]> {
+  const { supabase } = await requireUser();
+
+  const patient = order.patient_name?.trim().replace(/\s+/g, " ");
+  const { from, to } = karachiDay(order.created_at);
+
+  let query = supabase
+    .from("orders")
+    .select("*")
+    .eq("is_rx", true)
+    .eq("bill_to_customer_id", order.bill_to_customer_id)
+    .is("voided_at", null)
+    .gte("created_at", from)
+    .lt("created_at", to)
+    .order("rx_no");
+  // No patient name: nothing to match on, so just this order.
+  query = patient
+    ? query.ilike("patient_name", patient.replace(/[%_\\]/g, "\\$&"))
+    : query.eq("id", order.id);
+
+  const { data: orders, error } = await query;
+  if (error)
+    throw new Error(describePostgresError(error, "load the patient's orders"));
+
+  const same = (orders ?? []).filter(
+    (o) =>
+      o.id === order.id ||
+      o.patient_name?.trim().replace(/\s+/g, " ").toLowerCase() ===
+        patient?.toLowerCase(),
+  );
+  if (!same.some((o) => o.id === order.id)) same.push(order);
+
+  const { data: lines, error: lineError } = await supabase
+    .from("order_lines")
+    .select("*")
+    .in(
+      "order_id",
+      same.map((o) => o.id),
+    )
+    .order("line_no");
+  if (lineError) {
+    throw new Error(
+      describePostgresError(lineError, "load the patient's orders"),
+    );
+  }
+
+  return same
+    .sort((a, b) => (a.rx_no ?? 0) - (b.rx_no ?? 0))
+    .map((o) => ({
+      order: o,
+      lines: (lines ?? []).filter((l) => l.order_id === o.id),
+    }));
 }
 
 /**
