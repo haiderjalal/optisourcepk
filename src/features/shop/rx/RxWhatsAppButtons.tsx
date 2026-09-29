@@ -1,31 +1,28 @@
 import { MessageCircle } from "lucide-react";
-import type { Order, OrderLine, Supplier } from "@/types/database";
+import type { Order, OrderLine } from "@/types/database";
 import {
   labMessage,
   shopMessage,
   whatsappLink,
-  whatsappNumber,
   type RxMessageOrder,
 } from "./whatsapp";
 
 /**
- * Send an RX job on WhatsApp: the order to the lab (no prices), then "ready"
- * to the shop once it is back. Each opens WhatsApp with the message typed;
- * the operator checks it and presses send.
+ * Share an RX job on WhatsApp: the order for the lab (no prices), then
+ * "ready" for the shop once it is back. Each opens WhatsApp with the message
+ * typed; the operator chooses who to send it to.
  */
 export function RxWhatsAppButtons({
   order,
   lines,
   shopName,
-  shopPhone,
-  lab,
 }: {
   order: Order;
   lines: OrderLine[];
   shopName: string;
-  shopPhone: string | null;
-  lab: Supplier | null;
 }) {
+  if (order.voided_at) return null;
+
   const message: RxMessageOrder = {
     rxNo: order.rx_no,
     patientName: order.patient_name,
@@ -38,35 +35,23 @@ export function RxWhatsAppButtons({
     amount: order.amount_incl_tax,
   };
   const back = order.rx_stage === "back";
-  const labHasPhone = whatsappNumber(lab?.phone ?? null) !== null;
-  const shopHasPhone = whatsappNumber(shopPhone) !== null;
 
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-mist-200 pt-4">
-      {!order.voided_at && (
+      <WhatsAppLink
+        href={whatsappLink(labMessage(message, lines))}
+        label="Send order on WhatsApp"
+        primary={!back}
+      />
+      {back && (
         <WhatsAppLink
-          href={whatsappLink(lab?.phone ?? null, labMessage(message, lines))}
-          label={
-            lab ? `Send to ${lab.name} on WhatsApp` : "Send to lab on WhatsApp"
-          }
-          primary={!back}
-        />
-      )}
-      {back && !order.voided_at && (
-        <WhatsAppLink
-          href={whatsappLink(shopPhone, shopMessage(message))}
-          label={`Send to ${shopName} on WhatsApp`}
+          href={whatsappLink(shopMessage(message))}
+          label="Send ready message on WhatsApp"
           primary
         />
       )}
       <p className="text-navy-400 w-full text-xs">
-        {!lab
-          ? "No lab chosen — pick one with Edit so the message goes to their number."
-          : !labHasPhone
-            ? `${lab.name} has no WhatsApp number — add it in Suppliers, or pick the chat yourself.`
-            : back && !shopHasPhone
-              ? `${shopName} has no phone number saved — pick the chat yourself.`
-              : "Opens WhatsApp with the message ready to check and send."}
+        Opens WhatsApp with the message ready. You choose who to send it to.
       </p>
     </div>
   );

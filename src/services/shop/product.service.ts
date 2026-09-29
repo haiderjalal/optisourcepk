@@ -50,10 +50,12 @@ export async function listProducts(
 ): Promise<ProductWithStock[]> {
   const { supabase } = await requireUser();
 
+  // RX lenses are kept apart — they live on the RX screen, not in Products.
   let query = supabase
     .from("products")
     .select("*")
     .is("deleted_at", null)
+    .eq("is_rx", false)
     .order("category")
     .order("name");
 
@@ -112,7 +114,10 @@ export async function getProduct(id: string): Promise<Product | null> {
   return data;
 }
 
-/** Products that can appear on an invoice line, for the builder's picker. */
+/**
+ * Products that can appear on a stock order or purchase, for the pickers.
+ * RX lenses are left out: they are typed on the RX job card instead.
+ */
 export async function listSellableProducts(): Promise<Product[]> {
   const { supabase } = await requireUser();
 
@@ -120,9 +125,25 @@ export async function listSellableProducts(): Promise<Product[]> {
     .from("products")
     .select("*")
     .is("deleted_at", null)
+    .eq("is_rx", false)
     .order("name");
 
   if (error) throw new Error(describePostgresError(error, "load products"));
+  return data ?? [];
+}
+
+/** The RX lens descriptions typed on earlier job cards, for suggestions. */
+export async function listRxProducts(): Promise<Product[]> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("products")
+    .select("*")
+    .is("deleted_at", null)
+    .eq("is_rx", true)
+    .order("name");
+
+  if (error) throw new Error(describePostgresError(error, "load RX lenses"));
   return data ?? [];
 }
 
@@ -135,9 +156,9 @@ function nameKey(name: string): string {
  * The product id for each typed RX product name, adding any not seen before.
  *
  * RX lenses are priced per job and never stocked, so a new name becomes a
- * product with no price and no stock — just a name to pick next time. An
- * existing product of the same name is reused, whatever its kind: an RX line
- * never touches stock, so reusing a stocked lens's name is harmless.
+ * RX lens with no price and no stock — just a name to pick next time. Only
+ * RX lenses are matched: the RX list is kept apart from Products, so a stock
+ * lens with the same name is never borrowed.
  */
 export async function resolveRxProducts(
   names: string[],
@@ -158,6 +179,7 @@ export async function resolveRxProducts(
     .from("products")
     .select("id, name")
     .is("deleted_at", null)
+    .eq("is_rx", true)
     .order("created_at");
   if (error) throw new Error(describePostgresError(error, "read the products"));
 

@@ -5,7 +5,10 @@ import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
 import { listCustomers } from "@/services/shop/customer.service";
-import { listSellableProducts } from "@/services/shop/product.service";
+import {
+  listRxProducts,
+  listSellableProducts,
+} from "@/services/shop/product.service";
 import { listSuppliers } from "@/services/shop/supplier.service";
 import { OrderBuilder } from "@/features/shop/orders/OrderBuilder";
 import { RxOrderForm } from "@/features/shop/rx/RxOrderForm";
@@ -28,7 +31,8 @@ export default async function EditOrderPage({
 
   const [customers, products, suppliers] = await Promise.all([
     listCustomers(),
-    listSellableProducts(),
+    // An RX job card suggests RX lenses only; a stock order never sees them.
+    order.is_rx ? listRxProducts() : listSellableProducts(),
     listSuppliers(),
   ]);
 

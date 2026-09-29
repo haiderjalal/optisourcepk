@@ -2,8 +2,8 @@
  * WhatsApp messages for an RX job: the order to the lab, and "ready" to the
  * shop. Pure, so the order page and the check build the same text.
  *
- * These are wa.me links — WhatsApp opens with the message typed, and the
- * operator presses send. Nothing is sent from the server.
+ * These are wa.me share links — WhatsApp opens with the message typed, the
+ * operator picks the contact and presses send. Nothing is sent from here.
  */
 
 export interface RxMessageOrder {
@@ -28,21 +28,12 @@ export interface RxMessageLine {
 }
 
 /**
- * A Pakistani number as WhatsApp wants it: country code, digits only.
- * 0300-1234567, +92 300 1234567 and 0092… all become 923001234567.
+ * A WhatsApp share link: WhatsApp opens with the message typed and lets the
+ * operator choose the chat. No number is filled in — who it goes to is their
+ * call, not the system's.
  */
-export function whatsappNumber(phone: string | null): string | null {
-  if (!phone) return null;
-  let digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("0092")) digits = digits.slice(2);
-  else if (digits.startsWith("0")) digits = `92${digits.slice(1)}`;
-  return digits.length >= 11 && digits.length <= 15 ? digits : null;
-}
-
-export function whatsappLink(phone: string | null, text: string): string {
-  const number = whatsappNumber(phone);
-  // No number: WhatsApp opens with the text and lets the operator pick a chat.
-  return `https://wa.me/${number ?? ""}?text=${encodeURIComponent(text)}`;
+export function whatsappLink(text: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(text)}`;
 }
 
 const rxNo = (n: number | null) =>
