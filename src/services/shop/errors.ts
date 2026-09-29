@@ -45,7 +45,7 @@ const CONSTRAINTS: Record<string, string> = {
   order_lines_cyl_step: "CYL runs from -12 to +12 in 0.25 steps.",
   order_lines_add_step: "ADD runs from 0 to 6 in 0.25 steps.",
   orders_rx_lens_type_valid:
-    "Pick SV, KRY, DBF or PROG for the lens type — the database needs the latest update (migration 0022).",
+    "Pick SV, KRY, DBF, PROG or Blended for the lens type — the database needs the latest update (migration 0024).",
   stock_bins_qty_on_hand_check:
     "That would take the stock below zero. Check the quantity on hand first.",
 };
