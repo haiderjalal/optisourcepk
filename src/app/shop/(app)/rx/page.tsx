@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Glasses, Plus, Search } from "lucide-react";
+import { Glasses, Pencil, Plus, Search } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import {
   listRxJobs,
@@ -13,7 +13,9 @@ import {
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxPriceForm } from "@/features/shop/rx/RxPriceForm";
 import { ReadyToInvoice } from "@/features/shop/rx/ReadyToInvoice";
+import { deleteRxOrderAction } from "@/features/shop/rx/actions";
 import { ButtonLink } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { inputClass } from "@/components/ui/field";
 import { formatAmount, formatPkr, formatPower, formatRxNo } from "@/lib/format";
 
@@ -134,7 +136,7 @@ export default async function RxOrdersPage({
         ))}
         <label className="text-sm">
           <span className="text-navy-600 mb-1 block font-medium">
-            Shop or patient
+            Bill To or patient
           </span>
           <input
             name="shop"
@@ -247,6 +249,12 @@ export default async function RxOrdersPage({
                   >
                     Status
                   </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-medium"
+                  >
+                    <span className="sr-only">Actions</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -326,6 +334,31 @@ export default async function RxOrdersPage({
                             salePrice={job.unit_price}
                             purchasePrice={job.unit_cost}
                           />
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5">
+                        {job.invoiceNo === null && !job.voided && (
+                          <div className="flex items-center justify-end gap-1">
+                            <Link
+                              href={`/shop/orders/${job.orderId}/edit`}
+                              className="text-navy-300 hover:text-accent-700 rounded-md p-1.5 transition-colors hover:bg-mist-100"
+                              title={`Edit ${formatRxNo(job.rxNo)}`}
+                            >
+                              <Pencil className="size-4" aria-hidden />
+                              <span className="sr-only">
+                                Edit {formatRxNo(job.rxNo)}
+                              </span>
+                            </Link>
+                            <ConfirmButton
+                              action={deleteRxOrderAction}
+                              id={job.orderId}
+                              name={formatRxNo(job.rxNo)}
+                              idField="orderId"
+                              kind="delete"
+                              question="Delete?"
+                              confirmLabel="Yes"
+                            />
+                          </div>
                         )}
                       </td>
                     </tr>

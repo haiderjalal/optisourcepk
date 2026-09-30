@@ -155,6 +155,9 @@ export function RxOrderForm({
   const [discount, setDiscount] = useState(
     first ? String(first.discount_pct) : "",
   );
+  const [quantity, setQuantity] = useState(
+    first ? String(first.quantity) : "1",
+  );
   // The shop's standing discount applies until one is typed.
   const discountPct =
     discount !== "" ? discount : String(customer?.default_discount_pct ?? 0);
@@ -168,8 +171,14 @@ export function RxOrderForm({
   const ordered = (["R", "L"] as const).filter((eye) => typed(eyes[eye]));
   // The lab quotes once the lens is made, so prices are asked for only then.
   const pricing = order?.rx_stage === "back";
+  const quantityValue = Number(quantity) || 0;
+  const quantityValid =
+    Number.isInteger(quantityValue) &&
+    quantityValue >= 1 &&
+    quantityValue <= 100_000;
   const perLens = (Number(rate) || 0) * (1 - (Number(discountPct) || 0) / 100);
-  const total = Math.round(perLens * ordered.length * 100) / 100;
+  const lensCount = ordered.length * quantityValue;
+  const total = Math.round(perLens * lensCount * 100) / 100;
 
   // What the server validates: one line per eye ordered.
   const payload = ordered.map((eye) => ({
@@ -189,7 +198,7 @@ export function RxOrderForm({
     // Blank until the lab has quoted; the invoice cannot be issued at 0.
     unitPrice: rate || "0",
     discountPct,
-    quantity: "1",
+    quantity,
     unitCost: cost,
     supplierId,
   }));
@@ -211,8 +220,9 @@ export function RxOrderForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <Field
             name="customerId"
-            label="Optician (shop billed)"
+            label="Bill To"
             required
+            hint="The customer account and shop that will receive the invoice."
             errors={state.fieldErrors?.customerId}
           >
             {(p) => (
@@ -224,7 +234,8 @@ export function RxOrderForm({
                 <option value="">Select a shop…</option>
                 {customers.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.shop_name} — {c.area}
+                    {c.shop_name} — {c.customer_name}
+                    {c.area ? ` · ${c.area}` : ""}
                   </option>
                 ))}
               </select>
@@ -233,7 +244,7 @@ export function RxOrderForm({
           <Field
             name="patientName"
             label="Patient name"
-            required
+            hint="Optional. This is separate from Bill To."
             errors={state.fieldErrors?.patientName}
           >
             {(p) => (
@@ -458,6 +469,34 @@ export function RxOrderForm({
               </select>
             )}
           </Field>
+          <Field name="rxQuantity" label="Quantity per eye">
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="1"
+                min={1}
+                max={100000}
+                inputMode="numeric"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+              />
+            )}
+          </Field>
+          <Field name="rxDiscount" label="Discount %">
+            {(p) => (
+              <input
+                {...p}
+                type="number"
+                step="0.01"
+                min={0}
+                max={100}
+                inputMode="decimal"
+                value={discountPct}
+                onChange={(e) => setDiscount(e.target.value)}
+              />
+            )}
+          </Field>
           {pricing && (
             <>
               <Field name="rxCost" label="Purchase price" hint="Not printed.">
@@ -486,28 +525,13 @@ export function RxOrderForm({
                   />
                 )}
               </Field>
-              <Field name="rxDiscount" label="Discount %">
-                {(p) => (
-                  <input
-                    {...p}
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    max={100}
-                    inputMode="decimal"
-                    value={discountPct}
-                    onChange={(e) => setDiscount(e.target.value)}
-                  />
-                )}
-              </Field>
             </>
           )}
         </div>
         {pricing && (
           <p className="mt-4 text-right text-sm">
             <span className="text-navy-500">
-              {ordered.length} {ordered.length === 1 ? "lens" : "lenses"} ·
-              Total{" "}
+              {lensCount} {lensCount === 1 ? "lens" : "lenses"} · Total{" "}
             </span>
             <span className="text-lg font-semibold tabular-nums">
               Rs {formatAmount(total)}
@@ -560,7 +584,10 @@ export function RxOrderForm({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton isUpdate={Boolean(order)} ready={ordered.length > 0} />
+        <SubmitButton
+          isUpdate={Boolean(order)}
+          ready={ordered.length > 0 && quantityValid}
+        />
         <Link
           href={order ? `/shop/orders/${order.id}` : "/shop/rx"}
           className="text-navy-500 hover:text-navy-700 text-sm font-medium"
@@ -570,7 +597,9 @@ export function RxOrderForm({
         <span className="text-navy-400 text-xs">
           {ordered.length === 0
             ? "Enter the power for at least one eye to book it."
-            : "Gets the next RX number when booked. No stock is checked or deducted."}
+            : !quantityValid
+              ? "Enter a whole-number quantity of at least 1."
+              : "Gets the next RX number when booked. No stock is checked or deducted."}
         </span>
       </div>
     </form>

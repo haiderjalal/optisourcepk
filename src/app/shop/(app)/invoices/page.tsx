@@ -5,6 +5,11 @@ import { requireUser } from "@/server/shop/dal";
 import { listOrders } from "@/services/shop/invoice.service";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
+import {
+  deleteInvoiceAction,
+  reopenInvoiceAction,
+} from "@/features/shop/orders/actions";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { formatAmount, formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Invoices" };
@@ -73,7 +78,7 @@ export default async function InvoicesPage() {
                   Amount (Rs)
                 </th>
                 <th scope="col" className="px-4 py-3 text-right font-medium">
-                  <span className="sr-only">PDF</span>
+                  <span className="sr-only">Actions</span>
                 </th>
               </tr>
             </thead>
@@ -107,14 +112,36 @@ export default async function InvoicesPage() {
                   >
                     {formatAmount(invoice.amount_incl_tax ?? 0)}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/shop/invoices/${invoice.id}/pdf`}
-                      className="text-navy-400 hover:text-accent-600 inline-flex items-center gap-1 text-xs font-medium"
-                    >
-                      <FileText className="size-3.5" aria-hidden />
-                      PDF
-                    </Link>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <Link
+                        href={`/shop/invoices/${invoice.id}/pdf`}
+                        className="text-navy-400 hover:text-accent-600 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium"
+                      >
+                        <FileText className="size-3.5" aria-hidden />
+                        PDF
+                      </Link>
+                      {!invoice.voided_at && (
+                        <ConfirmButton
+                          action={reopenInvoiceAction}
+                          id={invoice.id}
+                          name={`invoice ${invoice.invoice_no}`}
+                          idField="orderId"
+                          kind="edit"
+                          question="Reopen as draft?"
+                          confirmLabel="Yes"
+                        />
+                      )}
+                      <ConfirmButton
+                        action={deleteInvoiceAction}
+                        id={invoice.id}
+                        name={`invoice ${invoice.invoice_no}`}
+                        idField="orderId"
+                        kind="delete"
+                        question="Delete?"
+                        confirmLabel="Yes"
+                      />
+                    </div>
                   </td>
                 </tr>
               ))}
