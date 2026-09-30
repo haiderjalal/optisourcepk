@@ -392,6 +392,33 @@ export async function voidInvoice(
   return data;
 }
 
+/** Reverse an issued invoice and return the same order as an editable draft. */
+export async function reopenInvoice(orderId: string): Promise<Order> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase.rpc("reopen_invoice", {
+    p_order_id: orderId,
+  });
+  if (error)
+    throw new Error(describePostgresError(error, "reopen the invoice"));
+
+  logger.warn("Invoice reopened for editing", { orderId });
+  return data;
+}
+
+/** Delete an invoice after the database reverses its stock and ledger posts. */
+export async function deleteInvoice(orderId: string): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase.rpc("delete_invoice", {
+    p_order_id: orderId,
+  });
+  if (error)
+    throw new Error(describePostgresError(error, "delete the invoice"));
+
+  logger.warn("Invoice deleted", { orderId });
+}
+
 export interface DeliveryUpdate {
   orderId: string;
   status: "dispatched" | "delivered";
@@ -468,7 +495,7 @@ export async function deleteOrder(id: string): Promise<void> {
 
   const { data: order, error: readError } = await supabase
     .from("orders")
-    .select("id, order_no, invoice_no, issued_at")
+    .select("id, order_no, invoice_no, issued_at, billed_in")
     .eq("id", id)
     .maybeSingle();
 
@@ -480,6 +507,11 @@ export async function deleteOrder(id: string): Promise<void> {
   if (order.issued_at !== null) {
     throw new Error(
       `Invoice ${order.invoice_no} has been issued, so it cannot be deleted. Void it instead — that returns the stock and credits the customer, and keeps the invoice on record.`,
+    );
+  }
+  if (order.billed_in !== null) {
+    throw new Error(
+      "This RX order is already on an invoice, so it cannot be deleted.",
     );
   }
 

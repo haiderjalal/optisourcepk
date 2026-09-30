@@ -9,6 +9,7 @@ import {
   priceRx,
   setRxStage,
 } from "@/services/shop/rx.service";
+import { deleteOrder } from "@/services/shop/invoice.service";
 
 const stageSchema = z.object({
   orderId: z.uuid(),
@@ -101,4 +102,17 @@ export async function issueRxInvoiceAction(
   revalidatePath("/shop/rx");
   revalidatePath("/shop/invoices");
   redirect(`/shop/orders/${invoiceId}`);
+}
+
+/** Delete an RX order that has not been invoiced yet. */
+export async function deleteRxOrderAction(formData: FormData): Promise<void> {
+  await requireUser();
+
+  const orderId = z.uuid().safeParse(formData.get("orderId"));
+  if (!orderId.success) return;
+
+  await deleteOrder(orderId.data);
+  revalidatePath("/shop/rx");
+  revalidatePath("/shop");
+  redirect("/shop/rx");
 }

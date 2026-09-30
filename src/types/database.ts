@@ -481,6 +481,14 @@ export interface Database {
         };
         Returns: OrderRow;
       };
+      reopen_invoice: {
+        Args: { p_order_id: string };
+        Returns: OrderRow;
+      };
+      delete_invoice: {
+        Args: { p_order_id: string };
+        Returns: boolean;
+      };
       receive_range: {
         Args: {
           p_product_id: string;

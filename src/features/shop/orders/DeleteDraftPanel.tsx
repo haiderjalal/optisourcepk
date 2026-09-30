@@ -36,9 +36,11 @@ export function DeleteDraftPanel({ order }: { order: Order }) {
       </summary>
       <form action={deleteOrderAction} className="mt-4">
         <input type="hidden" name="orderId" value={order.id} />
+        {order.is_rx && <input type="hidden" name="returnTo" value="rx" />}
         <p className="text-navy-500 max-w-prose text-sm">
-          Removes order {order.order_no} and its lines for good. Nothing has
-          been invoiced yet, so no stock and no customer balance are affected.
+          Removes {order.is_rx ? "this RX order" : `order ${order.order_no}`}{" "}
+          and its lines for good. Nothing has been invoiced yet, so no stock and
+          no customer balance are affected.
         </p>
         <Submit />
       </form>

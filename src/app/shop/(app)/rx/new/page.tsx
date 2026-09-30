@@ -44,7 +44,7 @@ export default async function NewRxOrderPage() {
         <div className="rounded-2xl border border-dashed border-mist-300 bg-white/60 px-6 py-12 text-center">
           <h2 className="font-semibold">Add a customer first.</h2>
           <p className="text-navy-500 mx-auto mt-2 max-w-sm text-sm">
-            An RX order needs a shop to bill.
+            An RX order needs a Bill To customer.
           </p>
           <ButtonLink href="/shop/customers/new" className="mt-6">
             Add a customer

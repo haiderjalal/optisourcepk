@@ -16,6 +16,8 @@ import {
   updateOrder,
   voidInvoice,
   deleteOrder,
+  deleteInvoice,
+  reopenInvoice,
 } from "@/services/shop/invoice.service";
 import { recordPayment } from "@/services/shop/ledger.service";
 
@@ -183,8 +185,39 @@ export async function deleteOrderAction(formData: FormData): Promise<void> {
   await deleteOrder(id);
 
   revalidatePath("/shop/orders");
+  revalidatePath("/shop/rx");
   revalidatePath("/shop");
-  redirect("/shop/orders");
+  redirect(formData.get("returnTo") === "rx" ? "/shop/rx" : "/shop/orders");
+}
+
+/** Reverse an issued invoice's postings and open it in the existing editor. */
+export async function reopenInvoiceAction(formData: FormData): Promise<void> {
+  await requireUser();
+
+  const id = z.uuid().safeParse(formData.get("orderId"));
+  if (!id.success) return;
+
+  await reopenInvoice(id.data);
+  revalidatePath("/shop/invoices");
+  revalidatePath("/shop/orders");
+  revalidatePath(`/shop/orders/${id.data}`);
+  revalidatePath("/shop");
+  redirect(`/shop/orders/${id.data}/edit`);
+}
+
+/** Delete an invoice after atomically reversing its stock and ledger effects. */
+export async function deleteInvoiceAction(formData: FormData): Promise<void> {
+  await requireUser();
+
+  const id = z.uuid().safeParse(formData.get("orderId"));
+  if (!id.success) return;
+
+  await deleteInvoice(id.data);
+  revalidatePath("/shop/invoices");
+  revalidatePath("/shop/orders");
+  revalidatePath("/shop/rx");
+  revalidatePath("/shop");
+  redirect("/shop/invoices");
 }
 
 export async function markDispatchedAction(formData: FormData): Promise<void> {

@@ -9,6 +9,11 @@ import { getBalance } from "@/services/shop/ledger.service";
 import { StockCheck } from "@/features/shop/orders/StockCheck";
 import { DeleteDraftPanel } from "@/features/shop/orders/DeleteDraftPanel";
 import { ButtonLink } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm-button";
+import {
+  deleteInvoiceAction,
+  reopenInvoiceAction,
+} from "@/features/shop/orders/actions";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
 import {
   DispatchPanel,
@@ -111,6 +116,26 @@ export default async function OrderPage({
                 <Download className="size-4" aria-hidden />
                 Download
               </ButtonLink>
+              {!voided && (
+                <ConfirmButton
+                  action={reopenInvoiceAction}
+                  id={order.id}
+                  name={`invoice ${order.invoice_no}`}
+                  idField="orderId"
+                  kind="edit"
+                  question="Reopen as a draft?"
+                  confirmLabel="Edit"
+                />
+              )}
+              <ConfirmButton
+                action={deleteInvoiceAction}
+                id={order.id}
+                name={`invoice ${order.invoice_no}`}
+                idField="orderId"
+                kind="delete"
+                question="Delete permanently?"
+                confirmLabel="Delete"
+              />
             </>
           )}
           {!issued && !billed && (

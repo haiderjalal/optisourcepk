@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Archive, Trash2 } from "lucide-react";
+import { Archive, Pencil, Trash2 } from "lucide-react";
 
 /**
  * A destructive row action that confirms in place.
@@ -12,7 +12,8 @@ import { Archive, Trash2 } from "lucide-react";
  * second click is deliberate and lands somewhere different from the first.
  */
 
-const ICONS = { archive: Archive, delete: Trash2 } as const;
+const ICONS = { archive: Archive, delete: Trash2, edit: Pencil } as const;
+const VERBS = { archive: "Archive", delete: "Delete", edit: "Edit" } as const;
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();
@@ -47,7 +48,7 @@ export function ConfirmButton({
 }) {
   const [confirming, setConfirming] = useState(false);
   const Icon = ICONS[kind];
-  const verb = kind === "delete" ? "Delete" : "Archive";
+  const verb = VERBS[kind];
 
   if (!confirming) {
     return (

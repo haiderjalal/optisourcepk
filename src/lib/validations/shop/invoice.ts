@@ -121,43 +121,38 @@ export const orderLineSchema = z
     path: ["ax"],
   });
 
-export const orderSchema = z
-  .object({
-    customerId: z.uuid("Pick a customer."),
-    externalOrderRef: z.string().trim().max(40).optional().or(z.literal("")),
-    priority: z.enum(["normal", "urgent"]).default("normal"),
-    /** Set when the order is started from the RX screen; fixed after that. */
-    isRx: z.boolean().default(false),
+export const orderSchema = z.object({
+  customerId: z.uuid("Pick a customer."),
+  externalOrderRef: z.string().trim().max(40).optional().or(z.literal("")),
+  priority: z.enum(["normal", "urgent"]).default("normal"),
+  /** Set when the order is started from the RX screen; fixed after that. */
+  isRx: z.boolean().default(false),
 
-    // The RX job card. Blank means not given; the patient is required on RX.
-    patientName: z.string().trim().max(120).optional().or(z.literal("")),
-    // "nv" is kept only so orders booked before KRY replaced it still save.
-    rxLensType: z
-      .enum(["", "sv", "kry", "nv", "dbf", "prog", "blended"])
-      .optional(),
-    rxTintReason: z.string().trim().max(400).optional().or(z.literal("")),
-    frameMaterial: z.enum(["", "plastic", "metal"]).optional(),
-    frameType: z.enum(["", "rimmed", "half", "rimless"]).optional(),
+  // The RX job card. Blank means not given; patient name is optional.
+  patientName: z.string().trim().max(120).optional().or(z.literal("")),
+  // "nv" is kept only so orders booked before KRY replaced it still save.
+  rxLensType: z
+    .enum(["", "sv", "kry", "nv", "dbf", "prog", "blended"])
+    .optional(),
+  rxTintReason: z.string().trim().max(400).optional().or(z.literal("")),
+  frameMaterial: z.enum(["", "plastic", "metal"]).optional(),
+  frameType: z.enum(["", "rimmed", "half", "rimless"]).optional(),
 
-    orderByName: z.string().trim().max(120).optional().or(z.literal("")),
-    deliverToName: z.string().trim().max(120).optional().or(z.literal("")),
-    deliverToAddress: z.string().trim().max(400).optional().or(z.literal("")),
-    deliverToArea: z.string().trim().max(80).optional().or(z.literal("")),
-    deliverToPhone: z.string().trim().max(24).optional().or(z.literal("")),
+  orderByName: z.string().trim().max(120).optional().or(z.literal("")),
+  deliverToName: z.string().trim().max(120).optional().or(z.literal("")),
+  deliverToAddress: z.string().trim().max(400).optional().or(z.literal("")),
+  deliverToArea: z.string().trim().max(80).optional().or(z.literal("")),
+  deliverToPhone: z.string().trim().max(24).optional().or(z.literal("")),
 
-    courierName: z.string().trim().max(80).optional().or(z.literal("")),
-    trackingNo: z.string().trim().max(60).optional().or(z.literal("")),
-    notes: z.string().trim().max(2000).optional().or(z.literal("")),
+  courierName: z.string().trim().max(80).optional().or(z.literal("")),
+  trackingNo: z.string().trim().max(60).optional().or(z.literal("")),
+  notes: z.string().trim().max(2000).optional().or(z.literal("")),
 
-    lines: z
-      .array(orderLineSchema)
-      .min(1, "Add at least one line.")
-      .max(200, "Split this across two orders — 200 lines is the limit."),
-  })
-  .refine((order) => !order.isRx || Boolean(order.patientName), {
-    error: "Enter the patient's name.",
-    path: ["patientName"],
-  });
+  lines: z
+    .array(orderLineSchema)
+    .min(1, "Add at least one line.")
+    .max(200, "Split this across two orders — 200 lines is the limit."),
+});
 
 export const issueInvoiceSchema = z.object({
   orderId: z.uuid(),
