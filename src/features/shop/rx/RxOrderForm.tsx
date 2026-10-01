@@ -270,21 +270,6 @@ export function RxOrderForm({
               />
             )}
           </Field>
-          <Field
-            name="labOrderNo"
-            label="Lab order number"
-            hint="Optional. The reference assigned by the lab."
-            errors={state.fieldErrors?.labOrderNo}
-          >
-            {(p) => (
-              <input
-                {...p}
-                type="text"
-                maxLength={80}
-                defaultValue={order?.lab_order_no ?? ""}
-              />
-            )}
-          </Field>
         </div>
       </section>
 
@@ -476,6 +461,13 @@ export function RxOrderForm({
         <h2 className="text-base font-semibold">
           {pricing ? "Lab and prices" : "Lab"}
         </h2>
+        {!pricing && (
+          <input
+            type="hidden"
+            name="labOrderNo"
+            value={order?.lab_order_no ?? ""}
+          />
+        )}
         <p className="text-navy-500 mt-1 text-xs">
           {pricing
             ? "Per lens. The lab's price and the sale price, before you issue the invoice."
@@ -528,6 +520,21 @@ export function RxOrderForm({
           </Field>
           {pricing && (
             <>
+              <Field
+                name="labOrderNo"
+                label="Lab order number"
+                hint="Optional. Enter it when the pair is received."
+                errors={state.fieldErrors?.labOrderNo}
+              >
+                {(p) => (
+                  <input
+                    {...p}
+                    type="text"
+                    maxLength={80}
+                    defaultValue={order?.lab_order_no ?? ""}
+                  />
+                )}
+              </Field>
               <Field name="rxCost" label="Purchase price" hint="Not printed.">
                 {(p) => (
                   <input

@@ -354,6 +354,7 @@ export interface RxPricing {
   /** Per lens. */
   salePrice: number;
   purchasePrice: number | null;
+  labOrderNo: string | null;
 }
 
 /**
@@ -372,6 +373,16 @@ export async function priceRx(pricing: RxPricing): Promise<void> {
   if (!order?.is_rx) throw new Error("That is not an RX order.");
   if (order.issued_at || order.voided_at || order.billed_in) {
     throw new Error("This RX order is already invoiced.");
+  }
+
+  const { error: referenceError } = await supabase
+    .from("orders")
+    .update({ lab_order_no: pricing.labOrderNo })
+    .eq("id", pricing.orderId);
+  if (referenceError) {
+    throw new Error(
+      describePostgresError(referenceError, "save the lab order number"),
+    );
   }
 
   const { error: priceError } = await supabase
