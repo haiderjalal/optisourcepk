@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Boxes,
+  CalendarDays,
   ChevronRight,
   PackagePlus,
   Plus,
   TriangleAlert,
 } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
-import { listAllStock } from "@/services/shop/stock.service";
+import { listAllStock, listDailyStock } from "@/services/shop/stock.service";
 import { listSellableProducts } from "@/services/shop/product.service";
 import { QuickReceive } from "@/features/shop/products/QuickReceive";
 import { ButtonLink } from "@/components/ui/button";
@@ -19,9 +20,10 @@ export const metadata: Metadata = { title: "Stock" };
 
 export default async function StockPage() {
   await requireUser();
-  const [products, sellable] = await Promise.all([
+  const [products, sellable, daily] = await Promise.all([
     listAllStock(),
     listSellableProducts(),
+    listDailyStock(),
   ]);
 
   // Services are billed per job and never held, so they are not offered here.
@@ -45,6 +47,92 @@ export default async function StockPage() {
           Add product
         </ButtonLink>
       </div>
+
+      <section className="shadow-lift mb-5 overflow-hidden rounded-2xl bg-white">
+        <div className="flex items-center gap-2 border-b border-mist-200 px-5 py-4">
+          <CalendarDays className="text-accent-600 size-4" aria-hidden />
+          <div>
+            <h2 className="text-base font-semibold">Daily stock</h2>
+            <p className="text-navy-500 mt-0.5 text-xs">
+              Today&rsquo;s opening, incoming and outgoing quantities—including
+              stock received in the morning and sold the same day.
+            </p>
+          </div>
+        </div>
+        {daily.length === 0 ? (
+          <p className="text-navy-500 px-5 py-6 text-sm">
+            No stock has moved today.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] text-sm">
+              <caption className="sr-only">
+                Today&rsquo;s stock movement
+              </caption>
+              <thead>
+                <tr className="text-navy-500 bg-mist-100 text-left text-xs">
+                  <th scope="col" className="px-5 py-2.5 font-medium">
+                    Product
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-medium"
+                  >
+                    Opening
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-medium"
+                  >
+                    In
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-medium"
+                  >
+                    Out
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-5 py-2.5 text-right font-medium"
+                  >
+                    Closing
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {daily.map((row) => (
+                  <tr key={row.productId} className="border-t border-mist-200">
+                    <td className="px-5 py-2.5 font-medium">
+                      <Link
+                        href={`/shop/products/${row.productId}`}
+                        className="hover:text-accent-700"
+                      >
+                        {row.productName}
+                      </Link>
+                      <span className="text-navy-400 ml-1 text-xs">
+                        {row.unit}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {row.opening}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-emerald-700 tabular-nums">
+                      +{row.received}
+                    </td>
+                    <td className="px-3 py-2.5 text-right text-amber-700 tabular-nums">
+                      −{row.issued}
+                    </td>
+                    <td className="px-5 py-2.5 text-right font-semibold tabular-nums">
+                      {row.closing}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       {products.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-mist-300 bg-white/60 px-6 py-16 text-center">

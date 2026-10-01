@@ -256,6 +256,35 @@ export function RxOrderForm({
               />
             )}
           </Field>
+          <Field
+            name="orderByName"
+            label="Optician name"
+            hint="Optional. The person who placed the order."
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="text"
+                maxLength={120}
+                defaultValue={order?.order_by_name ?? ""}
+              />
+            )}
+          </Field>
+          <Field
+            name="labOrderNo"
+            label="Lab order number"
+            hint="Optional. The reference assigned by the lab."
+            errors={state.fieldErrors?.labOrderNo}
+          >
+            {(p) => (
+              <input
+                {...p}
+                type="text"
+                maxLength={80}
+                defaultValue={order?.lab_order_no ?? ""}
+              />
+            )}
+          </Field>
         </div>
       </section>
 

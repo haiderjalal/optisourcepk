@@ -9,6 +9,8 @@
 export interface RxMessageOrder {
   rxNo: number | null;
   patientName: string | null;
+  opticianName: string | null;
+  labOrderNo: string | null;
   lensType: string | null;
   frameMaterial: string | null;
   frameType: string | null;
@@ -104,8 +106,11 @@ export function labMessage(
 ): string {
   return [
     `*${rxNo(order.rxNo)}*`,
-    includeOptician ? `Optician: ${order.shopName}` : null,
-    `Patient: ${order.patientName ?? "—"}`,
+    order.labOrderNo ? `Lab order: ${order.labOrderNo}` : null,
+    includeOptician && order.opticianName
+      ? `Optician: ${order.opticianName}`
+      : null,
+    order.patientName ? `Patient: ${order.patientName}` : null,
     ...jobBlock(order, lines),
   ]
     .filter((line) => line !== null)
@@ -133,12 +138,15 @@ export function patientLabMessage(
 
   const first = jobs[0].order;
   return [
-    includeOptician ? `Optician: ${first.shopName}` : null,
-    `Patient: ${first.patientName ?? "—"}`,
+    includeOptician && first.opticianName
+      ? `Optician: ${first.opticianName}`
+      : null,
+    first.patientName ? `Patient: ${first.patientName}` : null,
     `${jobs.length} orders`,
     ...jobs.flatMap((job) => [
       "",
       `*${rxNo(job.order.rxNo)}*`,
+      job.order.labOrderNo ? `Lab order: ${job.order.labOrderNo}` : null,
       ...jobBlock(job.order, job.lines),
     ]),
   ]

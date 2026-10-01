@@ -10,6 +10,7 @@ import { StockCheck } from "@/features/shop/orders/StockCheck";
 import { DeleteDraftPanel } from "@/features/shop/orders/DeleteDraftPanel";
 import { ButtonLink } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { InvoiceWhatsAppButton } from "@/features/shop/orders/InvoiceWhatsAppButton";
 import {
   deleteInvoiceAction,
   reopenInvoiceAction,
@@ -116,6 +117,7 @@ export default async function OrderPage({
                 <Download className="size-4" aria-hidden />
                 Download
               </ButtonLink>
+              <InvoiceWhatsAppButton order={order} />
               {!voided && (
                 <ConfirmButton
                   action={reopenInvoiceAction}
@@ -167,6 +169,8 @@ export default async function OrderPage({
               label="Lens type"
               value={order.rx_lens_type?.toUpperCase() ?? null}
             />
+            <RxDetail label="Optician" value={order.order_by_name} />
+            <RxDetail label="Lab order no." value={order.lab_order_no} />
             <RxDetail
               label="Frame"
               value={

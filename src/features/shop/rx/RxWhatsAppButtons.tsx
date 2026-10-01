@@ -37,6 +37,8 @@ export function RxWhatsAppButtons({
   const toMessage = (o: Order): RxMessageOrder => ({
     rxNo: o.rx_no,
     patientName: o.patient_name,
+    opticianName: o.order_by_name,
+    labOrderNo: o.lab_order_no,
     lensType: o.rx_lens_type,
     frameMaterial: o.frame_material,
     frameType: o.frame_type,
@@ -63,15 +65,17 @@ export function RxWhatsAppButtons({
         }
         primary={!back}
       />
-      <label className="text-navy-600 inline-flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={includeOptician}
-          onChange={(e) => setIncludeOptician(e.target.checked)}
-          className="size-4"
-        />
-        Include optician name ({shopName})
-      </label>
+      {order.order_by_name && (
+        <label className="text-navy-600 inline-flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={includeOptician}
+            onChange={(e) => setIncludeOptician(e.target.checked)}
+            className="size-4"
+          />
+          Include optician name ({order.order_by_name})
+        </label>
+      )}
       {back && (
         <WhatsAppLink
           href={whatsappLink(shopMessage(message))}

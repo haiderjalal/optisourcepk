@@ -33,6 +33,7 @@ function rxCard(payload: OrderPayload) {
   if (!payload.isRx) return {};
   return {
     patient_name: optional(payload.patientName),
+    lab_order_no: optional(payload.labOrderNo),
     rx_lens_type: payload.rxLensType ? payload.rxLensType : null,
     rx_tint_reason: optional(payload.rxTintReason),
     frame_material: payload.frameMaterial ? payload.frameMaterial : null,

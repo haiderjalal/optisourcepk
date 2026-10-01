@@ -130,6 +130,7 @@ export const orderSchema = z.object({
 
   // The RX job card. Blank means not given; patient name is optional.
   patientName: z.string().trim().max(120).optional().or(z.literal("")),
+  labOrderNo: z.string().trim().max(80).optional().or(z.literal("")),
   // "nv" is kept only so orders booked before KRY replaced it still save.
   rxLensType: z
     .enum(["", "sv", "kry", "nv", "dbf", "prog", "blended"])

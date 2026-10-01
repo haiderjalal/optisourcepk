@@ -49,9 +49,14 @@ export default async function StatementPage({
         </ButtonLink>
       </div>
 
-      <div className="shadow-lift mb-5 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-3">
+      <div className="shadow-lift mb-5 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Invoiced" value={balance?.invoiced ?? 0} />
         <Stat label="Paid" value={balance?.paid ?? 0} tone="good" />
+        <Stat
+          label="Discounts / adjustments"
+          value={balance?.adjustments ?? 0}
+          tone={(balance?.adjustments ?? 0) <= 0 ? "good" : "owing"}
+        />
         <Stat
           label="Balance"
           value={owed}
@@ -95,11 +100,30 @@ export default async function StatementPage({
                 </td>
                 <td className="px-4 py-2.5">
                   {line.invoice_no ? (
-                    <span className="font-medium">
-                      Invoice {line.invoice_no}
-                    </span>
+                    <div>
+                      <span className="font-medium">
+                        Invoice {line.invoice_no}
+                      </span>
+                      {line.sale_type && (
+                        <span className="text-navy-600 ml-2 rounded-full bg-mist-100 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                          {line.sale_type}
+                        </span>
+                      )}
+                      {line.description && (
+                        <span className="text-navy-400 mt-0.5 block text-xs">
+                          {line.description}
+                        </span>
+                      )}
+                    </div>
                   ) : (
-                    line.description
+                    <span>
+                      {line.description}
+                      {line.sale_type === "adjustment" && (
+                        <span className="text-navy-600 ml-2 rounded-full bg-mist-100 px-2 py-0.5 text-[10px] font-semibold uppercase">
+                          adjustment
+                        </span>
+                      )}
+                    </span>
                   )}
                 </td>
                 <td className="px-4 py-2.5 text-right tabular-nums">

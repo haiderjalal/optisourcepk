@@ -4,6 +4,7 @@ import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
 import type { PaymentPayload } from "@/lib/validations/shop/payment";
 import type {
+  BusinessTotals,
   CustomerBalance,
   CustomerStatementLine,
   LedgerEntry,
@@ -17,24 +18,34 @@ import { describePostgresError } from "./errors";
  * from the entries, so the list screen and the statement cannot disagree.
  */
 
-/** Record money received. One insert; the balance follows from it. */
+/** Record a payment or payment-discount adjustment. */
 export async function recordPayment(
   payload: PaymentPayload,
 ): Promise<LedgerEntry> {
   const { supabase } = await requireUser();
 
+  const isPayment = payload.entryKind === "payment";
+  const removesDiscount = payload.entryKind === "remove_discount";
   const { data, error } = await supabase
     .from("ledger_entries")
     .insert({
       customer_id: payload.customerId,
       entry_date: payload.entryDate,
-      entry_type: "payment",
-      // Negative: a payment reduces what the shop owes. The database enforces
-      // the sign, so a positive amount here would be rejected outright.
-      amount: -Math.abs(payload.amount),
-      payment_method: payload.method,
+      entry_type: isPayment ? "payment" : "adjustment",
+      // Payments and added discounts reduce what is owed; removing a previous
+      // discount adds it back. The form always supplies a positive magnitude.
+      amount: removesDiscount
+        ? Math.abs(payload.amount)
+        : -Math.abs(payload.amount),
+      payment_method: isPayment ? payload.method : null,
       reference: payload.reference?.trim() || null,
-      memo: payload.memo?.trim() || null,
+      memo:
+        payload.memo?.trim() ||
+        (payload.entryKind === "discount"
+          ? "Payment discount"
+          : removesDiscount
+            ? "Payment discount removed"
+            : null),
     })
     .select()
     .single();
@@ -45,7 +56,7 @@ export async function recordPayment(
 
   logger.info("Payment recorded", {
     customerId: payload.customerId,
-    method: payload.method,
+    kind: payload.entryKind,
   });
 
   return data;
@@ -121,11 +132,25 @@ export async function listRecentPayments(limit = 10): Promise<LedgerEntry[]> {
   const { data, error } = await supabase
     .from("ledger_entries")
     .select("*")
-    .eq("entry_type", "payment")
+    .in("entry_type", ["payment", "adjustment"])
     .order("entry_date", { ascending: false })
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) throw new Error(describePostgresError(error, "load payments"));
   return data ?? [];
+}
+
+/** Lifetime RX and stock sales/purchases, kept as four separate figures. */
+export async function getBusinessTotals(): Promise<BusinessTotals> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("business_totals")
+    .select("*")
+    .single();
+
+  if (error)
+    throw new Error(describePostgresError(error, "load ledger totals"));
+  return data;
 }
