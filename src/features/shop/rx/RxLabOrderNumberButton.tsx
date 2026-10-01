@@ -16,18 +16,23 @@ export function RxLabOrderNumberButton({
   compact?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
+  const [keepEditorOpen, setKeepEditorOpen] = useState(false);
   const [state, formAction] = useActionState<RxActionState, FormData>(
     saveLabOrderNumberAction,
     {},
   );
   const value = state.labOrderNo ?? initialValue ?? "";
+  const savedAndClosed = state.saved && !keepEditorOpen;
 
-  if (!editing) {
+  if (!editing || savedAndClosed) {
     return (
       <div className={compact ? "mt-1" : ""}>
         <button
           type="button"
-          onClick={() => setEditing(true)}
+          onClick={() => {
+            setEditing(true);
+            setKeepEditorOpen(true);
+          }}
           className="text-accent-700 hover:bg-accent-50 inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors"
         >
           <Hash className="size-3.5" aria-hidden />
@@ -45,6 +50,7 @@ export function RxLabOrderNumberButton({
   return (
     <form
       action={formAction}
+      onSubmit={() => setKeepEditorOpen(false)}
       className={`flex flex-wrap items-end gap-2 ${compact ? "mt-1 justify-end" : ""}`}
     >
       <input type="hidden" name="orderId" value={orderId} />
