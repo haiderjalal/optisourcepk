@@ -351,6 +351,37 @@ export async function setRxStage(
   logger.info("RX stage set", { orderId, stage });
 }
 
+/** Save the lab's reference without changing prices, stage, or invoicing. */
+export async function updateRxLabOrderNo(
+  orderId: string,
+  labOrderNo: string,
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .update({ lab_order_no: labOrderNo.trim() })
+    .eq("id", orderId)
+    .eq("is_rx", true)
+    .in("rx_stage", ["sent", "back"])
+    .is("issued_at", null)
+    .is("voided_at", null)
+    .is("billed_in", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(describePostgresError(error, "save the lab order number"));
+  }
+  if (!data) {
+    throw new Error(
+      "Send the RX order to the lab before adding its lab order number.",
+    );
+  }
+
+  logger.info("RX lab order number saved", { orderId });
+}
+
 export interface RxPricing {
   orderId: string;
   /** Per lens. */

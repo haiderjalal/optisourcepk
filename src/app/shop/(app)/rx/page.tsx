@@ -12,6 +12,7 @@ import {
 } from "@/services/shop/rx.service";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxPriceForm } from "@/features/shop/rx/RxPriceForm";
+import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { ReadyToInvoice } from "@/features/shop/rx/ReadyToInvoice";
 import { deleteRxOrderAction } from "@/features/shop/rx/actions";
 import { ButtonLink } from "@/components/ui/button";
@@ -338,6 +339,16 @@ export default async function RxOrdersPage({
                             compact
                           />
                         )}
+                        {job.invoiceNo === null &&
+                          !job.voided &&
+                          job.rxStage !== null &&
+                          job.rxStage !== "booked" && (
+                            <RxLabOrderNumberButton
+                              orderId={job.orderId}
+                              initialValue={job.labOrderNo}
+                              compact
+                            />
+                          )}
                         {job.invoiceNo === null && !job.voided && (
                           <RxPriceForm
                             orderId={job.orderId}
