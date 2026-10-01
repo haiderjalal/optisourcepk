@@ -13,12 +13,12 @@ import {
   type PaymentFormState,
 } from "@/features/shop/orders/actions";
 
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" disabled={pending}>
       <Wallet className="size-4" aria-hidden />
-      {pending ? "Recording…" : "Record payment"}
+      {pending ? "Recording…" : label}
     </Button>
   );
 }
@@ -43,14 +43,48 @@ export function PaymentForm({
 
   const [customerId, setCustomerId] = useState(presetCustomerId ?? "");
   const [amount, setAmount] = useState("");
+  const [entryKind, setEntryKind] = useState<
+    "payment" | "discount" | "remove_discount"
+  >("payment");
 
   const customer = customers.find((c) => c.id === customerId);
   const paid = Number(amount) || 0;
-  const after = customer ? customer.balance - paid : 0;
+  const reducesBalance = entryKind !== "remove_discount";
+  const after = customer
+    ? customer.balance + (reducesBalance ? -paid : paid)
+    : 0;
+  const actionLabel =
+    entryKind === "payment"
+      ? "Record payment"
+      : entryKind === "discount"
+        ? "Add payment discount"
+        : "Remove payment discount";
 
   return (
     <form action={formAction} className="shadow-lift rounded-2xl bg-white p-5">
       <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          name="entryKind"
+          label="Ledger entry"
+          required
+          className="sm:col-span-2"
+        >
+          {(p) => (
+            <select
+              {...p}
+              value={entryKind}
+              onChange={(e) =>
+                setEntryKind(
+                  e.target.value as "payment" | "discount" | "remove_discount",
+                )
+              }
+            >
+              <option value="payment">Payment received</option>
+              <option value="discount">Add payment discount</option>
+              <option value="remove_discount">Remove payment discount</option>
+            </select>
+          )}
+        </Field>
         <Field
           name="customerId"
           label="Customer"
@@ -76,7 +110,11 @@ export function PaymentForm({
 
         <Field
           name="amount"
-          label="Amount received (Rs)"
+          label={
+            entryKind === "payment"
+              ? "Amount received (Rs)"
+              : "Discount amount (Rs)"
+          }
           required
           errors={state.fieldErrors?.amount}
         >
@@ -85,7 +123,7 @@ export function PaymentForm({
               {...p}
               type="number"
               step="0.01"
-              min={0}
+              min={0.01}
               inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
@@ -93,28 +131,32 @@ export function PaymentForm({
           )}
         </Field>
 
-        <Field
-          name="method"
-          label="Paid by"
-          required
-          errors={state.fieldErrors?.method}
-        >
-          {(p) => (
-            <select {...p} defaultValue="cash">
-              {PAYMENT_METHODS.map((m) => (
-                <option key={m.value} value={m.value}>
-                  {m.label}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
+        {entryKind === "payment" ? (
+          <Field
+            name="method"
+            label="Paid by"
+            required
+            errors={state.fieldErrors?.method}
+          >
+            {(p) => (
+              <select {...p} defaultValue="cash">
+                {PAYMENT_METHODS.map((m) => (
+                  <option key={m.value} value={m.value}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
+        ) : (
+          <input type="hidden" name="method" value="other" />
+        )}
 
         <Field
           name="entryDate"
-          label="Date received"
+          label={entryKind === "payment" ? "Date received" : "Adjustment date"}
           required
-          hint="Backdate it if it came in earlier."
+          hint="Backdate it if needed."
           errors={state.fieldErrors?.entryDate}
         >
           {(p) => <input {...p} type="date" defaultValue={todayInKarachi()} />}
@@ -143,7 +185,13 @@ export function PaymentForm({
             </dd>
           </div>
           <div>
-            <dt className="text-navy-500 text-xs">Paying</dt>
+            <dt className="text-navy-500 text-xs">
+              {entryKind === "payment"
+                ? "Paying"
+                : entryKind === "discount"
+                  ? "Discount added"
+                  : "Discount removed"}
+            </dt>
             <dd className="font-medium tabular-nums">
               Rs {formatAmount(paid)}
             </dd>
@@ -189,7 +237,7 @@ export function PaymentForm({
       )}
 
       <div className="mt-5">
-        <SubmitButton />
+        <SubmitButton label={actionLabel} />
       </div>
     </form>
   );

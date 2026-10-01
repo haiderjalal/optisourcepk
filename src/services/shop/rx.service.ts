@@ -31,6 +31,8 @@ export interface RxJob extends OrderLine {
   voided: boolean;
   rxNo: number | null;
   patientName: string | null;
+  opticianName: string | null;
+  labOrderNo: string | null;
   rxStage: RxStage | null;
   rxSentAt: string | null;
   rxBackAt: string | null;
@@ -163,7 +165,7 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
     supabase
       .from("orders")
       .select(
-        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id, rx_no, patient_name, rx_stage, rx_sent_at, rx_back_at, billed_in, combines_rx",
+        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id, rx_no, patient_name, order_by_name, lab_order_no, rx_stage, rx_sent_at, rx_back_at, billed_in, combines_rx",
       )
       .in("id", [...new Set(lines.map((l) => l.order_id))]),
     supplierIds.length
@@ -239,6 +241,8 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
       voided: Boolean(order?.voided_at),
       rxNo: order?.rx_no ?? null,
       patientName: order?.patient_name ?? null,
+      opticianName: order?.order_by_name ?? null,
+      labOrderNo: order?.lab_order_no ?? null,
       rxStage: order?.rx_stage ?? null,
       rxSentAt: order?.rx_sent_at ?? null,
       rxBackAt: order?.rx_back_at ?? null,
@@ -390,6 +394,7 @@ export interface ReadyRxOrder {
   id: string;
   rxNo: number | null;
   patientName: string | null;
+  labOrderNo: string | null;
   externalRef: string | null;
   total: number;
   /** Every lens has a sale price. */
@@ -412,7 +417,9 @@ export async function listReadyToInvoice(): Promise<ReadyShop[]> {
 
   const { data: orders, error } = await supabase
     .from("orders")
-    .select("id, rx_no, patient_name, external_order_ref, bill_to_customer_id")
+    .select(
+      "id, rx_no, patient_name, lab_order_no, external_order_ref, bill_to_customer_id",
+    )
     .eq("is_rx", true)
     .eq("rx_stage", "back")
     .is("issued_at", null)
@@ -464,6 +471,7 @@ export async function listReadyToInvoice(): Promise<ReadyShop[]> {
       id: order.id,
       rxNo: order.rx_no,
       patientName: order.patient_name,
+      labOrderNo: order.lab_order_no,
       externalRef: order.external_order_ref,
       total,
       priced: own.length > 0 && own.every((l) => l.unit_price > 0),

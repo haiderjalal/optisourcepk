@@ -53,6 +53,7 @@ function readOrder(formData: FormData) {
     priority: formData.get("priority") ?? "normal",
     isRx: formData.get("isRx") === "true",
     patientName: formData.get("patientName") ?? "",
+    labOrderNo: formData.get("labOrderNo") ?? "",
     rxLensType: formData.get("rxLensType") ?? "",
     rxTintReason: formData.get("rxTintReason") ?? "",
     frameMaterial: formData.get("frameMaterial") ?? "",
@@ -268,6 +269,7 @@ export async function recordPaymentAction(
 
   const parsed = paymentSchema.safeParse({
     customerId: formData.get("customerId"),
+    entryKind: formData.get("entryKind") ?? "payment",
     amount: formData.get("amount"),
     method: formData.get("method"),
     entryDate: formData.get("entryDate"),
@@ -298,5 +300,12 @@ export async function recordPaymentAction(
   revalidatePath("/shop/customers");
   revalidatePath("/shop");
 
-  return { message: "Payment recorded." };
+  return {
+    message:
+      parsed.data.entryKind === "payment"
+        ? "Payment recorded."
+        : parsed.data.entryKind === "discount"
+          ? "Payment discount added."
+          : "Payment discount removed.",
+  };
 }

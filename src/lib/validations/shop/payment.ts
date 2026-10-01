@@ -20,6 +20,10 @@ export const PAYMENT_METHODS = [
 export const paymentSchema = z.object({
   customerId: z.uuid("Pick a customer."),
 
+  entryKind: z
+    .enum(["payment", "discount", "remove_discount"])
+    .default("payment"),
+
   amount: z.coerce
     .number({ error: "Enter the amount received." })
     .positive("A payment must be more than zero.")

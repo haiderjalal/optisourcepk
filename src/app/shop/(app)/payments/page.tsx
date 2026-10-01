@@ -2,12 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/server/shop/dal";
 import { listCustomers } from "@/services/shop/customer.service";
-import { listRecentPayments } from "@/services/shop/ledger.service";
+import {
+  getBusinessTotals,
+  listRecentPayments,
+} from "@/services/shop/ledger.service";
 import { PaymentForm } from "@/features/shop/payments/PaymentForm";
 import { ButtonLink } from "@/components/ui/button";
 import { formatAmount, formatDate } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Payments" };
+export const metadata: Metadata = { title: "Ledger & payments" };
 
 export default async function PaymentsPage({
   searchParams,
@@ -17,23 +20,34 @@ export default async function PaymentsPage({
   const { customer } = await searchParams;
   const preset = typeof customer === "string" ? customer : undefined;
 
-  const [customers, recent] = await Promise.all([
+  const [customers, recent, totals] = await Promise.all([
     listCustomers(),
     listRecentPayments(12),
+    getBusinessTotals(),
   ]);
 
   const shopById = new Map(customers.map((c) => [c.id, c.shop_name]));
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <div className="mb-6">
         <p className="eyebrow text-accent-600">Accounts</p>
-        <h1 className="mt-2 text-2xl font-bold">Record a payment</h1>
+        <h1 className="mt-2 text-2xl font-bold">Ledger &amp; payments</h1>
         <p className="text-navy-500 mt-2 max-w-prose text-sm">
-          Payments go against the account rather than against one invoice —
-          shops pay in round sums, whenever they pay.
+          Record money received or add and remove payment discounts. RX and
+          stock business are counted separately below.
         </p>
       </div>
+
+      <section className="shadow-lift mb-6 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-2 lg:grid-cols-4">
+        <LedgerTotal label="Stock sales" value={totals.stock_sales} />
+        <LedgerTotal label="Stock purchases" value={totals.stock_purchases} />
+        <LedgerTotal label="RX sales" value={totals.rx_sales} />
+        <LedgerTotal label="RX purchases" value={totals.rx_purchases} />
+      </section>
+      <p className="text-navy-400 -mt-3 mb-6 text-xs">
+        Sales and purchases are all-time totals; voided invoices are excluded.
+      </p>
 
       {customers.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-mist-300 bg-white/60 px-6 py-12 text-center">
@@ -48,10 +62,12 @@ export default async function PaymentsPage({
 
       {recent.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 text-base font-semibold">Recent payments</h2>
+          <h2 className="mb-3 text-base font-semibold">
+            Recent ledger entries
+          </h2>
           <div className="shadow-lift overflow-hidden rounded-2xl bg-white">
             <table className="w-full text-sm">
-              <caption className="sr-only">Recently recorded payments</caption>
+              <caption className="sr-only">Recent ledger entries</caption>
               <thead>
                 <tr className="text-navy-500 bg-mist-100 text-left">
                   <th scope="col" className="px-4 py-3 font-medium">
@@ -64,7 +80,7 @@ export default async function PaymentsPage({
                     scope="col"
                     className="hidden px-4 py-3 font-medium sm:table-cell"
                   >
-                    Method
+                    Type
                   </th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">
                     Amount (Rs)
@@ -85,10 +101,15 @@ export default async function PaymentsPage({
                         {shopById.get(entry.customer_id) ?? "—"}
                       </Link>
                     </td>
-                    <td className="text-navy-500 hidden px-4 py-3 capitalize sm:table-cell">
-                      {entry.payment_method?.replace("_", " ") ?? "—"}
+                    <td className="text-navy-500 hidden px-4 py-3 sm:table-cell">
+                      {entry.entry_type === "payment"
+                        ? `Payment · ${entry.payment_method?.replace("_", " ") ?? "other"}`
+                        : (entry.memo ?? "Adjustment")}
                     </td>
-                    <td className="px-4 py-3 text-right font-medium text-emerald-700 tabular-nums">
+                    <td
+                      className={`px-4 py-3 text-right font-medium tabular-nums ${entry.amount < 0 ? "text-emerald-700" : "text-amber-700"}`}
+                    >
+                      {entry.amount > 0 ? "+" : "−"}
                       {formatAmount(Math.abs(entry.amount))}
                     </td>
                   </tr>
@@ -98,6 +119,17 @@ export default async function PaymentsPage({
           </div>
         </section>
       )}
+    </div>
+  );
+}
+
+function LedgerTotal({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-white px-5 py-4">
+      <p className="text-navy-500 text-xs">{label}</p>
+      <p className="mt-1 text-xl font-semibold tabular-nums">
+        Rs {formatAmount(value)}
+      </p>
     </div>
   );
 }

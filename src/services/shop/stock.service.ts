@@ -174,6 +174,117 @@ export interface StockMovementLine {
   sph: number | null;
 }
 
+export interface DailyStockLine {
+  productId: string;
+  productName: string;
+  unit: string;
+  opening: number;
+  received: number;
+  issued: number;
+  closing: number;
+}
+
+/** Stock that moved today, including goods received and sold on the same day. */
+export async function listDailyStock(): Promise<DailyStockLine[]> {
+  const { supabase } = await requireUser();
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Karachi",
+  }).format(new Date());
+  const next = new Date(`${day}T00:00:00+05:00`);
+  next.setUTCDate(next.getUTCDate() + 1);
+
+  let movements: { bin_id: string; delta: number }[];
+  try {
+    movements = await selectAllPages<{ bin_id: string; delta: number }>(
+      (from, to) =>
+        supabase
+          .from("stock_movements")
+          .select("bin_id, delta")
+          .gte("created_at", `${day}T00:00:00+05:00`)
+          .lt("created_at", next.toISOString())
+          .range(from, to),
+    );
+  } catch (error) {
+    throw new Error(describePostgresError(error, "load daily stock"));
+  }
+  if (movements.length === 0) return [];
+
+  const movedBinIds = [...new Set(movements.map((m) => m.bin_id))];
+  const { data: movedBins, error: movedError } = await supabase
+    .from("stock_bins")
+    .select("id, product_id")
+    .in("id", movedBinIds);
+  if (movedError) {
+    throw new Error(describePostgresError(movedError, "load daily stock bins"));
+  }
+
+  const productByBin = new Map(
+    (movedBins ?? []).map((bin) => [bin.id, bin.product_id]),
+  );
+  const productIds = [...new Set(productByBin.values())];
+  const [allBins, products] = await Promise.all([
+    supabase
+      .from("stock_bins")
+      .select("product_id, qty_on_hand")
+      .in("product_id", productIds),
+    supabase.from("products").select("id, name, unit").in("id", productIds),
+  ]);
+  if (allBins.error || products.error) {
+    throw new Error(
+      describePostgresError(
+        allBins.error ?? products.error,
+        "load daily stock totals",
+      ),
+    );
+  }
+
+  const byProduct = new Map<
+    string,
+    { received: number; issued: number; net: number }
+  >();
+  for (const movement of movements) {
+    const productId = productByBin.get(movement.bin_id);
+    if (!productId) continue;
+    const row = byProduct.get(productId) ?? {
+      received: 0,
+      issued: 0,
+      net: 0,
+    };
+    row.net += movement.delta;
+    if (movement.delta > 0) row.received += movement.delta;
+    if (movement.delta < 0) row.issued += Math.abs(movement.delta);
+    byProduct.set(productId, row);
+  }
+
+  const closingByProduct = new Map<string, number>();
+  for (const bin of allBins.data ?? []) {
+    closingByProduct.set(
+      bin.product_id,
+      (closingByProduct.get(bin.product_id) ?? 0) + bin.qty_on_hand,
+    );
+  }
+
+  return (products.data ?? [])
+    .map((product) => {
+      const moved = byProduct.get(product.id) ?? {
+        received: 0,
+        issued: 0,
+        net: 0,
+      };
+      const closing = closingByProduct.get(product.id) ?? 0;
+      return {
+        productId: product.id,
+        productName: product.name,
+        unit: product.unit,
+        opening: closing - moved.net,
+        received: moved.received,
+        issued: moved.issued,
+        closing,
+      };
+    })
+    .sort((a, b) => a.productName.localeCompare(b.productName));
+}
+
 /**
  * Recent movements for one product, newest first — the audit trail.
  *

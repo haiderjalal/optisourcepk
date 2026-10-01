@@ -54,7 +54,12 @@ function ShopCard({ shop }: { shop: ReadyShop }) {
               href={`/shop/orders/${order.id}`}
               className="hover:text-accent-700 hover:underline"
             >
-              {[order.externalRef, formatRxNo(order.rxNo), order.patientName]
+              {[
+                order.externalRef,
+                formatRxNo(order.rxNo),
+                order.labOrderNo ? `Lab ${order.labOrderNo}` : null,
+                order.patientName,
+              ]
                 .filter(Boolean)
                 .join(" · ")}
             </Link>

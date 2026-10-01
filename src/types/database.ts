@@ -192,6 +192,8 @@ type OrderRow = {
   /** RX only: RX-0001 onwards, its own sequence. */
   rx_no: number | null;
   patient_name: string | null;
+  /** RX only: the external lab's reference number. */
+  lab_order_no: string | null;
   rx_lens_type: RxLensType | null;
   rx_tint_reason: string | null;
   frame_material: FrameMaterial | null;
@@ -319,6 +321,14 @@ type CustomerStatementRow = {
   credit: number | null;
   amount: number;
   running_balance: number;
+  sale_type: "rx" | "stock" | "adjustment" | null;
+};
+
+type BusinessTotalsRow = {
+  stock_sales: number;
+  rx_sales: number;
+  stock_purchases: number;
+  rx_purchases: number;
 };
 
 type CustomerBalanceRow = {
@@ -433,6 +443,7 @@ export interface Database {
       low_stock: View<LowStockRow>;
       purchase_invoice_totals: View<PurchaseInvoiceTotalsRow>;
       rx_monthly: View<RxMonthlyRow>;
+      business_totals: View<BusinessTotalsRow>;
     };
     Functions: {
       adjust_stock: {
@@ -556,6 +567,7 @@ export type PurchaseInvoice = PurchaseInvoiceRow;
 export type PurchaseInvoiceLine = PurchaseInvoiceLineRow;
 export type PurchaseInvoiceSummary = PurchaseInvoiceTotalsRow;
 export type RxMonth = RxMonthlyRow;
+export type BusinessTotals = BusinessTotalsRow;
 
 /** One line as `record_purchase` takes it. Blank unitCost = product cost. */
 export interface PurchaseLineInput {

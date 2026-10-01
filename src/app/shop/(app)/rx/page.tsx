@@ -289,6 +289,11 @@ export default async function RxOrdersPage({
                               ? `Invoice ${job.invoiceNo}${job.orderStatus === "delivered" ? " · delivered" : ""}`
                               : "not invoiced"}
                         </span>
+                        {job.labOrderNo && (
+                          <span className="text-navy-400 block text-xs">
+                            Lab {job.labOrderNo}
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-2.5">{job.product_name}</td>
                       <Stack
