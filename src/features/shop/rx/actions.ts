@@ -44,6 +44,11 @@ const pricingSchema = z.object({
     .refine((v) => v === null || (Number.isFinite(v) && v >= 0), {
       error: "Purchase price must be a number, or blank.",
     }),
+  labOrderNo: z
+    .string()
+    .trim()
+    .max(80, "Lab order number is too long.")
+    .transform((v) => v || null),
 });
 
 export interface RxActionState {
@@ -62,6 +67,7 @@ export async function priceRxAction(
     orderId: formData.get("orderId"),
     salePrice: formData.get("salePrice"),
     purchasePrice: formData.get("purchasePrice") ?? "",
+    labOrderNo: formData.get("labOrderNo") ?? "",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Check the prices." };

@@ -13,10 +13,12 @@ export function RxPriceForm({
   orderId,
   salePrice,
   purchasePrice,
+  labOrderNo,
 }: {
   orderId: string;
   salePrice: number;
   purchasePrice: number | null;
+  labOrderNo: string | null;
 }) {
   const [state, formAction] = useActionState<RxActionState, FormData>(
     priceRxAction,
@@ -24,12 +26,22 @@ export function RxPriceForm({
   );
 
   const box =
-    "border-mist-300 focus:border-accent-600 w-24 rounded-md border bg-white px-2 py-1.5 text-right text-sm tabular-nums outline-none";
+    "border-mist-300 focus:border-accent-600 rounded-md border bg-white px-2 py-1.5 text-sm outline-none";
 
   return (
     <form action={formAction} className="mt-2 space-y-1.5">
       <input type="hidden" name="orderId" value={orderId} />
       <div className="flex flex-wrap items-end justify-end gap-2">
+        <label className="text-navy-500 text-left text-xs">
+          Lab order no.
+          <input
+            name="labOrderNo"
+            type="text"
+            maxLength={80}
+            defaultValue={labOrderNo ?? ""}
+            className={`${box} mt-0.5 block w-32`}
+          />
+        </label>
         <label className="text-navy-500 text-left text-xs">
           Purchase
           <input
@@ -39,7 +51,7 @@ export function RxPriceForm({
             min={0}
             inputMode="decimal"
             defaultValue={purchasePrice ?? ""}
-            className={`${box} mt-0.5 block`}
+            className={`${box} mt-0.5 block w-24 text-right tabular-nums`}
           />
         </label>
         <label className="text-navy-500 text-left text-xs">
@@ -52,12 +64,14 @@ export function RxPriceForm({
             inputMode="decimal"
             required
             defaultValue={salePrice > 0 ? salePrice : ""}
-            className={`${box} mt-0.5 block`}
+            className={`${box} mt-0.5 block w-24 text-right tabular-nums`}
           />
         </label>
         <SaveButton />
       </div>
-      <p className="text-navy-400 text-right text-xs">Per lens.</p>
+      <p className="text-navy-400 text-right text-xs">
+        Prices are per lens. Lab order number is optional.
+      </p>
       {state.error && (
         <p role="alert" className="text-right text-xs text-amber-700">
           {state.error}

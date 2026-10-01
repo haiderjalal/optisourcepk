@@ -338,6 +338,7 @@ export default async function RxOrdersPage({
                             orderId={job.orderId}
                             salePrice={job.unit_price}
                             purchasePrice={job.unit_cost}
+                            labOrderNo={job.labOrderNo}
                           />
                         )}
                       </td>
