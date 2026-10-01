@@ -120,8 +120,6 @@ function WhatsAppLink({
   return (
     <a
       href={href}
-      target="_blank"
-      rel="noopener noreferrer"
       className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
         primary
           ? "bg-emerald-600 text-white hover:bg-emerald-700"

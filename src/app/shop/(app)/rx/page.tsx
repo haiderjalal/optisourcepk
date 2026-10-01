@@ -28,9 +28,9 @@ const MONTH_NAME = new Intl.DateTimeFormat("en-PK", {
 });
 
 const STATUSES = [
+  { value: "all", label: "All" },
   { value: "ordered", label: "Not back yet" },
   { value: "received", label: "Received" },
-  { value: "all", label: "All" },
 ] as const;
 
 /** A dioptre from the URL: a quarter step, or ignored. */
@@ -58,7 +58,7 @@ export default async function RxOrdersPage({
   const params = await searchParams;
   const status = STATUSES.some((s) => s.value === params.status)
     ? (params.status as RxSearch["status"])
-    : "ordered";
+    : "all";
   const search: RxSearch = {
     sph: dioptre(params.sph),
     cyl: dioptre(params.cyl),
@@ -194,7 +194,7 @@ export default async function RxOrdersPage({
       ) : (
         <section className="shadow-lift mb-8 overflow-hidden rounded-2xl bg-white">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-sm">
+            <table className="w-full min-w-[960px] text-sm">
               <caption className="sr-only">RX jobs</caption>
               <thead>
                 <tr className="text-navy-500 bg-mist-100 text-left text-xs">
@@ -209,6 +209,12 @@ export default async function RxOrdersPage({
                   </th>
                   <th scope="col" className="px-2 py-2.5 font-medium">
                     Eye
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-2 py-2.5 text-right font-medium"
+                  >
+                    Qty
                   </th>
                   <th
                     scope="col"
@@ -299,10 +305,9 @@ export default async function RxOrdersPage({
                       <Stack
                         pair={pair}
                         align="left"
-                        value={(l) =>
-                          `${l.eye ?? "—"}${l.quantity > 1 ? ` ×${l.quantity}` : ""}`
-                        }
+                        value={(l) => l.eye ?? "—"}
                       />
+                      <Stack pair={pair} value={(l) => String(l.quantity)} />
                       <Stack pair={pair} value={(l) => formatPower(l.sph)} />
                       <Stack pair={pair} value={(l) => formatPower(l.cyl)} />
                       <Stack pair={pair} value={(l) => String(l.ax ?? "")} />
@@ -339,6 +344,8 @@ export default async function RxOrdersPage({
                             salePrice={job.unit_price}
                             purchasePrice={job.unit_cost}
                             labOrderNo={job.labOrderNo}
+                            customerId={job.customerId}
+                            ready={job.rxStage === "back"}
                           />
                         )}
                       </td>

@@ -38,9 +38,9 @@ export function IssuePanel({
     issueInvoiceAction,
     {},
   );
-  const [freight, setFreight] = useState("0");
-  const [gst, setGst] = useState("0");
-  const [extra, setExtra] = useState("0");
+  const [freight, setFreight] = useState(String(order.freight_charge ?? 0));
+  const [gst, setGst] = useState(String(order.gst_rate ?? 0));
+  const [extra, setExtra] = useState(String(order.additional_tax_rate ?? 0));
 
   const net = subtotal + (Number(freight) || 0);
   const gstAmount = Math.round(((net * (Number(gst) || 0)) / 100) * 100) / 100;
@@ -54,8 +54,8 @@ export function IssuePanel({
       <h2 className="text-base font-semibold">Issue invoice</h2>
       <p className="text-navy-500 mt-1 text-sm">
         This takes the stock off the shelf, assigns the invoice number and posts
-        the amount to the customer&rsquo;s account. It cannot be edited
-        afterwards — only voided.
+        the amount to the customer&rsquo;s account. Reopen it before making any
+        later changes.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
