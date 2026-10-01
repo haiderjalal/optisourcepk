@@ -8,6 +8,7 @@ import {
   issueRxInvoice,
   priceRx,
   setRxStage,
+  updateRxLabOrderNo,
 } from "@/services/shop/rx.service";
 import { deleteOrder } from "@/services/shop/invoice.service";
 
@@ -54,6 +55,51 @@ const pricingSchema = z.object({
 export interface RxActionState {
   error?: string;
   message?: string;
+  saved?: boolean;
+  labOrderNo?: string;
+}
+
+const labOrderNumberSchema = z.object({
+  orderId: z.uuid(),
+  labOrderNo: z
+    .string()
+    .trim()
+    .min(1, "Enter the lab order number.")
+    .max(80, "Lab order number is too long."),
+});
+
+/** Save only the reference supplied by the lab; never issue the invoice. */
+export async function saveLabOrderNumberAction(
+  _previous: RxActionState,
+  formData: FormData,
+): Promise<RxActionState> {
+  await requireUser();
+
+  const parsed = labOrderNumberSchema.safeParse({
+    orderId: formData.get("orderId"),
+    labOrderNo: formData.get("labOrderNo"),
+  });
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Check the lab order number.",
+    };
+  }
+
+  try {
+    await updateRxLabOrderNo(parsed.data.orderId, parsed.data.labOrderNo);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not save.",
+    };
+  }
+
+  revalidatePath("/shop/rx");
+  revalidatePath(`/shop/orders/${parsed.data.orderId}`);
+  return {
+    message: "Lab order number saved. Generate the invoice whenever you want.",
+    saved: true,
+    labOrderNo: parsed.data.labOrderNo,
+  };
 }
 
 /** Save an RX order's prices; it is then ready for the shop's invoice. */

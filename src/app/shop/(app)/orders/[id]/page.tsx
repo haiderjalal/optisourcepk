@@ -22,6 +22,7 @@ import {
   VoidPanel,
 } from "@/features/shop/orders/InvoiceActions";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
+import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
 import { listSamePatientSameDay } from "@/services/shop/rx.service";
 import {
@@ -172,13 +173,21 @@ export default async function OrderPage({
         <section className="shadow-lift mb-5 rounded-2xl bg-white p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base font-semibold">Lab</h2>
-            <RxStageControl
-              orderId={order.id}
-              stage={order.rx_stage}
-              sentAt={order.rx_sent_at}
-              backAt={order.rx_back_at}
-              final={issued || voided || billed}
-            />
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <RxStageControl
+                orderId={order.id}
+                stage={order.rx_stage}
+                sentAt={order.rx_sent_at}
+                backAt={order.rx_back_at}
+                final={issued || voided || billed}
+              />
+              {!issued && !voided && !billed && order.rx_stage !== "booked" && (
+                <RxLabOrderNumberButton
+                  orderId={order.id}
+                  initialValue={order.lab_order_no}
+                />
+              )}
+            </div>
           </div>
           <dl className="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-3">
             <RxDetail
