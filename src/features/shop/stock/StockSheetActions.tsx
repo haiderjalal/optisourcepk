@@ -57,7 +57,7 @@ export function StockSheetActions({
           frame.contentWindow?.print();
         } catch {
           // Some mobile browsers refuse to print a framed PDF.
-          window.open(blobUrl, "_blank", "noopener");
+          window.location.assign(blobUrl);
         }
       };
       document.body.appendChild(frame);
@@ -85,11 +85,7 @@ export function StockSheetActions({
       link.href = URL.createObjectURL(blob);
       link.download = fileName;
       link.click();
-      window.open(
-        `https://wa.me/?text=${encodeURIComponent(text)}`,
-        "_blank",
-        "noopener",
-      );
+      window.location.assign(`https://wa.me/?text=${encodeURIComponent(text)}`);
       setNote({
         tone: "ok",
         text: "PDF downloaded. Attach it in the WhatsApp chat that just opened.",

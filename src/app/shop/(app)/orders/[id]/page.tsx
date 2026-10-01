@@ -63,6 +63,11 @@ export default async function OrderPage({
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
   const subtotal = order.lines.reduce((sum, line) => sum + line.line_total, 0);
+  const draftNet = subtotal + order.freight_charge;
+  const draftGst = Math.round(((draftNet * order.gst_rate) / 100) * 100) / 100;
+  const draftAdditionalTax =
+    Math.round(((draftNet * order.additional_tax_rate) / 100) * 100) / 100;
+  const draftTotal = draftNet + draftGst + draftAdditionalTax;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -117,7 +122,18 @@ export default async function OrderPage({
                 <Download className="size-4" aria-hidden />
                 Download
               </ButtonLink>
-              <InvoiceWhatsAppButton order={order} />
+              {!voided && order.invoice_no !== null && (
+                <InvoiceWhatsAppButton
+                  orderId={order.id}
+                  invoiceNo={order.invoice_no}
+                  billTo={
+                    order.bill_to_shop ?? order.bill_to_name ?? "Customer"
+                  }
+                  amount={order.amount_incl_tax ?? 0}
+                  closingBalance={order.closing_balance}
+                  rxNotes={order.combines_rx ? order.notes : null}
+                />
+              )}
               {!voided && (
                 <ConfirmButton
                   action={reopenInvoiceAction}
@@ -309,15 +325,24 @@ export default async function OrderPage({
               </>
             ) : (
               <>
-                <div className="flex justify-between text-base font-semibold">
-                  <dt>Subtotal</dt>
-                  <dd className="tabular-nums">Rs {formatAmount(subtotal)}</dd>
+                <Row label="Subtotal" value={subtotal} />
+                <Row label="Freight" value={order.freight_charge} />
+                <Row label="Net" value={draftNet} />
+                <Row label={`GST (${order.gst_rate}%)`} value={draftGst} />
+                <Row
+                  label={`Additional tax (${order.additional_tax_rate}%)`}
+                  value={draftAdditionalTax}
+                />
+                <div className="flex justify-between border-t border-mist-200 pt-2 text-base font-semibold">
+                  <dt>Amount (incl. tax)</dt>
+                  <dd className="tabular-nums">
+                    Rs {formatAmount(draftTotal)}
+                  </dd>
                 </div>
                 {account && (
                   <AccountRows
                     previous={account.balance}
-                    payable={account.balance + subtotal}
-                    note="Freight and tax are added when you issue."
+                    payable={account.balance + draftTotal}
                   />
                 )}
               </>

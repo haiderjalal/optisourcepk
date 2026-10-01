@@ -24,6 +24,7 @@ export interface RxJob extends OrderLine {
   orderNo: number;
   invoiceNo: number | null;
   orderId: string;
+  customerId: string;
   shopName: string;
   area: string;
   supplierName: string | null;
@@ -227,6 +228,7 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
     return {
       ...line,
       orderId: line.order_id,
+      customerId: order?.bill_to_customer_id ?? "",
       orderNo: order?.order_no ?? 0,
       invoiceNo:
         order?.invoice_no ??
