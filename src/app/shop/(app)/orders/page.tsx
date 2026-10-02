@@ -3,25 +3,32 @@ import Link from "next/link";
 import { ClipboardList, Pencil, Plus } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listOrders } from "@/services/shop/invoice.service";
-import { listCustomers } from "@/services/shop/customer.service";
+import { getCustomerShopNames } from "@/services/shop/customer.service";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
 import { formatAmount, formatDate } from "@/lib/format";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { deleteOrderAction } from "@/features/shop/orders/actions";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Orders" };
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: PageProps<"/shop/orders">) {
   await requireUser();
-  const [orders, customers] = await Promise.all([
-    // RX orders live on the RX screen.
-    listOrders({ rx: false }),
-    listCustomers(),
-  ]);
+  const params = await searchParams;
+  const limit = listLimit(params.limit);
+  // RX orders live on the RX screen.
+  const orders = await listOrders({ rx: false, limit: limit + 1 });
   // Drafts have no billing snapshot yet — that is written when the invoice is
   // issued — so resolve the live customer for anything not yet invoiced.
-  const shopById = new Map(customers.map((c) => [c.id, c.shop_name]));
+  const shopById = await getCustomerShopNames(
+    orders.map((order) => order.bill_to_customer_id),
+  );
+  const hasMore = orders.length > limit;
+  const visibleOrders = orders.slice(0, limit);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -79,7 +86,7 @@ export default async function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.map((order) => (
+              {visibleOrders.map((order) => (
                 <tr
                   key={order.id}
                   className="border-t border-mist-200 hover:bg-mist-50"
@@ -150,6 +157,13 @@ export default async function OrdersPage() {
               ))}
             </tbody>
           </table>
+          <ShowMore
+            pathname="/shop/orders"
+            searchParams={params}
+            current={limit}
+            hasMore={hasMore}
+            noun="orders"
+          />
         </div>
       )}
     </div>

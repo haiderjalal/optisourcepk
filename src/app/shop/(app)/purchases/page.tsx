@@ -4,12 +4,20 @@ import { requireUser } from "@/server/shop/dal";
 import { listPurchases } from "@/services/shop/purchase.service";
 import { PurchaseTable } from "@/features/shop/purchases/PurchaseTable";
 import { ButtonLink } from "@/components/ui/button";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Purchases" };
 
-export default async function PurchasesPage() {
+export default async function PurchasesPage({
+  searchParams,
+}: PageProps<"/shop/purchases">) {
   await requireUser();
-  const purchases = await listPurchases();
+  const params = await searchParams;
+  const limit = listLimit(params.limit);
+  const purchases = await listPurchases({ limit: limit + 1 });
+  const hasMore = purchases.length > limit;
+  const visiblePurchases = purchases.slice(0, limit);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -42,7 +50,16 @@ export default async function PurchasesPage() {
           </ButtonLink>
         </div>
       ) : (
-        <PurchaseTable purchases={purchases} />
+        <div className="shadow-lift overflow-hidden rounded-2xl bg-white">
+          <PurchaseTable purchases={visiblePurchases} embedded />
+          <ShowMore
+            pathname="/shop/purchases"
+            searchParams={params}
+            current={limit}
+            hasMore={hasMore}
+            noun="purchases"
+          />
+        </div>
       )}
     </div>
   );

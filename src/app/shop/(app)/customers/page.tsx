@@ -6,6 +6,8 @@ import { listCustomers } from "@/services/shop/customer.service";
 import { ButtonLink } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 import { formatAmount } from "@/lib/format";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -14,9 +16,13 @@ export default async function CustomersPage({
 }: PageProps<"/shop/customers">) {
   await requireUser();
 
-  const { q } = await searchParams;
+  const params = await searchParams;
+  const { q } = params;
   const search = typeof q === "string" ? q : undefined;
-  const customers = await listCustomers(search);
+  const limit = listLimit(params.limit);
+  const customers = await listCustomers(search, limit + 1);
+  const hasMore = customers.length > limit;
+  const visibleCustomers = customers.slice(0, limit);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -103,7 +109,7 @@ export default async function CustomersPage({
               </tr>
             </thead>
             <tbody>
-              {customers.map((customer) => (
+              {visibleCustomers.map((customer) => (
                 <tr
                   key={customer.id}
                   className="border-t border-mist-200 hover:bg-mist-50"
@@ -140,6 +146,13 @@ export default async function CustomersPage({
               ))}
             </tbody>
           </table>
+          <ShowMore
+            pathname="/shop/customers"
+            searchParams={params}
+            current={limit}
+            hasMore={hasMore}
+            noun="customers"
+          />
         </div>
       )}
 

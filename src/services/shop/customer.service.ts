@@ -42,6 +42,7 @@ function toRow(payload: CustomerPayload) {
 
 export async function listCustomers(
   search?: string,
+  limit?: number,
 ): Promise<CustomerWithBalance[]> {
   const { supabase } = await requireUser();
 
@@ -60,12 +61,18 @@ export async function listCustomers(
     );
   }
 
+  if (limit !== undefined) query = query.limit(limit);
+
   const { data, error } = await query;
   if (error) throw new Error(describePostgresError(error, "load customers"));
 
-  const balances = await loadBalances(supabase);
+  const customers = data ?? [];
+  const balances = await loadBalances(
+    supabase,
+    customers.map((customer) => customer.id),
+  );
 
-  return (data ?? []).map((customer) => ({
+  return customers.map((customer) => ({
     ...customer,
     balance: balances.get(customer.id) ?? customer.opening_balance,
   }));
@@ -74,10 +81,14 @@ export async function listCustomers(
 /** One round trip for every balance, rather than one query per customer. */
 async function loadBalances(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
+  customerIds: string[],
 ): Promise<Map<string, number>> {
+  if (customerIds.length === 0) return new Map();
+
   const { data, error } = await supabase
     .from("customer_balances")
-    .select("customer_id, balance");
+    .select("customer_id, balance")
+    .in("customer_id", customerIds);
 
   if (error) throw new Error(describePostgresError(error, "load balances"));
 
@@ -103,6 +114,25 @@ export async function getCustomer(id: string): Promise<Customer | null> {
 
   if (error) throw new Error(describePostgresError(error, "load customer"));
   return data;
+}
+
+/** Names for a small set of order rows, without loading the customer ledger. */
+export async function getCustomerShopNames(
+  ids: string[],
+): Promise<Map<string, string>> {
+  const uniqueIds = [...new Set(ids.filter(Boolean))];
+  if (uniqueIds.length === 0) return new Map();
+
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase
+    .from("customers")
+    .select("id, shop_name")
+    .in("id", uniqueIds);
+
+  if (error) throw new Error(describePostgresError(error, "load customers"));
+  return new Map(
+    (data ?? []).map((customer) => [customer.id, customer.shop_name]),
+  );
 }
 
 export async function createCustomer(

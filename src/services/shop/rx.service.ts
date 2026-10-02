@@ -52,14 +52,14 @@ export interface RxSearch {
   status: RxStatus | "all";
 }
 
-/** The most jobs one search returns; narrow by power or shop to see more. */
-export const RX_LIMIT = 200;
-
 /**
  * RX jobs matching a search, newest first — one row per job, the R and L of
  * the same product on the same order together.
  */
-export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
+export async function listRxJobs(
+  search: RxSearch,
+  limit = 6,
+): Promise<RxJob[][]> {
   const { supabase } = await requireUser();
 
   // A name search narrows to the matching orders first — by the shop's name
@@ -120,7 +120,9 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
     .select("*")
     .not("rx_status", "is", null)
     .order("created_at", { ascending: false })
-    .limit(RX_LIMIT);
+    // Two eye lines normally make one displayed job. One extra job tells the
+    // page whether a Show more button is needed.
+    .limit(Math.min(limit * 2, 202));
 
   // Looking up one RX number shows it whatever its status.
   if (search.status !== "all" && search.rxNo === null) {
@@ -251,7 +253,7 @@ export async function listRxJobs(search: RxSearch): Promise<RxJob[][]> {
     };
   });
 
-  return pairEyes(jobs, matchedIds);
+  return pairEyes(jobs, matchedIds).slice(0, limit);
 }
 
 export interface RxSameDayJob {

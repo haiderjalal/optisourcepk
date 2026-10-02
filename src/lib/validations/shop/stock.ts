@@ -87,3 +87,29 @@ export const stockAdjustmentSchema = z.object({
 });
 
 export type StockAdjustmentPayload = z.output<typeof stockAdjustmentSchema>;
+
+const dailyQuantity = z.coerce
+  .number({ error: "Enter a quantity." })
+  .int("Quantities are whole numbers.")
+  .min(0, "Quantity cannot be negative.")
+  .max(100_000, "That quantity is out of range.");
+
+export const dailyStockSchema = z
+  .object({
+    productId: z.uuid("Pick an item."),
+    entryDate: z.iso.date("Enter the date."),
+    openingQty: dailyQuantity,
+    receivedQty: dailyQuantity,
+    outgoingQty: dailyQuantity,
+    note: z
+      .string()
+      .trim()
+      .max(400, "Keep the note under 400 characters.")
+      .optional(),
+  })
+  .refine((row) => row.outgoingQty <= row.openingQty + row.receivedQty, {
+    path: ["outgoingQty"],
+    error: "Outgoing cannot be more than opening plus incoming stock.",
+  });
+
+export type DailyStockPayload = z.output<typeof dailyStockSchema>;

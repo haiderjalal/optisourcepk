@@ -47,6 +47,7 @@ function toRow(payload: ProductPayload) {
 
 export async function listProducts(
   search?: string,
+  limit?: number,
 ): Promise<ProductWithStock[]> {
   const { supabase } = await requireUser();
 
@@ -65,19 +66,25 @@ export async function listProducts(
     query = query.ilike("name", `%${escaped}%`);
   }
 
+  if (limit !== undefined) query = query.limit(limit);
+
   const { data, error } = await query;
   if (error) throw new Error(describePostgresError(error, "load products"));
 
   const products = data ?? [];
   if (products.length === 0) return [];
 
-  // One query for every bin, then folded in memory — not one query per product.
+  // Only read bins for the products visible on this page.
   let bins: { product_id: string; qty_on_hand: number }[];
   try {
     bins = await selectAllPages((from, to) =>
       supabase
         .from("stock_bins")
         .select("id, product_id, qty_on_hand")
+        .in(
+          "product_id",
+          products.map((product) => product.id),
+        )
         .order("id")
         .range(from, to),
     );

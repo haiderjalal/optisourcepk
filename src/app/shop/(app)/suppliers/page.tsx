@@ -4,12 +4,20 @@ import { Building2, Plus } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listSuppliers } from "@/services/shop/supplier.service";
 import { ButtonLink } from "@/components/ui/button";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Suppliers" };
 
-export default async function SuppliersPage() {
+export default async function SuppliersPage({
+  searchParams,
+}: PageProps<"/shop/suppliers">) {
   await requireUser();
-  const suppliers = await listSuppliers();
+  const params = await searchParams;
+  const limit = listLimit(params.limit);
+  const suppliers = await listSuppliers(limit + 1);
+  const hasMore = suppliers.length > limit;
+  const visibleSuppliers = suppliers.slice(0, limit);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -61,7 +69,7 @@ export default async function SuppliersPage() {
               </tr>
             </thead>
             <tbody>
-              {suppliers.map((supplier) => (
+              {visibleSuppliers.map((supplier) => (
                 <tr
                   key={supplier.id}
                   className="border-t border-mist-200 hover:bg-mist-50"
@@ -82,6 +90,13 @@ export default async function SuppliersPage() {
               ))}
             </tbody>
           </table>
+          <ShowMore
+            pathname="/shop/suppliers"
+            searchParams={params}
+            current={limit}
+            hasMore={hasMore}
+            noun="suppliers"
+          />
         </div>
       )}
     </div>
