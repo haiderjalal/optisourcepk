@@ -23,14 +23,17 @@ function toRow(payload: SupplierPayload) {
   };
 }
 
-export async function listSuppliers(): Promise<Supplier[]> {
+export async function listSuppliers(limit?: number): Promise<Supplier[]> {
   const { supabase } = await requireUser();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("suppliers")
     .select("*")
     .is("deleted_at", null)
     .order("name");
+
+  if (limit !== undefined) query = query.limit(limit);
+  const { data, error } = await query;
 
   if (error) throw new Error(describePostgresError(error, "load suppliers"));
   return data ?? [];

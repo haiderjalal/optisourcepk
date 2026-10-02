@@ -14,6 +14,8 @@ import {
   formatPkr,
   todayInKarachi,
 } from "@/lib/format";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Expenses" };
 
@@ -36,11 +38,15 @@ export default async function ExpensesPage({
 
   const today = todayInKarachi();
   const thisMonth = today.slice(0, 7);
-  const { month: raw } = await searchParams;
+  const params = await searchParams;
+  const { month: raw } = params;
   const parsed = monthSchema.safeParse(raw);
   const month = parsed.success ? parsed.data : thisMonth;
 
   const expenses = await listExpenses(month);
+  const limit = listLimit(params.limit);
+  const hasMore = expenses.length > limit;
+  const visibleExpenses = expenses.slice(0, limit);
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
 
   // Same item typed with different capitals is one item.
@@ -157,7 +163,7 @@ export default async function ExpensesPage({
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((expense) => (
+                {visibleExpenses.map((expense) => (
                   <tr key={expense.id} className="border-t border-mist-200">
                     <td className="text-navy-500 px-4 py-2.5 whitespace-nowrap">
                       {formatDate(expense.expense_date)}
@@ -186,6 +192,13 @@ export default async function ExpensesPage({
                 ))}
               </tbody>
             </table>
+            <ShowMore
+              pathname="/shop/expenses"
+              searchParams={params}
+              current={limit}
+              hasMore={hasMore}
+              noun="expenses"
+            />
           </section>
 
           <section className="shadow-lift self-start rounded-2xl bg-white p-5">

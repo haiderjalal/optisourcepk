@@ -15,21 +15,29 @@ import { QuickReceive } from "@/features/shop/products/QuickReceive";
 import { ButtonLink } from "@/components/ui/button";
 import { StockSheetPanel } from "@/features/shop/stock/StockSheetPanel";
 import { stockSheetFileName } from "@/features/shop/stock/pdf/render";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Stock" };
 
-export default async function StockPage() {
+export default async function StockPage({
+  searchParams,
+}: PageProps<"/shop/stock">) {
   await requireUser();
+  const params = await searchParams;
+  const limit = listLimit(params.limit);
   const [products, sellable, daily] = await Promise.all([
-    listAllStock(),
+    listAllStock(limit + 1),
     listSellableProducts(),
     listDailyStock(),
   ]);
+  const hasMore = products.length > limit;
+  const visibleProducts = products.slice(0, limit);
 
   // Services are billed per job and never held, so they are not offered here.
   const stockable = sellable.filter((p) => p.tracks_stock);
 
-  const empty = products.filter((p) => p.bins.length === 0);
+  const empty = visibleProducts.filter((p) => p.bins.length === 0);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -42,17 +50,25 @@ export default async function StockPage() {
             product for its full history.
           </p>
         </div>
-        <ButtonLink href="/shop/products/new" variant="outline">
-          <Plus className="size-4" aria-hidden />
-          Add product
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/shop/stock/daily">
+            <CalendarDays className="size-4" aria-hidden />
+            Enter daily stock
+          </ButtonLink>
+          <ButtonLink href="/shop/products/new" variant="outline">
+            <Plus className="size-4" aria-hidden />
+            Add product
+          </ButtonLink>
+        </div>
       </div>
 
       <section className="shadow-lift mb-5 overflow-hidden rounded-2xl bg-white">
         <div className="flex items-center gap-2 border-b border-mist-200 px-5 py-4">
           <CalendarDays className="text-accent-600 size-4" aria-hidden />
           <div>
-            <h2 className="text-base font-semibold">Daily stock</h2>
+            <h2 className="text-base font-semibold">
+              Today&rsquo;s regular stock movement
+            </h2>
             <p className="text-navy-500 mt-0.5 text-xs">
               Today&rsquo;s opening, incoming and outgoing quantities—including
               stock received in the morning and sold the same day.
@@ -150,7 +166,7 @@ export default async function StockPage() {
         <>
           <QuickReceive
             products={stockable}
-            bins={products.flatMap((p) => p.bins)}
+            bins={visibleProducts.flatMap((p) => p.bins)}
           />
 
           {empty.length > 0 && (
@@ -200,7 +216,7 @@ export default async function StockPage() {
           </p>
 
           <div className="space-y-3">
-            {products.map((product) => (
+            {visibleProducts.map((product) => (
               <details
                 key={product.productId}
                 className="shadow-lift group rounded-2xl bg-white"
@@ -261,6 +277,15 @@ export default async function StockPage() {
                 </div>
               </details>
             ))}
+          </div>
+          <div className="shadow-lift mt-3 overflow-hidden rounded-2xl bg-white">
+            <ShowMore
+              pathname="/shop/stock"
+              searchParams={params}
+              current={limit}
+              hasMore={hasMore}
+              noun="products"
+            />
           </div>
         </>
       )}

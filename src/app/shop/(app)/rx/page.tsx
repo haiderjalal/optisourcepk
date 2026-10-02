@@ -6,7 +6,6 @@ import {
   listRxJobs,
   listReadyToInvoice,
   listRxMonthly,
-  RX_LIMIT,
   type RxJob,
   type RxSearch,
 } from "@/services/shop/rx.service";
@@ -19,6 +18,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { inputClass } from "@/components/ui/field";
 import { formatAmount, formatPkr, formatPower, formatRxNo } from "@/lib/format";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "RX orders" };
 
@@ -57,6 +58,7 @@ export default async function RxOrdersPage({
   await requireUser();
 
   const params = await searchParams;
+  const limit = listLimit(params.limit);
   const status = STATUSES.some((s) => s.value === params.status)
     ? (params.status as RxSearch["status"])
     : "all";
@@ -71,10 +73,12 @@ export default async function RxOrdersPage({
   };
 
   const [jobs, months, ready] = await Promise.all([
-    listRxJobs(search),
+    listRxJobs(search, limit + 1),
     listRxMonthly(),
     listReadyToInvoice(),
   ]);
+  const hasMore = jobs.length > limit;
+  const visibleJobs = jobs.slice(0, limit);
 
   const searching =
     search.sph !== null ||
@@ -265,7 +269,7 @@ export default async function RxOrdersPage({
                 </tr>
               </thead>
               <tbody>
-                {jobs.map((pair) => {
+                {visibleJobs.map((pair) => {
                   const job = pair[0];
 
                   return (
@@ -391,12 +395,13 @@ export default async function RxOrdersPage({
               </tbody>
             </table>
           </div>
-          {jobs.flat().length >= RX_LIMIT && (
-            <p className="text-navy-500 border-t border-mist-200 px-5 py-3 text-xs">
-              Showing the latest {RX_LIMIT}. Search by power or shop to narrow
-              it down.
-            </p>
-          )}
+          <ShowMore
+            pathname="/shop/rx"
+            searchParams={params}
+            current={limit}
+            hasMore={hasMore}
+            noun="RX orders"
+          />
         </section>
       )}
 

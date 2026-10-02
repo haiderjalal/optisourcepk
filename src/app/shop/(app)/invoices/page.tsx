@@ -11,14 +11,22 @@ import {
 } from "@/features/shop/orders/actions";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { formatAmount, formatDate } from "@/lib/format";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Invoices" };
 
-export default async function InvoicesPage() {
+export default async function InvoicesPage({
+  searchParams,
+}: PageProps<"/shop/invoices">) {
   await requireUser();
-  const invoices = await listOrders({ issued: true });
+  const params = await searchParams;
+  const limit = listLimit(params.limit);
+  const invoices = await listOrders({ issued: true, limit: limit + 1 });
+  const hasMore = invoices.length > limit;
+  const visibleInvoices = invoices.slice(0, limit);
 
-  const total = invoices
+  const visibleTotal = visibleInvoices
     .filter((i) => i.voided_at === null)
     .reduce((sum, i) => sum + (i.amount_incl_tax ?? 0), 0);
 
@@ -30,7 +38,8 @@ export default async function InvoicesPage() {
           <h1 className="mt-2 text-2xl font-bold">Invoices</h1>
           {invoices.length > 0 && (
             <p className="text-navy-500 mt-1.5 text-sm">
-              {invoices.length} issued · Rs {formatAmount(total)} billed
+              Showing {visibleInvoices.length} · Rs {formatAmount(visibleTotal)}
+              shown
             </p>
           )}
         </div>
@@ -83,7 +92,7 @@ export default async function InvoicesPage() {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((invoice) => (
+              {visibleInvoices.map((invoice) => (
                 <tr
                   key={invoice.id}
                   className="border-t border-mist-200 hover:bg-mist-50"
@@ -147,6 +156,13 @@ export default async function InvoicesPage() {
               ))}
             </tbody>
           </table>
+          <ShowMore
+            pathname="/shop/invoices"
+            searchParams={params}
+            current={limit}
+            hasMore={hasMore}
+            noun="invoices"
+          />
         </div>
       )}
     </div>

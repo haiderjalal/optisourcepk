@@ -8,6 +8,8 @@ import { inputClass } from "@/components/ui/field";
 import { formatAmount } from "@/lib/format";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { archiveProductAction } from "@/features/shop/products/actions";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -16,9 +18,13 @@ export default async function ProductsPage({
 }: PageProps<"/shop/products">) {
   await requireUser();
 
-  const { q } = await searchParams;
+  const params = await searchParams;
+  const { q } = params;
   const search = typeof q === "string" ? q : undefined;
-  const products = await listProducts(search);
+  const limit = listLimit(params.limit);
+  const products = await listProducts(search, limit + 1);
+  const hasMore = products.length > limit;
+  const visibleProducts = products.slice(0, limit);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -103,7 +109,7 @@ export default async function ProductsPage({
               </tr>
             </thead>
             <tbody>
-              {products.map((product) => (
+              {visibleProducts.map((product) => (
                 <tr
                   key={product.id}
                   className="border-t border-mist-200 hover:bg-mist-50"
@@ -157,6 +163,13 @@ export default async function ProductsPage({
               ))}
             </tbody>
           </table>
+          <ShowMore
+            pathname="/shop/products"
+            searchParams={params}
+            current={limit}
+            hasMore={hasMore}
+            noun="products"
+          />
         </div>
       )}
     </div>

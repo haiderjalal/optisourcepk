@@ -335,21 +335,35 @@ export async function listMovements(
  * shows every power in it, 0 where nothing is held, so a gap on the shelf is
  * as visible as a count.
  */
-export async function listAllStock(): Promise<ProductStock[]> {
+export async function listAllStock(limit?: number): Promise<ProductStock[]> {
   const { supabase } = await requireUser();
 
-  const [products, bins] = await Promise.all([
-    supabase.from("products").select("*").is("deleted_at", null).order("name"),
-    selectAllPages<StockBin>((from, to) =>
-      supabase.from("stock_bins").select("*").order("id").range(from, to),
-    ).catch((error: unknown) => {
-      throw new Error(describePostgresError(error, "load stock"));
-    }),
-  ]);
+  let productQuery = supabase
+    .from("products")
+    .select("*")
+    .is("deleted_at", null)
+    .eq("tracks_stock", true)
+    .order("name");
+  if (limit !== undefined) productQuery = productQuery.limit(limit);
 
+  const products = await productQuery;
   if (products.error) {
     throw new Error(describePostgresError(products.error, "load products"));
   }
+
+  const productIds = (products.data ?? []).map((product) => product.id);
+  if (productIds.length === 0) return [];
+
+  const bins = await selectAllPages<StockBin>((from, to) =>
+    supabase
+      .from("stock_bins")
+      .select("*")
+      .in("product_id", productIds)
+      .order("id")
+      .range(from, to),
+  ).catch((error: unknown) => {
+    throw new Error(describePostgresError(error, "load stock"));
+  });
 
   const byProduct = new Map<string, StockBin[]>();
   for (const bin of bins) {
@@ -358,9 +372,9 @@ export async function listAllStock(): Promise<ProductStock[]> {
     byProduct.set(bin.product_id, list);
   }
 
-  return (products.data ?? [])
-    .filter((product) => product.tracks_stock)
-    .map((product) => toProductStock(product, byProduct.get(product.id) ?? []));
+  return (products.data ?? []).map((product) =>
+    toProductStock(product, byProduct.get(product.id) ?? []),
+  );
 }
 
 /** One product's stock, for its printable stock sheet. */

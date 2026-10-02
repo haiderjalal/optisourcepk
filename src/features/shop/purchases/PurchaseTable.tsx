@@ -6,12 +6,20 @@ import type { PurchaseInvoiceSummary } from "@/types/database";
 export function PurchaseTable({
   purchases,
   showSupplier = true,
+  embedded = false,
 }: {
   purchases: PurchaseInvoiceSummary[];
   showSupplier?: boolean;
+  embedded?: boolean;
 }) {
   return (
-    <div className="shadow-lift overflow-x-auto rounded-2xl bg-white">
+    <div
+      className={
+        embedded
+          ? "overflow-x-auto"
+          : "shadow-lift overflow-x-auto rounded-2xl bg-white"
+      }
+    >
       <table className="w-full text-sm">
         <caption className="sr-only">Purchase invoices</caption>
         <thead>

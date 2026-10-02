@@ -9,6 +9,8 @@ import {
 import { PaymentForm } from "@/features/shop/payments/PaymentForm";
 import { ButtonLink } from "@/components/ui/button";
 import { formatAmount, formatDate } from "@/lib/format";
+import { ShowMore } from "@/components/ui/show-more";
+import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Ledger & payments" };
 
@@ -17,16 +19,20 @@ export default async function PaymentsPage({
 }: PageProps<"/shop/payments">) {
   await requireUser();
 
-  const { customer } = await searchParams;
+  const params = await searchParams;
+  const { customer } = params;
   const preset = typeof customer === "string" ? customer : undefined;
+  const limit = listLimit(params.limit);
 
   const [customers, recent, totals] = await Promise.all([
     listCustomers(),
-    listRecentPayments(12),
+    listRecentPayments(limit + 1),
     getBusinessTotals(),
   ]);
 
   const shopById = new Map(customers.map((c) => [c.id, c.shop_name]));
+  const hasMore = recent.length > limit;
+  const visibleRecent = recent.slice(0, limit);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -60,7 +66,7 @@ export default async function PaymentsPage({
         <PaymentForm customers={customers} presetCustomerId={preset} />
       )}
 
-      {recent.length > 0 && (
+      {visibleRecent.length > 0 && (
         <section className="mt-8">
           <h2 className="mb-3 text-base font-semibold">
             Recent ledger entries
@@ -88,7 +94,7 @@ export default async function PaymentsPage({
                 </tr>
               </thead>
               <tbody>
-                {recent.map((entry) => (
+                {visibleRecent.map((entry) => (
                   <tr key={entry.id} className="border-t border-mist-200">
                     <td className="text-navy-500 px-4 py-3">
                       {formatDate(entry.entry_date)}
@@ -116,6 +122,13 @@ export default async function PaymentsPage({
                 ))}
               </tbody>
             </table>
+            <ShowMore
+              pathname="/shop/payments"
+              searchParams={params}
+              current={limit}
+              hasMore={hasMore}
+              noun="entries"
+            />
           </div>
         </section>
       )}
