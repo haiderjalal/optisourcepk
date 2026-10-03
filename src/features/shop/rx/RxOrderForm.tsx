@@ -580,7 +580,7 @@ export function RxOrderForm({
         <Field
           name="notes"
           label="Notes"
-          hint="Anything about this job — for your records. Not sent to the lab or printed on the invoice."
+          hint="Anything about this job. Sent to the lab in the WhatsApp order; not printed on the invoice."
         >
           {(p) => (
             <textarea

@@ -14,6 +14,8 @@ export interface RxMessageOrder {
   lensType: string | null;
   frameMaterial: string | null;
   frameType: string | null;
+  /** The job's notes, passed to the lab as typed. */
+  notes?: string | null;
   shopName: string;
   invoiceNo: number | null;
   amount: number | null;
@@ -92,6 +94,7 @@ function jobBlock(
     "",
     `Lens: ${lines[0]?.product_name ?? "—"}`,
     frame ? `Frame: ${frame}` : null,
+    order.notes?.trim() ? `Notes: ${order.notes.trim()}` : null,
   ];
 }
 

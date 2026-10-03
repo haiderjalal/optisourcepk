@@ -42,6 +42,7 @@ export function RxWhatsAppButtons({
     lensType: o.rx_lens_type,
     frameMaterial: o.frame_material,
     frameType: o.frame_type,
+    notes: o.notes,
     shopName,
     invoiceNo: o.invoice_no,
     amount: o.amount_incl_tax,
