@@ -160,6 +160,11 @@ export function OrderBuilder({
       productId,
       unitPrice: product ? String(product.list_price) : "",
       discountPct: String(defaultDiscount),
+      // A daily order starts from the product's usual cost; it can be changed.
+      unitCost:
+        daily && product && product.purchase_price > 0
+          ? String(product.purchase_price)
+          : "",
     });
   }
 
