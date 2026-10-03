@@ -5,7 +5,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/server/shop/dal";
 import { purchaseSchema } from "@/lib/validations/shop/purchase";
-import { recordPurchase } from "@/services/shop/purchase.service";
+import {
+  recordPurchase,
+  setPurchaseLineCost,
+} from "@/services/shop/purchase.service";
 
 export interface PurchaseFormState {
   error?: string;
@@ -70,4 +73,45 @@ export async function savePurchase(
   revalidatePath("/shop/stock");
   revalidatePath("/shop");
   redirect(`/shop/purchases/${id}`);
+}
+
+const costSchema = z.object({
+  lineId: z.uuid(),
+  purchaseId: z.uuid(),
+  unitCost: z.coerce
+    .number({ error: "Enter a cost." })
+    .min(0, "A cost cannot be negative.")
+    .max(9_999_999, "That cost is out of range."),
+});
+
+export interface CostState {
+  error?: string;
+  saved?: boolean;
+}
+
+/** Change one purchase line's cost and refresh the invoice. */
+export async function setPurchaseCostAction(
+  _previous: CostState,
+  formData: FormData,
+): Promise<CostState> {
+  await requireUser();
+
+  const parsed = costSchema.safeParse({
+    lineId: formData.get("lineId"),
+    purchaseId: formData.get("purchaseId"),
+    unitCost: formData.get("unitCost"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the cost." };
+  }
+
+  try {
+    await setPurchaseLineCost(parsed.data.lineId, parsed.data.unitCost);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Save failed." };
+  }
+
+  revalidatePath(`/shop/purchases/${parsed.data.purchaseId}`);
+  revalidatePath("/shop/purchases");
+  return { saved: true };
 }

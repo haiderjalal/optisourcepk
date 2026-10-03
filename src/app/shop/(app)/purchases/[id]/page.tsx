@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getPurchase } from "@/services/shop/purchase.service";
+import { PurchaseCostCell } from "@/features/shop/purchases/PurchaseCostCell";
 import { describeBin, formatAmount, formatDate } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Purchase invoice" };
@@ -87,8 +88,13 @@ export default async function PurchasePage({
                 <td className="px-4 py-2.5 text-right tabular-nums">
                   {line.quantity}
                 </td>
-                <td className="px-4 py-2.5 text-right tabular-nums">
-                  {formatAmount(line.unit_cost)}
+                <td className="px-4 py-1.5 text-right">
+                  <PurchaseCostCell
+                    lineId={line.id}
+                    purchaseId={purchase.id}
+                    unitCost={line.unit_cost}
+                    label={`${line.product_name} ${describeBin(line)}`.trim()}
+                  />
                 </td>
                 <td className="px-4 py-2.5 text-right font-medium tabular-nums">
                   {formatAmount(line.line_total)}

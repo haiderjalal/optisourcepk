@@ -101,3 +101,30 @@ export async function recordPurchase(input: {
   });
   return data;
 }
+
+/**
+ * Correct the cost of one purchase line. Only the price changes: the stock
+ * this line received stays as it is, and the database allows no other column
+ * to be edited after saving.
+ */
+export async function setPurchaseLineCost(
+  lineId: string,
+  unitCost: number,
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("purchase_invoice_lines")
+    .update({ unit_cost: unitCost })
+    .eq("id", lineId)
+    .select("id");
+
+  if (error) throw new Error(describePostgresError(error, "change the cost"));
+  // RLS turns a refused update into "nothing updated", not an error.
+  if (!data || data.length === 0) {
+    throw new Error(
+      "The cost could not be changed. Run migration 0030 in Supabase, then try again.",
+    );
+  }
+  logger.info("Purchase cost changed", { lineId });
+}

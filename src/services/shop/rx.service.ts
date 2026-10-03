@@ -594,3 +594,50 @@ export async function listRxMonthly(limit = 12): Promise<RxMonth[]> {
   }
   return data ?? [];
 }
+
+/**
+ * Change an RX order's purchase price (the lab's, per lens) after it is
+ * invoiced. Only our cost moves: the customer's invoice and ledger stay as
+ * they are. The copy of each lens on the shop's combined invoice is updated
+ * too — that is the line the profit figures read.
+ */
+export async function setRxCost(
+  orderId: string,
+  unitCost: number | null,
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data: order, error } = await supabase
+    .from("orders")
+    .select("id, is_rx, rx_no, billed_in")
+    .eq("id", orderId)
+    .maybeSingle();
+  if (error) throw new Error(describePostgresError(error, "load the RX order"));
+  if (!order?.is_rx) throw new Error("That is not an RX order.");
+
+  const { error: ownError } = await supabase
+    .from("order_lines")
+    .update({ unit_cost: unitCost })
+    .eq("order_id", orderId)
+    .not("rx_status", "is", null);
+  if (ownError) {
+    throw new Error(
+      describePostgresError(ownError, "change the purchase price"),
+    );
+  }
+
+  if (order.billed_in && order.rx_no !== null) {
+    // Its lenses on the combined invoice end in its RX number: "9493 · RX-0006".
+    const { error: copyError } = await supabase
+      .from("order_lines")
+      .update({ unit_cost: unitCost })
+      .eq("order_id", order.billed_in)
+      .like("order_ref", `%RX-${String(order.rx_no).padStart(4, "0")}`);
+    if (copyError) {
+      throw new Error(
+        describePostgresError(copyError, "change the purchase price"),
+      );
+    }
+  }
+  logger.info("RX cost changed", { orderId });
+}
