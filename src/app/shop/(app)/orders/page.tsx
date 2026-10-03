@@ -143,7 +143,7 @@ export default async function OrdersPage({
                           idField="orderId"
                           kind="delete"
                           name={`order ${order.order_no}`}
-                          question="Delete this draft?"
+                          question="Delete draft? (restorable for 7 days)"
                           confirmLabel="Delete"
                         />
                       </div>

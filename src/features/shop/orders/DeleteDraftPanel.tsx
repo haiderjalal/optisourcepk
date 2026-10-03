@@ -22,8 +22,9 @@ function Submit() {
 /**
  * Delete an unissued order.
  *
- * Behind a details element, like void: it removes the order outright, so it
- * should take a deliberate click rather than sit beside the everyday buttons.
+ * Behind a details element, like void: it takes the order away, so it should
+ * take a deliberate click rather than sit beside the everyday buttons. It
+ * waits in Recently deleted for 7 days.
  * Only ever shown on a draft — once issued, void is the way back.
  */
 export function DeleteDraftPanel({ order }: { order: Order }) {
@@ -39,8 +40,9 @@ export function DeleteDraftPanel({ order }: { order: Order }) {
         {order.is_rx && <input type="hidden" name="returnTo" value="rx" />}
         <p className="text-navy-500 max-w-prose text-sm">
           Removes {order.is_rx ? "this RX order" : `order ${order.order_no}`}{" "}
-          and its lines for good. Nothing has been invoiced yet, so no stock and
-          no customer balance are affected.
+          and its lines. It stays in Recently deleted for 7 days, where you can
+          restore it. Nothing has been invoiced yet, so no stock and no customer
+          balance are affected.
         </p>
         <Submit />
       </form>

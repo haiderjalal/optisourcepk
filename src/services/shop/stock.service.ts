@@ -172,6 +172,8 @@ export interface StockMovementLine {
   note: string | null;
   created_at: string;
   sph: number | null;
+  /** Typed by hand (not from an invoice or purchase), so it can be deleted. */
+  deletable: boolean;
 }
 
 export interface DailyStockLine {
@@ -305,7 +307,9 @@ export async function listMovements(
 
   const { data, error } = await supabase
     .from("stock_movements")
-    .select("id, bin_id, delta, reason, note, created_at")
+    .select(
+      "id, bin_id, delta, reason, note, created_at, order_id, purchase_invoice_id",
+    )
     .in(
       "bin_id",
       bins.map((bin) => bin.id),
@@ -324,7 +328,27 @@ export async function listMovements(
     note: row.note,
     created_at: row.created_at,
     sph: sphByBin.get(row.bin_id) ?? null,
+    deletable:
+      row.order_id === null &&
+      row.purchase_invoice_id === null &&
+      row.reason !== "sale" &&
+      row.reason !== "void",
   }));
+}
+
+/**
+ * Delete a stock entry typed by hand, undoing its effect on the shelf. It
+ * waits in Recently deleted for 7 days, and can be put back from there.
+ */
+export async function deleteStockMovement(movementId: string): Promise<void> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("trash_stock_movement", {
+    p_movement_id: movementId,
+  });
+  if (error) {
+    throw new Error(describePostgresError(error, "delete the stock entry"));
+  }
+  logger.info("Stock entry moved to Recently deleted", { movementId });
 }
 
 /**

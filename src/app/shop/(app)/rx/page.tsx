@@ -398,7 +398,7 @@ export default async function RxOrdersPage({
                               name={formatRxNo(job.rxNo)}
                               idField="orderId"
                               kind="delete"
-                              question="Delete?"
+                              question="Delete? (restorable for 7 days)"
                               confirmLabel="Yes"
                             />
                           </div>

@@ -185,7 +185,7 @@ export default async function ExpensesPage({
                         id={expense.id}
                         name={`${expense.item} on ${formatDate(expense.expense_date)}`}
                         kind="delete"
-                        question="Delete?"
+                        question="Delete? (restorable for 7 days)"
                       />
                     </td>
                   </tr>

@@ -87,6 +87,7 @@ export function describePostgresError(error: unknown, action: string): string {
       return "Your session has expired. Please sign in again.";
     // A column or table the app expects is not in the database (42703/42P01),
     // or the API has not picked it up yet (PGRST204/PGRST205).
+    case "PGRST202":
     case "PGRST204":
     case "PGRST205":
     case "42703":

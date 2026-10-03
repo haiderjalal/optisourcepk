@@ -13,8 +13,12 @@ import { ProductForm } from "@/features/shop/products/ProductForm";
 import { StockPanel } from "@/features/shop/products/StockPanel";
 import { RangeFillPanel } from "@/features/shop/products/RangeFillPanel";
 import { PowerGrid } from "@/features/shop/products/PowerGrid";
-import { archiveProductAction } from "@/features/shop/products/actions";
+import {
+  archiveProductAction,
+  deleteStockMovementAction,
+} from "@/features/shop/products/actions";
 import { formatDateTime, formatPower } from "@/lib/format";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 
 export const metadata: Metadata = { title: "Product" };
 
@@ -78,6 +82,16 @@ export default async function ProductPage({
                 <span className="text-navy-400 shrink-0 text-xs">
                   {formatDateTime(move.created_at)}
                 </span>
+                {move.deletable && (
+                  <ConfirmButton
+                    action={deleteStockMovementAction.bind(null, product.id)}
+                    id={move.id}
+                    name={`stock entry ${move.delta > 0 ? "+" : ""}${move.delta}`}
+                    kind="delete"
+                    question="Undo this entry? (restorable for 7 days)"
+                    confirmLabel="Delete"
+                  />
+                )}
               </li>
             ))}
           </ul>

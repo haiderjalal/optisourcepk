@@ -414,13 +414,14 @@ export async function reopenInvoice(orderId: string): Promise<Order> {
 export async function deleteInvoice(orderId: string): Promise<void> {
   const { supabase } = await requireUser();
 
-  const { error } = await supabase.rpc("delete_invoice", {
+  // Kept in Recently deleted for 7 days, with its stock and ledger postings.
+  const { error } = await supabase.rpc("trash_order", {
     p_order_id: orderId,
   });
   if (error)
     throw new Error(describePostgresError(error, "delete the invoice"));
 
-  logger.warn("Invoice deleted", { orderId });
+  logger.warn("Invoice moved to Recently deleted", { orderId });
 }
 
 export interface DeliveryUpdate {
@@ -519,11 +520,25 @@ export async function deleteOrder(id: string): Promise<void> {
     );
   }
 
-  const { error } = await supabase.from("orders").delete().eq("id", id);
+  // Kept in Recently deleted for 7 days.
+  const { error } = await supabase.rpc("trash_order", { p_order_id: id });
 
   if (error) throw new Error(describePostgresError(error, "delete the order"));
 
-  logger.info("Draft order deleted", { orderId: id, orderNo: order.order_no });
+  logger.info("Draft order moved to Recently deleted", {
+    orderId: id,
+    orderNo: order.order_no,
+  });
+}
+
+/**
+ * Remove a draft that was never really made — the half-saved order left
+ * when issuing a daily order fails. Not a user's delete, so it skips the bin.
+ */
+async function discardOrder(id: string): Promise<void> {
+  const { supabase } = await requireUser();
+  const { error } = await supabase.from("orders").delete().eq("id", id);
+  if (error) logger.error("Could not discard a failed order", { orderId: id });
 }
 
 /**
@@ -542,7 +557,7 @@ export async function createDailyOrder(payload: OrderPayload): Promise<Order> {
       additionalTaxRate: 0,
     });
   } catch (error) {
-    await deleteOrder(order.id);
+    await discardOrder(order.id);
     throw error;
   }
 }
