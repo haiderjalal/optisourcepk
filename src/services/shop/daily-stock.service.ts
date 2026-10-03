@@ -6,10 +6,14 @@ import type { DailyStockPayload } from "@/lib/validations/shop/stock";
 import type { DailyStockEntry } from "@/types/database";
 import { describePostgresError } from "./errors";
 
-/** Recent daily-register rows, newest business date first. */
+/**
+ * Recent daily-register rows, newest business date first — or `null` when the
+ * register's table is not in the database yet (migration 0029 not run), so
+ * the page can say so instead of failing.
+ */
 export async function listDailyStockEntries(
   limit = 180,
-): Promise<DailyStockEntry[]> {
+): Promise<DailyStockEntry[] | null> {
   const { supabase } = await requireUser();
   const { data, error } = await supabase
     .from("daily_stock_entries")
@@ -19,6 +23,7 @@ export async function listDailyStockEntries(
     .limit(limit);
 
   if (error) {
+    if (error.code === "PGRST205" || error.code === "42P01") return null;
     throw new Error(describePostgresError(error, "load daily stock history"));
   }
   return data ?? [];
