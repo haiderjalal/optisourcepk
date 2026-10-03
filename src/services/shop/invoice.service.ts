@@ -58,6 +58,7 @@ export async function createOrder(payload: OrderPayload): Promise<Order> {
       priority: payload.priority,
       ...rxCard(payload),
       ...(payload.isRx ? { is_rx: true } : {}),
+      ...(payload.isDaily ? { is_daily: true } : {}),
       order_by_name: optional(payload.orderByName),
       deliver_to_name: optional(payload.deliverToName),
       deliver_to_address: optional(payload.deliverToAddress),
@@ -250,6 +251,8 @@ async function replaceLines(
       unit_price: line.unitPrice,
       discount_pct: line.discountPct,
       quantity: line.quantity,
+      // A daily order keeps its purchase price for the day's profit.
+      ...(payload.isDaily && !rx ? { unit_cost: line.unitCost } : {}),
       // The lab job fields exist only on RX lines.
       ...(rx
         ? {
@@ -521,4 +524,25 @@ export async function deleteOrder(id: string): Promise<void> {
   if (error) throw new Error(describePostgresError(error, "delete the order"));
 
   logger.info("Draft order deleted", { orderId: id, orderNo: order.order_no });
+}
+
+/**
+ * Save a daily order and issue its invoice at once — a counter sale from the
+ * daily register. If the invoice cannot be issued (say the register is short),
+ * the order is removed again, so a failed save leaves nothing behind to
+ * double up on a retry.
+ */
+export async function createDailyOrder(payload: OrderPayload): Promise<Order> {
+  const order = await createOrder({ ...payload, isDaily: true });
+  try {
+    return await issueInvoice({
+      orderId: order.id,
+      freight: 0,
+      gstRate: 0,
+      additionalTaxRate: 0,
+    });
+  } catch (error) {
+    await deleteOrder(order.id);
+    throw error;
+  }
 }

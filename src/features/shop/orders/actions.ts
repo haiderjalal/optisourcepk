@@ -10,6 +10,7 @@ import {
 } from "@/lib/validations/shop/invoice";
 import { paymentSchema } from "@/lib/validations/shop/payment";
 import {
+  createDailyOrder,
   createOrder,
   issueInvoice,
   updateDelivery,
@@ -52,6 +53,7 @@ function readOrder(formData: FormData) {
     externalOrderRef: formData.get("externalOrderRef") ?? "",
     priority: formData.get("priority") ?? "normal",
     isRx: formData.get("isRx") === "true",
+    isDaily: formData.get("isDaily") === "true",
     patientName: formData.get("patientName") ?? "",
     labOrderNo: formData.get("labOrderNo") ?? "",
     rxLensType: formData.get("rxLensType") ?? "",
@@ -98,13 +100,16 @@ export async function saveOrder(
   try {
     const order = isUpdate
       ? await updateOrder(id, parsed.data)
-      : await createOrder(parsed.data);
+      : parsed.data.isDaily
+        ? await createDailyOrder(parsed.data)
+        : await createOrder(parsed.data);
     orderId = order.id;
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Save failed." };
   }
 
   revalidatePath(parsed.data.isRx ? "/shop/rx" : "/shop/orders");
+  if (parsed.data.isDaily) revalidatePath("/shop/stock/daily");
   redirect(`/shop/orders/${orderId}`);
 }
 
