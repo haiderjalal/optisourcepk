@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, CalendarDays } from "lucide-react";
+import { ArrowLeft, CalendarDays, Plus } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listSellableProducts } from "@/services/shop/product.service";
 import { listDailyStockEntries } from "@/services/shop/daily-stock.service";
 import { DailyStockForm } from "@/features/shop/stock/DailyStockForm";
 import { formatDate } from "@/lib/format";
 import { ShowMore } from "@/components/ui/show-more";
+import { ButtonLink } from "@/components/ui/button";
 import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "Daily stock register" };
@@ -41,16 +42,24 @@ export default async function DailyStockPage({
         Stock
       </Link>
 
-      <div className="mb-6">
-        <p className="eyebrow text-accent-600">Inventory</p>
-        <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold">
-          <CalendarDays className="text-accent-600 size-6" aria-hidden />
-          Daily stock register
-        </h1>
-        <p className="text-navy-500 mt-2 max-w-2xl text-sm">
-          Record fast-moving items separately by business date. This register
-          keeps its own history and does not alter your permanent stock bins.
-        </p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="eyebrow text-accent-600">Inventory</p>
+          <h1 className="mt-2 flex items-center gap-2 text-2xl font-bold">
+            <CalendarDays className="text-accent-600 size-6" aria-hidden />
+            Daily stock register
+          </h1>
+          <p className="text-navy-500 mt-2 max-w-2xl text-sm">
+            Record fast-moving items separately by business date. This register
+            keeps its own history and does not alter your permanent stock bins.
+          </p>
+        </div>
+        {register !== null && (
+          <ButtonLink href="/shop/stock/daily/new">
+            <Plus className="size-4" aria-hidden />
+            New daily order
+          </ButtonLink>
+        )}
       </div>
 
       {register === null ? (

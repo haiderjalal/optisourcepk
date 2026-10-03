@@ -74,11 +74,17 @@ export default async function OrderPage({
   return (
     <div className="mx-auto max-w-5xl">
       <Link
-        href={order.is_rx ? "/shop/rx" : "/shop/orders"}
+        href={
+          order.is_rx
+            ? "/shop/rx"
+            : order.is_daily
+              ? "/shop/stock/daily"
+              : "/shop/orders"
+        }
         className="text-navy-500 hover:text-navy-700 mb-5 inline-flex items-center gap-2 text-sm font-medium"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        {order.is_rx ? "RX orders" : "Orders"}
+        {order.is_rx ? "RX orders" : order.is_daily ? "Daily stock" : "Orders"}
       </Link>
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
@@ -95,6 +101,11 @@ export default async function OrderPage({
             {order.is_rx && (
               <span className="bg-accent-50 text-accent-700 ring-accent-200 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset">
                 {issued ? formatRxNo(order.rx_no) : "RX"}
+              </span>
+            )}
+            {order.is_daily && (
+              <span className="bg-accent-50 text-accent-700 ring-accent-200 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset">
+                Daily
               </span>
             )}
           </div>

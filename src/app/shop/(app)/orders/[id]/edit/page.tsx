@@ -62,6 +62,7 @@ export default async function EditOrderPage({
           products={products}
           order={order}
           lines={order.lines}
+          daily={order.is_daily}
         />
       )}
     </div>
