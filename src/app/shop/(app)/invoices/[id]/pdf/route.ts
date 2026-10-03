@@ -10,6 +10,7 @@ import {
  * GET /shop/invoices/[id]/pdf — the invoice as a PDF.
  *
  * `?download` forces a save dialog; without it the browser previews inline.
+ * `?balance=0` leaves out the account summary — just this invoice.
  * Route Handler GET is dynamic by default in Next 16, and `requireUser()`
  * re-checks the session because a proxy matcher is not a guarantee.
  */
@@ -26,10 +27,13 @@ export async function GET(
     return new Response("Not found", { status: 404 });
   }
 
-  const model = buildInvoicePdfModel(order);
+  const url = new URL(request.url);
+  const model = buildInvoicePdfModel(order, {
+    showBalance: url.searchParams.get("balance") !== "0",
+  });
   const pdf = await renderInvoicePdf(model);
 
-  const download = new URL(request.url).searchParams.has("download");
+  const download = url.searchParams.has("download");
   const disposition = download ? "attachment" : "inline";
 
   return new Response(new Uint8Array(pdf), {

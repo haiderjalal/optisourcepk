@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, FileText, Pencil } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
 import { checkOrderStock } from "@/services/shop/stock.service";
@@ -10,7 +10,7 @@ import { StockCheck } from "@/features/shop/orders/StockCheck";
 import { DeleteDraftPanel } from "@/features/shop/orders/DeleteDraftPanel";
 import { ButtonLink } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { InvoiceWhatsAppButton } from "@/features/shop/orders/InvoiceWhatsAppButton";
+import { InvoicePdfActions } from "@/features/shop/orders/InvoicePdfActions";
 import {
   deleteInvoiceAction,
   reopenInvoiceAction,
@@ -124,29 +124,17 @@ export default async function OrderPage({
         <div className="flex flex-wrap gap-2">
           {issued && (
             <>
-              <ButtonLink
-                href={`/shop/invoices/${order.id}/pdf`}
-                variant="outline"
-              >
-                <FileText className="size-4" aria-hidden />
-                View PDF
-              </ButtonLink>
-              <ButtonLink href={`/shop/invoices/${order.id}/pdf?download`}>
-                <Download className="size-4" aria-hidden />
-                Download
-              </ButtonLink>
-              {!voided && order.invoice_no !== null && (
-                <InvoiceWhatsAppButton
-                  orderId={order.id}
-                  invoiceNo={order.invoice_no}
-                  billTo={
-                    order.bill_to_shop ?? order.bill_to_name ?? "Customer"
-                  }
-                  amount={order.amount_incl_tax ?? 0}
-                  closingBalance={order.closing_balance}
-                  rxNotes={order.combines_rx ? order.notes : null}
-                />
-              )}
+              <InvoicePdfActions
+                orderId={order.id}
+                customerId={order.bill_to_customer_id}
+                invoiceNo={order.invoice_no}
+                billTo={order.bill_to_shop ?? order.bill_to_name ?? "Customer"}
+                amount={order.amount_incl_tax ?? 0}
+                closingBalance={order.closing_balance}
+                rxNotes={order.combines_rx ? order.notes : null}
+                canShare={!voided}
+                hasBalance={order.previous_balance !== null}
+              />
               {!voided && (
                 <ConfirmButton
                   action={reopenInvoiceAction}

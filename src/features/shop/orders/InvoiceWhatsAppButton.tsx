@@ -12,6 +12,8 @@ interface InvoiceWhatsAppButtonProps {
   amount: number;
   closingBalance: number | null;
   rxNotes: string | null;
+  /** false: share this invoice only, without the account balance. */
+  includeBalance?: boolean;
 }
 
 /** Share the rendered invoice PDF, with a download fallback for desktop. */
@@ -22,6 +24,7 @@ export function InvoiceWhatsAppButton({
   amount,
   closingBalance,
   rxNotes,
+  includeBalance = true,
 }: InvoiceWhatsAppButtonProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -35,7 +38,7 @@ export function InvoiceWhatsAppButton({
       `Invoice *${invoiceNo}* has been issued.`,
       rxNotes,
       `Amount: Rs ${formatAmount(amount)}.`,
-      closingBalance === null
+      closingBalance === null || !includeBalance
         ? null
         : `Total account balance: Rs ${formatAmount(closingBalance)}.`,
       "Thank you.",
@@ -44,7 +47,8 @@ export function InvoiceWhatsAppButton({
       .join("\n");
 
     try {
-      const response = await fetch(`/shop/invoices/${orderId}/pdf`, {
+      const pdfUrl = `/shop/invoices/${orderId}/pdf${includeBalance ? "" : "?balance=0"}`;
+      const response = await fetch(pdfUrl, {
         cache: "no-store",
       });
       if (!response.ok) throw new Error(`PDF failed (${response.status})`);
