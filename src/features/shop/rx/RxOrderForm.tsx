@@ -576,9 +576,26 @@ export function RxOrderForm({
         )}
       </section>
 
+      <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
+        <Field
+          name="notes"
+          label="Notes"
+          hint="Anything about this job — for your records. Not sent to the lab or printed on the invoice."
+        >
+          {(p) => (
+            <textarea
+              {...p}
+              rows={3}
+              maxLength={2000}
+              defaultValue={order?.notes ?? ""}
+            />
+          )}
+        </Field>
+      </section>
+
       <details className="shadow-lift rounded-2xl bg-white p-5">
         <summary className="cursor-pointer text-base font-semibold">
-          Reference and notes
+          Reference and priority
           <span className="text-navy-400 ml-2 text-xs font-normal">
             optional
           </span>
@@ -599,11 +616,6 @@ export function RxOrderForm({
                 <option value="normal">Normal</option>
                 <option value="urgent">Urgent</option>
               </select>
-            )}
-          </Field>
-          <Field name="notes" label="Notes" className="sm:col-span-2">
-            {(p) => (
-              <textarea {...p} rows={2} defaultValue={order?.notes ?? ""} />
             )}
           </Field>
         </div>

@@ -209,6 +209,7 @@ export default async function OrderPage({
               label="Tint / photochromatic / antiglare"
               value={order.rx_tint_reason}
             />
+            <RxDetail label="Notes" value={order.notes} />
           </dl>
           <RxWhatsAppButtons
             order={order}
