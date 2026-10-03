@@ -83,7 +83,11 @@ function partyLines(...values: (string | null | undefined)[]): string[] {
   return values.map((v) => v?.trim()).filter((v): v is string => Boolean(v));
 }
 
-export function buildInvoicePdfModel(order: OrderWithLines): InvoicePdfModel {
+export function buildInvoicePdfModel(
+  order: OrderWithLines,
+  /** false: this invoice only, without the previous balance and total payable. */
+  { showBalance = true }: { showBalance?: boolean } = {},
+): InvoicePdfModel {
   // Prefer the snapshot taken at issue; fall back to the live customer for a
   // draft preview, which has no snapshot yet.
   const billName = order.bill_to_shop ?? order.customer?.shop_name ?? "—";
@@ -156,7 +160,7 @@ export function buildInvoicePdfModel(order: OrderWithLines): InvoicePdfModel {
     // Only when it was snapshotted at issue. Recomputing it now would show a
     // different figure every time an old invoice is reprinted.
     account:
-      order.previous_balance === null
+      !showBalance || order.previous_balance === null
         ? []
         : [
             {
