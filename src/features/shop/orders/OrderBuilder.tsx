@@ -33,6 +33,8 @@ interface LineDraft {
   unitPrice: string;
   discountPct: string;
   quantity: string;
+  /** Daily orders only: what one unit cost us. */
+  unitCost: string;
 }
 
 let seq = 0;
@@ -51,6 +53,7 @@ function emptyLine(discount: number): LineDraft {
     unitPrice: "",
     discountPct: String(discount),
     quantity: "1",
+    unitCost: "",
   };
 }
 
@@ -68,6 +71,7 @@ function fromExisting(line: OrderLine): LineDraft {
     unitPrice: String(line.unit_price),
     discountPct: String(line.discount_pct),
     quantity: String(line.quantity),
+    unitCost: line.unit_cost === null ? "" : String(line.unit_cost),
   };
 }
 
@@ -79,12 +83,24 @@ function lineTotal(line: LineDraft): number {
   return gross - Math.round(((gross * discount) / 100) * 100) / 100;
 }
 
-function SubmitButton({ isUpdate }: { isUpdate: boolean }) {
+function SubmitButton({
+  isUpdate,
+  daily,
+}: {
+  isUpdate: boolean;
+  daily: boolean;
+}) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" disabled={pending}>
       <Save className="size-4" aria-hidden />
-      {pending ? "Saving…" : isUpdate ? "Save order" : "Create order"}
+      {pending
+        ? "Saving…"
+        : daily
+          ? "Save & issue invoice"
+          : isUpdate
+            ? "Save order"
+            : "Create order"}
     </Button>
   );
 }
@@ -97,11 +113,17 @@ export function OrderBuilder({
   products,
   order,
   lines: existing,
+  daily = false,
 }: {
   customers: Customer[];
   products: Product[];
   order?: Order;
   lines?: OrderLine[];
+  /**
+   * A daily order: a counter sale from the daily register, with a purchase
+   * price per line, issued as soon as it is saved.
+   */
+  daily?: boolean;
 }) {
   const [state, formAction] = useActionState<OrderFormState, FormData>(
     saveOrder,
@@ -183,12 +205,14 @@ export function OrderBuilder({
     unitPrice: line.unitPrice || "0",
     discountPct: line.discountPct || "0",
     quantity: line.quantity || "0",
+    unitCost: daily ? line.unitCost : "",
   }));
 
   return (
     <form action={formAction} className="space-y-5">
       {order && <input type="hidden" name="id" value={order.id} />}
       <input type="hidden" name="lines" value={JSON.stringify(payload)} />
+      <input type="hidden" name="isDaily" value={String(daily)} />
 
       <section className="shadow-lift rounded-2xl bg-white p-5">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -291,8 +315,13 @@ export function OrderBuilder({
                 <th scope="col" className="w-20 px-2 py-2.5 font-medium">
                   ADD
                 </th>
+                {daily && (
+                  <th scope="col" className="w-24 px-2 py-2.5 font-medium">
+                    Purchase
+                  </th>
+                )}
                 <th scope="col" className="w-24 px-2 py-2.5 font-medium">
-                  Rate
+                  {daily ? "Sale" : "Rate"}
                 </th>
                 <th scope="col" className="w-20 px-2 py-2.5 font-medium">
                   Disc %
@@ -418,6 +447,22 @@ export function OrderBuilder({
                       />
                     </td>
 
+                    {daily && (
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`Purchase price for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          inputMode="decimal"
+                          value={line.unitCost}
+                          onChange={(e) =>
+                            update(line.key, { unitCost: e.target.value })
+                          }
+                        />
+                      </td>
+                    )}
                     <td className="px-2 py-2">
                       <input
                         aria-label={`Rate for line ${index + 1}`}
@@ -520,14 +565,23 @@ export function OrderBuilder({
         </div>
       </section>
 
-      <details className="shadow-lift rounded-2xl bg-white p-5">
+      <details className="shadow-lift rounded-2xl bg-white p-5" open={daily}>
         <summary className="cursor-pointer text-base font-semibold">
-          Delivery and notes
+          {daily ? "Order by, deliver to and notes" : "Delivery and notes"}
           <span className="text-navy-400 ml-2 text-xs font-normal">
             optional
           </span>
         </summary>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Field name="orderByName" label="Order by (if not the shop)">
+            {(p) => (
+              <input
+                {...p}
+                type="text"
+                defaultValue={order?.order_by_name ?? ""}
+              />
+            )}
+          </Field>
           <Field name="deliverToName" label="Deliver to (if different)">
             {(p) => (
               <input
@@ -596,15 +650,17 @@ export function OrderBuilder({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton isUpdate={Boolean(order)} />
+        <SubmitButton isUpdate={Boolean(order)} daily={daily} />
         <Link
-          href="/shop/orders"
+          href={daily ? "/shop/stock/daily" : "/shop/orders"}
           className="text-navy-500 hover:text-navy-700 text-sm font-medium"
         >
           Cancel
         </Link>
         <span className="text-navy-400 text-xs">
-          Saving creates a draft. Stock moves only when you issue the invoice.
+          {daily
+            ? "Issues the invoice now and adds the items to today's outgoing in the daily register. Stock bins are not touched."
+            : "Saving creates a draft. Stock moves only when you issue the invoice."}
         </span>
       </div>
     </form>

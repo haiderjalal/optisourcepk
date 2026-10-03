@@ -127,6 +127,8 @@ export const orderSchema = z.object({
   priority: z.enum(["normal", "urgent"]).default("normal"),
   /** Set when the order is started from the RX screen; fixed after that. */
   isRx: z.boolean().default(false),
+  /** A daily order: issued on save, drawing on the daily stock register. */
+  isDaily: z.boolean().default(false),
 
   // The RX job card. Blank means not given; patient name is optional.
   patientName: z.string().trim().max(120).optional().or(z.literal("")),

@@ -206,6 +206,8 @@ type OrderRow = {
   priority: OrderPriority;
   /** An RX order: lenses made by a lab; its lines never touch stock. */
   is_rx: boolean;
+  /** A daily order: invoiced from the daily register, not the stock bins. */
+  is_daily: boolean;
   /** RX only: RX-0001 onwards, its own sequence. */
   rx_no: number | null;
   patient_name: string | null;
@@ -409,6 +411,7 @@ type Defaulted =
   | "tracks_stock"
   | "is_rx"
   | "combines_rx"
+  | "is_daily"
   | "purchase_price"
   | "list_price"
   | "default_discount_pct"
