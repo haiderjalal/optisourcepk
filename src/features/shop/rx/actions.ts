@@ -7,6 +7,7 @@ import { requireUser } from "@/server/shop/dal";
 import {
   issueRxInvoice,
   priceRx,
+  setRxCost,
   setRxStage,
   updateRxLabOrderNo,
 } from "@/services/shop/rx.service";
@@ -167,4 +168,44 @@ export async function deleteRxOrderAction(formData: FormData): Promise<void> {
   revalidatePath("/shop/rx");
   revalidatePath("/shop");
   redirect("/shop/rx");
+}
+
+const costSchema = z.object({
+  orderId: z.uuid(),
+  unitCost: z
+    .string()
+    .trim()
+    .transform((v) => (v === "" ? null : Number(v)))
+    .refine(
+      (v) => v === null || (Number.isFinite(v) && v >= 0 && v <= 9_999_999),
+      {
+        error: "Purchase price must be a number, or blank.",
+      },
+    ),
+});
+
+/** Change an invoiced RX order's purchase price (per lens). */
+export async function setRxCostAction(
+  _previous: RxActionState,
+  formData: FormData,
+): Promise<RxActionState> {
+  await requireUser();
+
+  const parsed = costSchema.safeParse({
+    orderId: formData.get("orderId"),
+    unitCost: formData.get("unitCost") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the price." };
+  }
+
+  try {
+    await setRxCost(parsed.data.orderId, parsed.data.unitCost);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Save failed." };
+  }
+
+  revalidatePath(`/shop/orders/${parsed.data.orderId}`);
+  revalidatePath("/shop/rx");
+  return { message: "Purchase price saved." };
 }

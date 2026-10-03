@@ -22,6 +22,7 @@ import {
   VoidPanel,
 } from "@/features/shop/orders/InvoiceActions";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
+import { RxCostForm } from "@/features/shop/rx/RxCostForm";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
 import { listSamePatientSameDay } from "@/services/shop/rx.service";
@@ -217,6 +218,14 @@ export default async function OrderPage({
               order.customer?.shop_name ?? order.bill_to_shop ?? "the shop"
             }
           />
+          {(issued || billed) && !voided && (
+            <RxCostForm
+              orderId={order.id}
+              unitCost={
+                order.lines.find((l) => l.unit_cost !== null)?.unit_cost ?? null
+              }
+            />
+          )}
         </section>
       )}
 
