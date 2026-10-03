@@ -1,5 +1,6 @@
 export const LIST_PAGE_SIZE = 5;
-export const MAX_LIST_ITEMS = 100;
+/** "Show all" goes this far: a shop's full list, well inside one request. */
+export const MAX_LIST_ITEMS = 500;
 
 export type ListSearchParams = Record<string, string | string[] | undefined>;
 

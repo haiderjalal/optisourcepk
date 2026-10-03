@@ -115,35 +115,70 @@ export async function listRxJobs(
     if (orderIds.length === 0) return [];
   }
 
-  let query = supabase
-    .from("order_lines")
-    .select("*")
-    .not("rx_status", "is", null)
-    .order("created_at", { ascending: false })
-    // Two eye lines normally make one displayed job. One extra job tells the
-    // page whether a Show more button is needed.
-    .limit(Math.min(limit * 2, 202));
+  // Each page of lines is read with the same filters, built afresh.
+  const linesQuery = () => {
+    let query = supabase
+      .from("order_lines")
+      .select("*")
+      .not("rx_status", "is", null)
+      .order("created_at", { ascending: false })
+      .order("id");
 
-  // Looking up one RX number shows it whatever its status.
-  if (search.status !== "all" && search.rxNo === null) {
-    query = query.eq("rx_status", search.status);
-  }
-  if (search.sph !== null) query = query.eq("sph", search.sph);
-  if (search.cyl !== null) {
-    query =
-      search.cyl === 0 ? query.is("cyl", null) : query.eq("cyl", search.cyl);
-  }
-  if (search.add !== null) {
-    query =
-      search.add === 0
-        ? query.is("add_power", null)
-        : query.eq("add_power", search.add);
-  }
-  if (orderIds) query = query.in("order_id", orderIds);
+    // Looking up one RX number shows it whatever its status.
+    if (search.status !== "all" && search.rxNo === null) {
+      query = query.eq("rx_status", search.status);
+    }
+    if (search.sph !== null) query = query.eq("sph", search.sph);
+    if (search.cyl !== null) {
+      query =
+        search.cyl === 0 ? query.is("cyl", null) : query.eq("cyl", search.cyl);
+    }
+    if (search.add !== null) {
+      query =
+        search.add === 0
+          ? query.is("add_power", null)
+          : query.eq("add_power", search.add);
+    }
+    if (orderIds) query = query.in("order_id", orderIds);
+    return query;
+  };
 
-  const { data: matched, error } = await query;
-  if (error) throw new Error(describePostgresError(error, "load RX jobs"));
-  if (!matched || matched.length === 0) return [];
+  // A combined invoice's lines are copies of RX orders, and they are newer
+  // than the orders themselves — so they are skipped while reading, and the
+  // reading carries on until there is a full page of real jobs. Skipping them
+  // after a single limited read is what left "Show 5 more" showing nothing.
+  const wantedLines = limit * 2; // two eyes make one row, near enough
+  const batch = Math.max(wantedLines, 20);
+  const combined = new Set<string>();
+  const known = new Set<string>();
+  const matched: OrderLine[] = [];
+
+  for (let from = 0, pages = 0; pages < 25; pages++, from += batch) {
+    const { data, error } = await linesQuery().range(from, from + batch - 1);
+    if (error) throw new Error(describePostgresError(error, "load RX jobs"));
+    if (!data || data.length === 0) break;
+
+    const unknown = [
+      ...new Set(data.map((l) => l.order_id).filter((id) => !known.has(id))),
+    ];
+    if (unknown.length > 0) {
+      const { data: kinds, error: kindError } = await supabase
+        .from("orders")
+        .select("id, combines_rx")
+        .in("id", unknown);
+      if (kindError) {
+        throw new Error(describePostgresError(kindError, "load RX jobs"));
+      }
+      for (const o of kinds ?? []) {
+        known.add(o.id);
+        if (o.combines_rx) combined.add(o.id);
+      }
+    }
+
+    matched.push(...data.filter((l) => !combined.has(l.order_id)));
+    if (matched.length >= wantedLines || data.length < batch) break;
+  }
+  if (matched.length === 0) return [];
 
   // A search can hit one eye only; read the rest of those orders' RX lines so
   // each lens is shown with its partner.
@@ -216,13 +251,7 @@ export async function listRxJobs(
     (suppliers.data ?? []).map((s) => [s.id, s.name]),
   );
 
-  // A combined invoice's lines are copies of RX orders already listed.
-  // ponytail: filtered after the limit, so a page can come back a little short.
-  const ownLines = lines.filter(
-    (line) => !orderById.get(line.order_id)?.combines_rx,
-  );
-
-  const jobs = ownLines.map((line): RxJob => {
+  const jobs = lines.map((line): RxJob => {
     const order = orderById.get(line.order_id);
     const customer = order
       ? customerById.get(order.bill_to_customer_id)

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, ChevronsDown } from "lucide-react";
 import {
   LIST_PAGE_SIZE,
   MAX_LIST_ITEMS,
@@ -16,7 +16,10 @@ interface ShowMoreProps {
   noun?: string;
 }
 
-/** Server-rendered cumulative pagination: five rows first, five more on demand. */
+/**
+ * Server-rendered cumulative pagination: five rows first, then five more or
+ * all of them on demand.
+ */
 export function ShowMore({
   pathname,
   searchParams,
@@ -44,6 +47,17 @@ export function ShowMore({
         >
           <ChevronDown className="size-4" aria-hidden />
           Show 5 more {noun}
+        </Link>
+      )}
+      {canShowMore && (
+        <Link
+          href={listHref(pathname, searchParams, param, MAX_LIST_ITEMS)}
+          prefetch={false}
+          scroll={false}
+          className="text-accent-700 hover:text-accent-800 inline-flex items-center gap-1.5 text-sm font-semibold"
+        >
+          <ChevronsDown className="size-4" aria-hidden />
+          Show all {noun}
         </Link>
       )}
       {current > LIST_PAGE_SIZE && (
