@@ -12,6 +12,7 @@ import {
 } from "@/services/shop/product.service";
 import {
   adjustStock,
+  deleteStockMovement,
   receivePowers,
   receiveRange,
   setReorderLevel,
@@ -362,4 +363,24 @@ export async function receivePowersAction(
       error: error instanceof Error ? error.message : "Could not receive it.",
     };
   }
+}
+
+/**
+ * Delete a hand-typed stock entry; it goes to Recently deleted. Bound to
+ * its product on the page, so the product's stock refreshes.
+ */
+export async function deleteStockMovementAction(
+  product: string,
+  formData: FormData,
+): Promise<void> {
+  await requireUser();
+
+  const id = z.uuid().safeParse(formData.get("id"));
+  const productId = z.uuid().safeParse(product);
+  if (!id.success || !productId.success) return;
+
+  await deleteStockMovement(id.data);
+  revalidatePath(`/shop/products/${productId.data}`);
+  revalidatePath("/shop/stock");
+  revalidatePath("/shop/trash");
 }

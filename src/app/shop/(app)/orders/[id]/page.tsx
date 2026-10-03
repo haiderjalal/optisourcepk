@@ -152,7 +152,7 @@ export default async function OrderPage({
                 name={`invoice ${order.invoice_no}`}
                 idField="orderId"
                 kind="delete"
-                question="Delete permanently?"
+                question="Delete? (restorable for 7 days)"
                 confirmLabel="Delete"
               />
             </>

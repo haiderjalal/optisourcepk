@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Package,
   Receipt,
+  Trash2,
   Truck,
   Users,
   Wallet,
@@ -36,6 +37,7 @@ const NAV = [
   { href: "/shop/products", label: "Products", icon: Package },
   { href: "/shop/purchases", label: "Purchases", icon: Truck },
   { href: "/shop/suppliers", label: "Suppliers", icon: Building2 },
+  { href: "/shop/trash", label: "Recently deleted", icon: Trash2 },
 ] as const;
 
 export function ShopSidebar({

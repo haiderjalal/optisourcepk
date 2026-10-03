@@ -147,7 +147,7 @@ export default async function InvoicesPage({
                         name={`invoice ${invoice.invoice_no}`}
                         idField="orderId"
                         kind="delete"
-                        question="Delete?"
+                        question="Delete? (restorable for 7 days)"
                         confirmLabel="Yes"
                       />
                     </div>

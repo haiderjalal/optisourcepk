@@ -305,6 +305,15 @@ type OrderLineRow = {
   updated_at: string;
 };
 
+/** Something deleted in the last 7 days, restorable from Recently deleted. */
+type TrashRow = {
+  id: string;
+  kind: "order" | "stock_movement";
+  label: string;
+  payload: unknown;
+  deleted_at: string;
+};
+
 /** RX sales, cost and profit for one month of issued invoices. */
 type RxMonthlyRow = {
   month: string;
@@ -461,6 +470,7 @@ export interface Database {
       expenses: Table<ExpenseRow>;
       purchase_invoices: Table<PurchaseInvoiceRow>;
       purchase_invoice_lines: Table<PurchaseInvoiceLineRow>;
+      trash: Table<TrashRow>;
     };
     Views: {
       customer_statement: View<CustomerStatementRow>;
@@ -494,6 +504,22 @@ export interface Database {
           p_level: number;
         };
         Returns: undefined;
+      };
+      trash_order: {
+        Args: { p_order_id: string };
+        Returns: string;
+      };
+      trash_stock_movement: {
+        Args: { p_movement_id: string };
+        Returns: string;
+      };
+      restore_trash: {
+        Args: { p_trash_id: string };
+        Returns: string;
+      };
+      purge_trash: {
+        Args: Record<string, never>;
+        Returns: number;
       };
       issue_rx_invoice: {
         Args: {
@@ -593,6 +619,7 @@ export type PurchaseInvoice = PurchaseInvoiceRow;
 export type PurchaseInvoiceLine = PurchaseInvoiceLineRow;
 export type PurchaseInvoiceSummary = PurchaseInvoiceTotalsRow;
 export type RxMonth = RxMonthlyRow;
+export type TrashItem = TrashRow;
 export type BusinessTotals = BusinessTotalsRow;
 
 /** One line as `record_purchase` takes it. Blank unitCost = product cost. */
