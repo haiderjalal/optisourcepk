@@ -69,6 +69,8 @@ export default async function RxOrdersPage({
     shop:
       typeof params.shop === "string" ? params.shop.trim().slice(0, 80) : "",
     rxNo: rxNumber(params.rx),
+    labOrder:
+      typeof params.lab === "string" ? params.lab.trim().slice(0, 80) : "",
     status,
   };
 
@@ -85,7 +87,8 @@ export default async function RxOrdersPage({
     search.cyl !== null ||
     search.add !== null ||
     search.shop !== "" ||
-    search.rxNo !== null;
+    search.rxNo !== null ||
+    search.labOrder !== "";
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -107,7 +110,7 @@ export default async function RxOrdersPage({
       <ReadyToInvoice shops={ready} />
 
       {/* A GET form: the search lives in the URL, so back and refresh work. */}
-      <form className="shadow-lift mb-5 grid gap-3 rounded-2xl bg-white p-5 sm:grid-cols-4 lg:grid-cols-7">
+      <form className="shadow-lift mb-5 grid gap-3 rounded-2xl bg-white p-5 sm:grid-cols-4 lg:grid-cols-8">
         <label className="text-sm">
           <span className="text-navy-600 mb-1 block font-medium">RX no.</span>
           <input
@@ -115,6 +118,18 @@ export default async function RxOrdersPage({
             type="search"
             defaultValue={search.rxNo === null ? "" : formatRxNo(search.rxNo)}
             placeholder="RX006"
+            className={inputClass}
+          />
+        </label>
+        <label className="text-sm">
+          <span className="text-navy-600 mb-1 block font-medium">
+            Lab order no.
+          </span>
+          <input
+            name="lab"
+            type="search"
+            defaultValue={search.labOrder}
+            placeholder="Lab's no."
             className={inputClass}
           />
         </label>
@@ -178,7 +193,7 @@ export default async function RxOrdersPage({
             </Link>
           )}
         </div>
-        <p className="text-navy-400 text-xs sm:col-span-4 lg:col-span-7">
+        <p className="text-navy-400 text-xs sm:col-span-4 lg:col-span-8">
           Enter 0 in CYL or ADD to find lenses with none. Leave a box blank to
           match any value.
         </p>

@@ -49,6 +49,8 @@ export interface RxSearch {
   shop: string;
   /** An RX number (RX006 → 6) finds that one order, whatever its status. */
   rxNo: number | null;
+  /** Part of the lab's order number; finds those orders, whatever their status. */
+  labOrder: string;
   status: RxStatus | "all";
 }
 
@@ -65,6 +67,17 @@ export async function listRxJobs(
   // A name search narrows to the matching orders first — by the shop's name
   // or the patient's — so the limit below applies to their jobs, not everyone's.
   let orderIds: string[] | null = null;
+  if (search.labOrder) {
+    const pattern = `%${search.labOrder.replace(/[%_\\]/g, "\\$&")}%`;
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("is_rx", true)
+      .ilike("lab_order_no", pattern);
+    if (error) throw new Error(describePostgresError(error, "search RX jobs"));
+    orderIds = (data ?? []).map((o) => o.id);
+    if (orderIds.length === 0) return [];
+  }
   if (search.rxNo !== null) {
     const { data, error } = await supabase
       .from("orders")
@@ -72,7 +85,9 @@ export async function listRxJobs(
       .eq("is_rx", true)
       .eq("rx_no", search.rxNo);
     if (error) throw new Error(describePostgresError(error, "search RX jobs"));
-    orderIds = (data ?? []).map((o) => o.id);
+    // Both boxes filled: the order must match both.
+    const byRx = (data ?? []).map((o) => o.id);
+    orderIds = orderIds ? orderIds.filter((id) => byRx.includes(id)) : byRx;
     if (orderIds.length === 0) return [];
   }
   if (search.shop) {
@@ -125,7 +140,7 @@ export async function listRxJobs(
       .order("id");
 
     // Looking up one RX number shows it whatever its status.
-    if (search.status !== "all" && search.rxNo === null) {
+    if (search.status !== "all" && search.rxNo === null && !search.labOrder) {
       query = query.eq("rx_status", search.status);
     }
     if (search.sph !== null) query = query.eq("sph", search.sph);
