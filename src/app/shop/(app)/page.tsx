@@ -119,7 +119,9 @@ export default async function ShopDashboardPage() {
                       <p className="text-navy-400 text-xs">
                         {order.invoice_no
                           ? `Invoice ${order.invoice_no}`
-                          : `Order ${order.order_no}`}{" "}
+                          : order.reserved_invoice_no
+                            ? `Invoice ${order.reserved_invoice_no} · editing`
+                            : `Order ${order.order_no}`}{" "}
                         · {formatDate(order.issued_at ?? order.created_at)}
                       </p>
                     </div>
