@@ -109,7 +109,17 @@ export async function saveOrder(
   }
 
   revalidatePath(parsed.data.isRx ? "/shop/rx" : "/shop/orders");
-  if (parsed.data.isDaily) revalidatePath("/shop/stock/daily");
+  if (
+    parsed.data.isDaily ||
+    parsed.data.lines.some((line) => line.stockSource === "daily")
+  ) {
+    revalidatePath("/shop/stock/daily");
+  }
+  if (parsed.data.isDaily && !isUpdate) {
+    revalidatePath("/shop/invoices");
+    revalidatePath("/shop/payments");
+    revalidatePath("/shop/stock");
+  }
   redirect(`/shop/orders/${orderId}`);
 }
 
@@ -152,6 +162,9 @@ export async function issueInvoiceAction(
   revalidatePath(`/shop/orders/${parsed.data.orderId}`);
   revalidatePath("/shop/orders");
   revalidatePath("/shop/invoices");
+  revalidatePath("/shop/payments");
+  revalidatePath("/shop/stock");
+  revalidatePath("/shop/stock/daily");
   revalidatePath("/shop");
   redirect(`/shop/orders/${parsed.data.orderId}`);
 }
@@ -172,7 +185,11 @@ export async function voidInvoiceAction(formData: FormData): Promise<void> {
   );
 
   revalidatePath(`/shop/orders/${id}`);
+  revalidatePath("/shop/orders");
   revalidatePath("/shop/invoices");
+  revalidatePath("/shop/payments");
+  revalidatePath("/shop/stock");
+  revalidatePath("/shop/stock/daily");
   revalidatePath("/shop");
 }
 
@@ -206,6 +223,9 @@ export async function reopenInvoiceAction(formData: FormData): Promise<void> {
   await reopenInvoice(id.data);
   revalidatePath("/shop/invoices");
   revalidatePath("/shop/orders");
+  revalidatePath("/shop/payments");
+  revalidatePath("/shop/stock");
+  revalidatePath("/shop/stock/daily");
   revalidatePath(`/shop/orders/${id.data}`);
   revalidatePath("/shop");
   redirect(`/shop/orders/${id.data}/edit`);
@@ -222,6 +242,9 @@ export async function deleteInvoiceAction(formData: FormData): Promise<void> {
   revalidatePath("/shop/invoices");
   revalidatePath("/shop/orders");
   revalidatePath("/shop/rx");
+  revalidatePath("/shop/payments");
+  revalidatePath("/shop/stock");
+  revalidatePath("/shop/stock/daily");
   revalidatePath("/shop");
   redirect("/shop/invoices");
 }

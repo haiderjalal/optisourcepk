@@ -271,6 +271,8 @@ type OrderLineRow = {
   order_id: string;
   line_no: number;
   order_ref: string | null;
+  /** The separate inventory register this line is deducted from. */
+  stock_source: "normal" | "daily";
   product_id: string;
   product_name: string;
   unit: string;
@@ -354,8 +356,10 @@ type CustomerStatementRow = {
 
 type BusinessTotalsRow = {
   stock_sales: number;
+  daily_sales: number;
   rx_sales: number;
   stock_purchases: number;
+  daily_purchases: number;
   rx_purchases: number;
 };
 
@@ -421,6 +425,7 @@ type Defaulted =
   | "is_rx"
   | "combines_rx"
   | "is_daily"
+  | "stock_source"
   | "purchase_price"
   | "list_price"
   | "default_discount_pct"
