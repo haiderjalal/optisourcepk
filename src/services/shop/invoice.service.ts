@@ -8,6 +8,7 @@ import type {
 } from "@/lib/validations/shop/invoice";
 import type { Customer, Order, OrderLine } from "@/types/database";
 import { describePostgresError } from "./errors";
+import { selectAllPages } from "./paging";
 import { resolveRxProducts, rxProductId } from "./product.service";
 
 /**
@@ -544,33 +545,132 @@ export async function deleteOrder(id: string): Promise<void> {
   });
 }
 
-/**
- * Remove a draft that was never really made — the half-saved order left
- * when issuing a daily order fails. Not a user's delete, so it skips the bin.
- */
-async function discardOrder(id: string): Promise<void> {
-  const { supabase } = await requireUser();
-  const { error } = await supabase.from("orders").delete().eq("id", id);
-  if (error) logger.error("Could not discard a failed order", { orderId: id });
+export interface ReadyOrder {
+  id: string;
+  orderNo: number;
+  externalRef: string | null;
+  isDaily: boolean;
+  createdAt: string;
+  lineCount: number;
+  total: number;
+}
+
+export interface ReadyOrdersShop {
+  customerId: string;
+  shopName: string;
+  orders: ReadyOrder[];
+  total: number;
 }
 
 /**
- * Save a daily order and issue its invoice at once — a counter sale from the
- * daily register. If the invoice cannot be issued (say the register is short),
- * the order is removed again, so a failed save leaves nothing behind to
- * double up on a retry.
+ * Saved orders not yet invoiced, grouped by shop — what "Generate invoice"
+ * can put on one invoice. `daily` limits it to daily orders.
  */
-export async function createDailyOrder(payload: OrderPayload): Promise<Order> {
-  const order = await createOrder({ ...payload, isDaily: true });
-  try {
-    return await issueInvoice({
-      orderId: order.id,
-      freight: 0,
-      gstRate: 0,
-      additionalTaxRate: 0,
-    });
-  } catch (error) {
-    await discardOrder(order.id);
-    throw error;
+export async function listOrdersReadyToInvoice(
+  filter: { daily?: boolean } = {},
+): Promise<ReadyOrdersShop[]> {
+  const { supabase } = await requireUser();
+
+  let query = supabase
+    .from("orders")
+    .select(
+      "id, order_no, external_order_ref, is_daily, created_at, bill_to_customer_id",
+    )
+    .eq("is_rx", false)
+    .eq("combines_rx", false)
+    .eq("combines_orders", false)
+    .is("issued_at", null)
+    .is("voided_at", null)
+    .is("billed_in", null)
+    .neq("status", "cancelled")
+    .order("order_no")
+    .limit(500);
+  if (filter.daily) query = query.eq("is_daily", true);
+
+  const { data: orders, error } = await query;
+  if (error) {
+    throw new Error(describePostgresError(error, "load orders to invoice"));
   }
+  if (!orders || orders.length === 0) return [];
+
+  const ids = orders.map((o) => o.id);
+  const [lines, customers] = await Promise.all([
+    selectAllPages((from, to) =>
+      supabase
+        .from("order_lines")
+        .select("id, order_id, line_total")
+        .in("order_id", ids)
+        .order("id")
+        .range(from, to),
+    ).catch((e: unknown) => {
+      throw new Error(describePostgresError(e, "load orders to invoice"));
+    }),
+    supabase
+      .from("customers")
+      .select("id, shop_name")
+      .in("id", [...new Set(orders.map((o) => o.bill_to_customer_id))]),
+  ]);
+  if (customers.error) {
+    throw new Error(
+      describePostgresError(customers.error, "load orders to invoice"),
+    );
+  }
+
+  const shopName = new Map(
+    (customers.data ?? []).map((c) => [c.id, c.shop_name]),
+  );
+  const byShop = new Map<string, ReadyOrdersShop>();
+
+  for (const order of orders) {
+    const own = lines.filter((l) => l.order_id === order.id);
+    // An order with nothing on it would only be refused by the database.
+    if (own.length === 0) continue;
+    const total = own.reduce((sum, l) => sum + l.line_total, 0);
+    const shop = byShop.get(order.bill_to_customer_id) ?? {
+      customerId: order.bill_to_customer_id,
+      shopName: shopName.get(order.bill_to_customer_id) ?? "—",
+      orders: [],
+      total: 0,
+    };
+    shop.orders.push({
+      id: order.id,
+      orderNo: order.order_no,
+      externalRef: order.external_order_ref,
+      isDaily: order.is_daily,
+      createdAt: order.created_at,
+      lineCount: own.length,
+      total,
+    });
+    shop.total += total;
+    byShop.set(order.bill_to_customer_id, shop);
+  }
+
+  return [...byShop.values()].sort((a, b) =>
+    a.shopName.localeCompare(b.shopName),
+  );
+}
+
+/**
+ * One invoice for the chosen saved orders of one shop: lines copied, stock
+ * and daily register moved, ledger posted — all in one transaction.
+ * Returns the new invoice's order id.
+ */
+export async function issueOrdersInvoice(input: {
+  customerId: string;
+  orderIds: string[];
+}): Promise<string> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase.rpc("issue_orders_invoice", {
+    p_customer_id: input.customerId,
+    p_order_ids: input.orderIds,
+  });
+  if (error) throw new Error(describePostgresError(error, "issue the invoice"));
+
+  logger.info("Combined invoice issued", {
+    customerId: input.customerId,
+    orders: input.orderIds.length,
+    invoiceNo: data.invoice_no,
+  });
+  return data.id;
 }

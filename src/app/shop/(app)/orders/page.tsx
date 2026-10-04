@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClipboardList, Pencil, Plus } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
-import { listOrders } from "@/services/shop/invoice.service";
+import {
+  listOrders,
+  listOrdersReadyToInvoice,
+} from "@/services/shop/invoice.service";
+import { ReadyOrdersToInvoice } from "@/features/shop/orders/ReadyOrdersToInvoice";
 import { getCustomerShopNames } from "@/services/shop/customer.service";
 import { ButtonLink } from "@/components/ui/button";
 import { StatusBadge } from "@/features/shop/orders/StatusBadge";
@@ -21,7 +25,10 @@ export default async function OrdersPage({
   const params = await searchParams;
   const limit = listLimit(params.limit);
   // RX orders live on the RX screen.
-  const orders = await listOrders({ rx: false, limit: limit + 1 });
+  const [orders, ready] = await Promise.all([
+    listOrders({ rx: false, limit: limit + 1 }),
+    listOrdersReadyToInvoice(),
+  ]);
   // Drafts have no billing snapshot yet — that is written when the invoice is
   // issued — so resolve the live customer for anything not yet invoiced.
   const shopById = await getCustomerShopNames(
@@ -43,13 +50,16 @@ export default async function OrdersPage({
         </ButtonLink>
       </div>
 
+      <ReadyOrdersToInvoice shops={ready} />
+
       {orders.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-mist-300 bg-white/60 px-6 py-16 text-center">
           <ClipboardList className="text-navy-300 mx-auto size-8" aria-hidden />
           <h2 className="mt-4 font-semibold">No orders yet.</h2>
           <p className="text-navy-500 mx-auto mt-2 max-w-sm text-sm">
-            Build an order line by line, then issue the invoice. Stock comes off
-            the shelf and the customer&rsquo;s account updates automatically.
+            Save orders as they come in, then generate one invoice for a
+            shop&rsquo;s orders together. Stock comes off the shelf and the
+            customer&rsquo;s account updates when the invoice is made.
           </p>
           <ButtonLink href="/shop/orders/new" className="mt-6">
             <Plus className="size-4" aria-hidden />

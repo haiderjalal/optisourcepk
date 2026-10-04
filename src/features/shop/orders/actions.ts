@@ -10,7 +10,6 @@ import {
 } from "@/lib/validations/shop/invoice";
 import { paymentSchema } from "@/lib/validations/shop/payment";
 import {
-  createDailyOrder,
   createOrder,
   issueInvoice,
   updateDelivery,
@@ -19,6 +18,7 @@ import {
   deleteOrder,
   deleteInvoice,
   reopenInvoice,
+  issueOrdersInvoice,
 } from "@/services/shop/invoice.service";
 import { recordPayment } from "@/services/shop/ledger.service";
 
@@ -100,9 +100,7 @@ export async function saveOrder(
   try {
     const order = isUpdate
       ? await updateOrder(id, parsed.data)
-      : parsed.data.isDaily
-        ? await createDailyOrder(parsed.data)
-        : await createOrder(parsed.data);
+      : await createOrder(parsed.data);
     orderId = order.id;
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Save failed." };
@@ -114,11 +112,6 @@ export async function saveOrder(
     parsed.data.lines.some((line) => line.stockSource === "daily")
   ) {
     revalidatePath("/shop/stock/daily");
-  }
-  if (parsed.data.isDaily && !isUpdate) {
-    revalidatePath("/shop/invoices");
-    revalidatePath("/shop/payments");
-    revalidatePath("/shop/stock");
   }
   redirect(`/shop/orders/${orderId}`);
 }
@@ -336,4 +329,51 @@ export async function recordPaymentAction(
           ? "Payment discount added."
           : "Payment discount removed.",
   };
+}
+
+export interface CombineState {
+  error?: string;
+}
+
+/**
+ * One invoice for the ticked saved orders of one shop, then open it — the
+ * RX "Generate invoice" flow for normal and daily orders.
+ */
+export async function issueOrdersInvoiceAction(
+  _previous: CombineState,
+  formData: FormData,
+): Promise<CombineState> {
+  await requireUser();
+
+  const parsed = z
+    .object({
+      customerId: z.uuid(),
+      orderIds: z.array(z.uuid()).min(1, "Tick at least one order."),
+    })
+    .safeParse({
+      customerId: formData.get("customerId"),
+      orderIds: formData.getAll("orderIds"),
+    });
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Tick at least one order.",
+    };
+  }
+
+  let invoiceId: string;
+  try {
+    invoiceId = await issueOrdersInvoice(parsed.data);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not invoice.",
+    };
+  }
+
+  revalidatePath("/shop/orders");
+  revalidatePath("/shop/invoices");
+  revalidatePath("/shop/payments");
+  revalidatePath("/shop/stock");
+  revalidatePath("/shop/stock/daily");
+  revalidatePath("/shop");
+  redirect(`/shop/orders/${invoiceId}`);
 }

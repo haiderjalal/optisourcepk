@@ -225,6 +225,8 @@ type OrderRow = {
   billed_in: string | null;
   /** A combined RX invoice, holding copies of the RX orders billed in it. */
   combines_rx: boolean;
+  /** An invoice made from several saved normal/daily orders. */
+  combines_orders: boolean;
   bill_to_customer_id: string;
   order_by_name: string | null;
   deliver_to_name: string | null;
@@ -427,6 +429,7 @@ type Defaulted =
   | "tracks_stock"
   | "is_rx"
   | "combines_rx"
+  | "combines_orders"
   | "is_daily"
   | "stock_source"
   | "purchase_price"
@@ -528,6 +531,16 @@ export interface Database {
       purge_trash: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      issue_orders_invoice: {
+        Args: {
+          p_customer_id: string;
+          p_order_ids: string[];
+          p_freight?: number;
+          p_gst_rate?: number;
+          p_additional_tax_rate?: number;
+        };
+        Returns: OrderRow;
       };
       issue_rx_invoice: {
         Args: {
