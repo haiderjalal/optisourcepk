@@ -65,6 +65,19 @@ export default async function OrderPage({
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
   const subtotal = order.lines.reduce((sum, line) => sum + line.line_total, 0);
+  const hasDailyLines = order.lines.some(
+    (line) => line.stock_source === "daily",
+  );
+  const hasNormalLines = order.lines.some(
+    (line) => line.stock_source === "normal" && line.rx_status === null,
+  );
+  const showStockSource = !order.is_rx && !order.combines_rx;
+  const normalSubtotal = order.lines
+    .filter((line) => line.stock_source === "normal")
+    .reduce((sum, line) => sum + line.line_total, 0);
+  const dailySubtotal = order.lines
+    .filter((line) => line.stock_source === "daily")
+    .reduce((sum, line) => sum + line.line_total, 0);
   const draftNet = subtotal + order.freight_charge;
   const draftGst = Math.round(((draftNet * order.gst_rate) / 100) * 100) / 100;
   const draftAdditionalTax =
@@ -106,6 +119,11 @@ export default async function OrderPage({
             {order.is_daily && (
               <span className="bg-accent-50 text-accent-700 ring-accent-200 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset">
                 Daily
+              </span>
+            )}
+            {!order.is_rx && hasDailyLines && hasNormalLines && (
+              <span className="rounded-full bg-violet-50 px-2.5 py-0.5 text-xs font-semibold text-violet-700 ring-1 ring-violet-200 ring-inset">
+                Normal + Daily
               </span>
             )}
           </div>
@@ -241,6 +259,11 @@ export default async function OrderPage({
                 <th scope="col" className="px-3 py-2.5 font-medium">
                   Product
                 </th>
+                {showStockSource && (
+                  <th scope="col" className="px-2 py-2.5 font-medium">
+                    Stock
+                  </th>
+                )}
                 <th scope="col" className="px-2 py-2.5 font-medium">
                   Ref
                 </th>
@@ -279,6 +302,19 @@ export default async function OrderPage({
                   <td className="px-3 py-2.5 font-medium">
                     {line.product_name}
                   </td>
+                  {showStockSource && (
+                    <td className="px-2 py-2.5 text-xs font-medium">
+                      <span
+                        className={
+                          line.stock_source === "daily"
+                            ? "text-violet-700"
+                            : "text-navy-500"
+                        }
+                      >
+                        {line.stock_source === "daily" ? "Daily" : "Normal"}
+                      </span>
+                    </td>
+                  )}
                   <td className="text-navy-600 px-2 py-2.5 text-xs whitespace-nowrap">
                     {line.order_ref ?? ""}
                   </td>
@@ -316,6 +352,12 @@ export default async function OrderPage({
           <dl className="w-full max-w-xs space-y-1.5 text-sm">
             {issued ? (
               <>
+                {hasDailyLines && hasNormalLines && (
+                  <>
+                    <Row label="Normal stock lines" value={normalSubtotal} />
+                    <Row label="Daily stock lines" value={dailySubtotal} />
+                  </>
+                )}
                 <Row label="Invoice amount" value={order.invoice_amount} />
                 <Row label="Discount" value={order.discount_amount} />
                 <Row label="Freight" value={order.freight_charge} />
@@ -343,6 +385,12 @@ export default async function OrderPage({
               </>
             ) : (
               <>
+                {hasDailyLines && hasNormalLines && (
+                  <>
+                    <Row label="Normal stock lines" value={normalSubtotal} />
+                    <Row label="Daily stock lines" value={dailySubtotal} />
+                  </>
+                )}
                 <Row label="Subtotal" value={subtotal} />
                 <Row label="Freight" value={order.freight_charge} />
                 <Row label="Net" value={draftNet} />

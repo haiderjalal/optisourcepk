@@ -447,9 +447,10 @@ export async function checkOrderStock(
   const { data: lines, error } = await supabase
     .from("order_lines")
     .select(
-      "product_id, sph, cyl, add_power, eye, quantity, product_name, unit",
+      "product_id, sph, cyl, add_power, eye, quantity, product_name, unit, stock_source",
     )
     .eq("order_id", orderId)
+    .eq("stock_source", "normal")
     // RX lines come from a lab, as issue_invoice treats them.
     .is("rx_status", null);
 

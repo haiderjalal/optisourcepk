@@ -111,6 +111,31 @@ export function buildInvoicePdfModel(
     : billLines;
 
   const net = order.net_amount;
+  const showStockSource =
+    !order.is_rx &&
+    !order.combines_rx &&
+    order.lines.some((line) => line.stock_source === "daily") &&
+    order.lines.some((line) => line.stock_source === "normal");
+  const sourceTotals = showStockSource
+    ? [
+        {
+          label: "Normal Stock Lines",
+          value: amount(
+            order.lines
+              .filter((line) => line.stock_source === "normal")
+              .reduce((sum, line) => sum + line.line_total, 0),
+          ),
+        },
+        {
+          label: "Daily Stock Lines",
+          value: amount(
+            order.lines
+              .filter((line) => line.stock_source === "daily")
+              .reduce((sum, line) => sum + line.line_total, 0),
+          ),
+        },
+      ]
+    : [];
 
   return {
     company: {
@@ -132,7 +157,11 @@ export function buildInvoicePdfModel(
     lines: order.lines.map((line) => ({
       no: line.line_no,
       orderRef: line.order_ref ?? "",
-      product: line.product_name,
+      product: showStockSource
+        ? line.stock_source === "daily"
+          ? `${line.product_name} [Daily]`
+          : `${line.product_name} [Normal]`
+        : line.product_name,
       sph: power(line.sph),
       cyl: power(line.cyl),
       ax: line.ax === null ? "" : `+${line.ax}`,
@@ -145,6 +174,7 @@ export function buildInvoicePdfModel(
       total: amount(line.line_total),
     })),
     totals: [
+      ...sourceTotals,
       { label: "Invoice Amount", value: amount(order.invoice_amount) },
       { label: "Discount Amount", value: amount(order.discount_amount) },
       { label: "Freight Charge", value: amount(order.freight_charge) },

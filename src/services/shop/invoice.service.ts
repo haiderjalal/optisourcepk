@@ -58,7 +58,9 @@ export async function createOrder(payload: OrderPayload): Promise<Order> {
       priority: payload.priority,
       ...rxCard(payload),
       ...(payload.isRx ? { is_rx: true } : {}),
-      ...(payload.isDaily ? { is_daily: true } : {}),
+      is_daily:
+        !payload.isRx &&
+        payload.lines.every((line) => line.stockSource === "daily"),
       order_by_name: optional(payload.orderByName),
       deliver_to_name: optional(payload.deliverToName),
       deliver_to_address: optional(payload.deliverToAddress),
@@ -101,6 +103,9 @@ export async function updateOrder(
       bill_to_customer_id: payload.customerId,
       external_order_ref: optional(payload.externalOrderRef),
       priority: payload.priority,
+      is_daily:
+        !payload.isRx &&
+        payload.lines.every((line) => line.stockSource === "daily"),
       ...rxCard(payload),
       order_by_name: optional(payload.orderByName),
       deliver_to_name: optional(payload.deliverToName),
@@ -190,7 +195,7 @@ async function replaceLines(
   ];
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, unit, tracks_power")
+    .select("id, name, unit, category, tracks_power")
     .in("id", productIds);
 
   if (productError) {
@@ -204,6 +209,11 @@ async function replaceLines(
     const product = productId ? byId.get(productId) : undefined;
     if (!product) {
       throw new Error("One of those products no longer exists.");
+    }
+    if (line.stockSource === "daily" && product.category === "services") {
+      throw new Error(
+        `${product.name} is a service and cannot be deducted from daily stock.`,
+      );
     }
     // A lens always has an SPH, and every lens bin is held at one, so a blank
     // SPH is plano (0.00) — otherwise the line matches no stock.
@@ -238,6 +248,7 @@ async function replaceLines(
         optional(line.orderRef) ??
         optional(payload.externalOrderRef) ??
         (payload.isRx ? optional(payload.patientName) : null),
+      stock_source: rx ? "normal" : line.stockSource,
       product_id: product.id,
       product_name: product.name,
       unit: product.unit,
@@ -251,8 +262,10 @@ async function replaceLines(
       unit_price: line.unitPrice,
       discount_pct: line.discountPct,
       quantity: line.quantity,
-      // A daily order keeps its purchase price for the day's profit.
-      ...(payload.isDaily && !rx ? { unit_cost: line.unitCost } : {}),
+      // Daily-stock lines keep their purchase price for separate reporting.
+      ...(line.stockSource === "daily" && !rx
+        ? { unit_cost: line.unitCost }
+        : {}),
       // The lab job fields exist only on RX lines.
       ...(rx
         ? {

@@ -53,9 +53,9 @@ export function IssuePanel({
 
       <h2 className="text-base font-semibold">Issue invoice</h2>
       <p className="text-navy-500 mt-1 text-sm">
-        This takes the stock off the shelf, assigns the invoice number and posts
-        the amount to the customer&rsquo;s account. Reopen it before making any
-        later changes.
+        This deducts every line from its selected Normal or Daily stock, assigns
+        one invoice number and posts the combined amount to the customer&rsquo;s
+        account. Reopen it before making any later changes.
       </p>
 
       <div className="mt-4 grid gap-4 sm:grid-cols-3">

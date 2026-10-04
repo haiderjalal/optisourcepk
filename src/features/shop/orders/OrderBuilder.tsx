@@ -25,6 +25,7 @@ interface LineDraft {
   key: string;
   productId: string;
   orderRef: string;
+  stockSource: "normal" | "daily";
   eye: "" | "R" | "L";
   sph: string;
   cyl: string;
@@ -40,11 +41,15 @@ interface LineDraft {
 let seq = 0;
 const nextKey = () => `line-${++seq}`;
 
-function emptyLine(discount: number): LineDraft {
+function emptyLine(
+  discount: number,
+  stockSource: LineDraft["stockSource"] = "normal",
+): LineDraft {
   return {
     key: nextKey(),
     productId: "",
     orderRef: "",
+    stockSource,
     eye: "",
     sph: "",
     cyl: "",
@@ -63,6 +68,7 @@ function fromExisting(line: OrderLine): LineDraft {
     key: nextKey(),
     productId: line.product_id,
     orderRef: line.order_ref ?? "",
+    stockSource: line.stock_source,
     eye: line.eye ?? "",
     sph: text(line.sph),
     cyl: text(line.cyl),
@@ -136,7 +142,7 @@ export function OrderBuilder({
   const [lines, setLines] = useState<LineDraft[]>(
     existing && existing.length > 0
       ? existing.map(fromExisting)
-      : [emptyLine(0)],
+      : [emptyLine(0, daily ? "daily" : "normal")],
   );
 
   const customer = customers.find((c) => c.id === customerId);
@@ -156,13 +162,31 @@ export function OrderBuilder({
   /** Picking a product fills in its rate and the customer's standing discount. */
   function pickProduct(key: string, productId: string) {
     const product = productById.get(productId);
+    const line = lines.find((row) => row.key === key);
+    const stockSource =
+      product?.category === "services"
+        ? "normal"
+        : (line?.stockSource ?? "normal");
     update(key, {
       productId,
+      stockSource,
       unitPrice: product ? String(product.list_price) : "",
       discountPct: String(defaultDiscount),
-      // A daily order starts from the product's usual cost; it can be changed.
+      // A daily-stock line starts from the product's usual cost; it can be changed.
       unitCost:
-        daily && product && product.purchase_price > 0
+        stockSource === "daily" && product && product.purchase_price > 0
+          ? String(product.purchase_price)
+          : "",
+    });
+  }
+
+  function pickStockSource(key: string, stockSource: LineDraft["stockSource"]) {
+    const line = lines.find((row) => row.key === key);
+    const product = line ? productById.get(line.productId) : undefined;
+    update(key, {
+      stockSource,
+      unitCost:
+        stockSource === "daily" && product && product.purchase_price > 0
           ? String(product.purchase_price)
           : "",
     });
@@ -170,7 +194,7 @@ export function OrderBuilder({
 
   /** A prescription is two eyes; adding them as a pair saves re-typing. */
   function addPair() {
-    const base = emptyLine(defaultDiscount);
+    const base = emptyLine(defaultDiscount, daily ? "daily" : "normal");
     setLines((rows) => [
       ...rows,
       { ...base, eye: "R" },
@@ -202,6 +226,7 @@ export function OrderBuilder({
   const payload = lines.map((line) => ({
     productId: line.productId,
     orderRef: line.orderRef,
+    stockSource: line.stockSource,
     eye: line.eye,
     sph: line.sph,
     cyl: line.cyl,
@@ -210,7 +235,7 @@ export function OrderBuilder({
     unitPrice: line.unitPrice || "0",
     discountPct: line.discountPct || "0",
     quantity: line.quantity || "0",
-    unitCost: daily ? line.unitCost : "",
+    unitCost: line.stockSource === "daily" ? line.unitCost : "",
   }));
 
   return (
@@ -286,7 +311,10 @@ export function OrderBuilder({
               variant="outline"
               size="sm"
               onClick={() =>
-                setLines((rows) => [...rows, emptyLine(defaultDiscount)])
+                setLines((rows) => [
+                  ...rows,
+                  emptyLine(defaultDiscount, daily ? "daily" : "normal"),
+                ])
               }
             >
               <Plus className="size-4" aria-hidden />
@@ -296,7 +324,7 @@ export function OrderBuilder({
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[980px] text-sm">
+          <table className="w-full min-w-[1120px] text-sm">
             <thead>
               <tr className="text-navy-500 bg-mist-100 text-left text-xs">
                 <th scope="col" className="w-8 px-3 py-2.5 font-medium">
@@ -304,6 +332,9 @@ export function OrderBuilder({
                 </th>
                 <th scope="col" className="px-3 py-2.5 font-medium">
                   Product
+                </th>
+                <th scope="col" className="w-28 px-2 py-2.5 font-medium">
+                  Stock
                 </th>
                 <th scope="col" className="w-16 px-2 py-2.5 font-medium">
                   Eye
@@ -320,13 +351,11 @@ export function OrderBuilder({
                 <th scope="col" className="w-20 px-2 py-2.5 font-medium">
                   ADD
                 </th>
-                {daily && (
-                  <th scope="col" className="w-24 px-2 py-2.5 font-medium">
-                    Purchase
-                  </th>
-                )}
                 <th scope="col" className="w-24 px-2 py-2.5 font-medium">
-                  {daily ? "Sale" : "Rate"}
+                  Purchase
+                </th>
+                <th scope="col" className="w-24 px-2 py-2.5 font-medium">
+                  Sale
                 </th>
                 <th scope="col" className="w-20 px-2 py-2.5 font-medium">
                   Disc %
@@ -372,6 +401,28 @@ export function OrderBuilder({
                             {p.name}
                           </option>
                         ))}
+                      </select>
+                    </td>
+
+                    <td className="px-2 py-2">
+                      <select
+                        aria-label={`Stock source for line ${index + 1}`}
+                        className={cell}
+                        value={line.stockSource}
+                        onChange={(e) =>
+                          pickStockSource(
+                            line.key,
+                            e.target.value as LineDraft["stockSource"],
+                          )
+                        }
+                      >
+                        <option value="normal">Normal</option>
+                        <option
+                          value="daily"
+                          disabled={product?.category === "services"}
+                        >
+                          Daily
+                        </option>
                       </select>
                     </td>
 
@@ -452,22 +503,24 @@ export function OrderBuilder({
                       />
                     </td>
 
-                    {daily && (
-                      <td className="px-2 py-2">
-                        <input
-                          aria-label={`Purchase price for line ${index + 1}`}
-                          className={cell}
-                          type="number"
-                          step="0.01"
-                          min={0}
-                          inputMode="decimal"
-                          value={line.unitCost}
-                          onChange={(e) =>
-                            update(line.key, { unitCost: e.target.value })
-                          }
-                        />
-                      </td>
-                    )}
+                    <td className="px-2 py-2">
+                      <input
+                        aria-label={`Purchase price for line ${index + 1}`}
+                        className={`${cell} disabled:text-navy-300 disabled:bg-mist-100`}
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        inputMode="decimal"
+                        value={line.unitCost}
+                        disabled={line.stockSource !== "daily"}
+                        placeholder={
+                          line.stockSource === "daily" ? "Cost" : "—"
+                        }
+                        onChange={(e) =>
+                          update(line.key, { unitCost: e.target.value })
+                        }
+                      />
+                    </td>
                     <td className="px-2 py-2">
                       <input
                         aria-label={`Rate for line ${index + 1}`}
@@ -664,8 +717,8 @@ export function OrderBuilder({
         </Link>
         <span className="text-navy-400 text-xs">
           {daily
-            ? "Issues the invoice now and adds the items to today's outgoing in the daily register. Stock bins are not touched."
-            : "Saving creates a draft. Stock moves only when you issue the invoice."}
+            ? "Issues the invoice now. Daily lines reduce the daily register; normal lines reduce normal stock."
+            : "Saving creates a draft. Choose Normal or Daily per line; both can be issued on one invoice."}
         </span>
       </div>
     </form>

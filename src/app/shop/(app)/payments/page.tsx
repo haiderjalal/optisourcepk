@@ -45,9 +45,17 @@ export default async function PaymentsPage({
         </p>
       </div>
 
-      <section className="shadow-lift mb-6 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-2 lg:grid-cols-4">
-        <LedgerTotal label="Stock sales" value={totals.stock_sales} />
-        <LedgerTotal label="Stock purchases" value={totals.stock_purchases} />
+      <section className="shadow-lift mb-6 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-2 lg:grid-cols-3">
+        <LedgerTotal label="Normal stock sales" value={totals.stock_sales} />
+        <LedgerTotal
+          label="Normal stock purchases"
+          value={totals.stock_purchases}
+        />
+        <LedgerTotal label="Daily stock sales" value={totals.daily_sales} />
+        <LedgerTotal
+          label="Daily stock purchases"
+          value={totals.daily_purchases}
+        />
         <LedgerTotal label="RX sales" value={totals.rx_sales} />
         <LedgerTotal label="RX purchases" value={totals.rx_purchases} />
       </section>

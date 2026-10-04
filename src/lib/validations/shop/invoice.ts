@@ -58,6 +58,8 @@ export const orderLineSchema = z
       .optional()
       .transform((value) => value || null),
     orderRef: z.string().trim().max(40).optional().or(z.literal("")),
+    /** Which separate inventory register supplies this line. */
+    stockSource: z.enum(["normal", "daily"]).default("normal"),
     eye: z.enum(["", "R", "L"]).optional(),
     sph: sphField,
     cyl: dioptre(-12, 12, "CYL"),
@@ -127,7 +129,7 @@ export const orderSchema = z.object({
   priority: z.enum(["normal", "urgent"]).default("normal"),
   /** Set when the order is started from the RX screen; fixed after that. */
   isRx: z.boolean().default(false),
-  /** A daily order: issued on save, drawing on the daily stock register. */
+  /** Legacy quick-entry route: defaults every new line to daily stock. */
   isDaily: z.boolean().default(false),
 
   // The RX job card. Blank means not given; patient name is optional.
