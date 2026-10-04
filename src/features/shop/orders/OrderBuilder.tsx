@@ -102,8 +102,8 @@ function SubmitButton({
       <Save className="size-4" aria-hidden />
       {pending
         ? "Saving…"
-        : daily
-          ? "Save & issue invoice"
+        : daily && !isUpdate
+          ? "Save daily order"
           : isUpdate
             ? "Save order"
             : "Create order"}
@@ -126,8 +126,8 @@ export function OrderBuilder({
   order?: Order;
   lines?: OrderLine[];
   /**
-   * A daily order: a counter sale from the daily register, with a purchase
-   * price per line, issued as soon as it is saved.
+   * A daily order: a sale from the daily register, with a purchase price per
+   * line. Saved as a draft and invoiced later with the shop's other orders.
    */
   daily?: boolean;
 }) {
@@ -717,7 +717,7 @@ export function OrderBuilder({
         </Link>
         <span className="text-navy-400 text-xs">
           {daily
-            ? "Issues the invoice now. Daily lines reduce the daily register; normal lines reduce normal stock."
+            ? "Saving keeps it as a saved order. Generate the shop's invoice from Ready to invoice when you are done; the daily register moves then."
             : "Saving creates a draft. Choose Normal or Daily per line; both can be issued on one invoice."}
         </span>
       </div>

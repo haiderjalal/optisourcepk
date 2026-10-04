@@ -4,6 +4,8 @@ import { ArrowLeft, CalendarDays, Plus } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listSellableProducts } from "@/services/shop/product.service";
 import { listDailyStockEntries } from "@/services/shop/daily-stock.service";
+import { listOrdersReadyToInvoice } from "@/services/shop/invoice.service";
+import { ReadyOrdersToInvoice } from "@/features/shop/orders/ReadyOrdersToInvoice";
 import { DailyStockForm } from "@/features/shop/stock/DailyStockForm";
 import { formatDate } from "@/lib/format";
 import { ShowMore } from "@/components/ui/show-more";
@@ -18,11 +20,12 @@ export default async function DailyStockPage({
   await requireUser();
   const params = await searchParams;
   const limit = listLimit(params.limit);
-  const [allProducts, register] = await Promise.all([
+  const [allProducts, register, ready] = await Promise.all([
     listSellableProducts(),
     // The form uses recent history to prefill corrections and carry a prior
     // closing balance forward; the table below still renders only five.
     listDailyStockEntries(Math.max(180, limit + 1)),
+    listOrdersReadyToInvoice({ daily: true }),
   ]);
   // null: the register's table is not in the database yet (migration 0029).
   const history = register ?? [];
@@ -61,6 +64,8 @@ export default async function DailyStockPage({
           </ButtonLink>
         )}
       </div>
+
+      <ReadyOrdersToInvoice shops={ready} daily />
 
       {register === null ? (
         <div

@@ -37,10 +37,10 @@ export default async function NewDailyOrderPage() {
 
       <h1 className="text-2xl font-bold">New daily order</h1>
       <p className="text-navy-500 mt-2 mb-6 max-w-prose text-sm">
-        Pick the shop the invoice is for, add each item with its power, purchase
-        and sale price. Saving issues the invoice — ready to view, download or
-        share — posts it to the shop&rsquo;s account, and adds the items to
-        today&rsquo;s outgoing in the daily register.
+        Pick the shop, add each item with its power, purchase and sale price,
+        and save. Saved daily orders wait under Ready to invoice on the daily
+        stock page; generating the invoice posts it to the shop&rsquo;s account
+        and adds the items to that day&rsquo;s outgoing in the daily register.
       </p>
 
       {customers.length === 0 || products.length === 0 ? (

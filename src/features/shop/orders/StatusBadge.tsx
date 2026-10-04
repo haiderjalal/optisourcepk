@@ -39,5 +39,7 @@ function describe(order: Order): {
   if (order.status === "dispatched")
     return { label: "Dispatched", tone: "dispatched" };
   if (order.issued_at) return { label: "Invoiced", tone: "issued" };
+  // Put on a combined invoice: not a draft any more, though it has no number.
+  if (order.billed_in) return { label: "Billed", tone: "issued" };
   return { label: "Draft", tone: "draft" };
 }
