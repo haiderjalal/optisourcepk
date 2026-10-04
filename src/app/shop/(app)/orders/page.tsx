@@ -98,7 +98,9 @@ export default async function OrdersPage({
                     >
                       {order.invoice_no
                         ? `Invoice ${order.invoice_no}`
-                        : `Order ${order.order_no}`}
+                        : order.reserved_invoice_no
+                          ? `Invoice ${order.reserved_invoice_no} · editing`
+                          : `Order ${order.order_no}`}
                     </Link>
                     {order.priority === "urgent" && (
                       <span className="ml-2 text-xs font-semibold text-amber-700">

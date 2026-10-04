@@ -246,6 +246,9 @@ type OrderRow = {
   delivery_note: string | null;
   issued_at: string | null;
   invoice_no: number | null;
+  /** Kept while an issued invoice is reopened for editing; reused on issue. */
+  reserved_invoice_no: number | null;
+  reserved_issued_at: string | null;
   order_qty: number | null;
   lens_qty: number | null;
   invoice_amount: number | null;

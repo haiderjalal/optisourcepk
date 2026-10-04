@@ -137,7 +137,7 @@ export default async function InvoicesPage({
                           name={`invoice ${invoice.invoice_no}`}
                           idField="orderId"
                           kind="edit"
-                          question="Reopen as draft?"
+                          question="Edit this invoice? It keeps its number."
                           confirmLabel="Yes"
                         />
                       )}

@@ -106,9 +106,11 @@ export default async function OrderPage({
             <h1 className="text-2xl font-bold">
               {issued
                 ? `Invoice ${order.invoice_no}`
-                : order.is_rx
-                  ? formatRxNo(order.rx_no)
-                  : `Order ${order.order_no}`}
+                : order.reserved_invoice_no
+                  ? `Invoice ${order.reserved_invoice_no} · editing`
+                  : order.is_rx
+                    ? formatRxNo(order.rx_no)
+                    : `Order ${order.order_no}`}
             </h1>
             <StatusBadge order={order} />
             {order.is_rx && (
@@ -160,7 +162,7 @@ export default async function OrderPage({
                   name={`invoice ${order.invoice_no}`}
                   idField="orderId"
                   kind="edit"
-                  question="Reopen as a draft?"
+                  question="Edit this invoice? It keeps its number."
                   confirmLabel="Edit"
                 />
               )}
