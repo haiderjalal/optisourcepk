@@ -717,8 +717,8 @@ export function OrderBuilder({
         </Link>
         <span className="text-navy-400 text-xs">
           {daily
-            ? "Saving keeps it as a saved order. Generate the shop's invoice from Ready to invoice when you are done; the daily register moves then."
-            : "Saving creates a draft. Choose Normal or Daily per line; both can be issued on one invoice."}
+            ? "Saving keeps it as a saved order. When its invoice is made, the items are recorded in the daily register for you — no need to add them there first."
+            : "Choose Normal or Daily per line. Normal lines come off your stock; Daily lines are recorded in the daily register by themselves when the invoice is made."}
         </span>
       </div>
     </form>
