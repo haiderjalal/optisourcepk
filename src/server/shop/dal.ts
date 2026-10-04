@@ -18,26 +18,42 @@ import type { Database } from "@/types/database";
  * another route, so every entry point re-verifies here.
  */
 
+/** The signed-in user, as read from their verified session token. */
+export interface SessionUser {
+  id: string;
+  email: string | null;
+}
+
 export interface ShopSession {
-  user: User;
+  user: SessionUser;
   supabase: SupabaseClient<Database>;
 }
 
 /**
  * The signed-in user, or a redirect to the login page.
  *
- * `cache` dedupes this across a single render pass, so a layout and three
- * components asking for the session make one call to the auth server, not four.
+ * `getClaims()` verifies the session token's signature against the project's
+ * published signing key (ES256), so a page no longer waits on a round trip to
+ * the auth server — that call was made on every page, twice counting the
+ * proxy. The key is fetched once and cached. A tampered or expired token
+ * fails verification exactly as before.
+ *
+ * `cache` dedupes this across a single render pass.
  */
 export const requireUser = cache(async (): Promise<ShopSession> => {
   const supabase = await getSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
 
-  if (!user) redirect("/shop/login");
+  if (!claims?.sub) redirect("/shop/login");
 
-  return { user, supabase };
+  return {
+    user: {
+      id: claims.sub,
+      email: typeof claims.email === "string" ? claims.email : null,
+    },
+    supabase,
+  };
 });
 
 /**

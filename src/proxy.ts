@@ -56,11 +56,11 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     },
   });
 
-  // getUser() validates the token with the auth server rather than trusting
-  // the cookie's contents. getSession() would not.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims() verifies the token's signature with the project's signing key
+  // (no auth-server round trip) and refreshes an expiring session, whose new
+  // cookies setAll() writes onto the response. getSession() would not verify.
+  const { data } = await supabase.auth.getClaims();
+  const user = data?.claims?.sub ?? null;
 
   const { pathname } = request.nextUrl;
 
