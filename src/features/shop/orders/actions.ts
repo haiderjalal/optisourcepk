@@ -213,7 +213,12 @@ export async function reopenInvoiceAction(formData: FormData): Promise<void> {
   const id = z.uuid().safeParse(formData.get("orderId"));
   if (!id.success) return;
 
-  await reopenInvoice(id.data);
+  try {
+    await reopenInvoice(id.data);
+  } catch {
+    // Refused (an invoice with returns, say): open the invoice, which says why.
+    redirect(`/shop/orders/${id.data}`);
+  }
   revalidatePath("/shop/invoices");
   revalidatePath("/shop/orders");
   revalidatePath("/shop/payments");
@@ -231,7 +236,12 @@ export async function deleteInvoiceAction(formData: FormData): Promise<void> {
   const id = z.uuid().safeParse(formData.get("orderId"));
   if (!id.success) return;
 
-  await deleteInvoice(id.data);
+  try {
+    await deleteInvoice(id.data);
+  } catch {
+    // Refused (an invoice with returns, say): open the invoice, which says why.
+    redirect(`/shop/orders/${id.data}`);
+  }
   revalidatePath("/shop/invoices");
   revalidatePath("/shop/orders");
   revalidatePath("/shop/rx");
