@@ -27,6 +27,12 @@ import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButto
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
 import { listSamePatientSameDay } from "@/services/shop/rx.service";
 import {
+  listReturns,
+  returnedQuantities,
+} from "@/services/shop/return.service";
+import { ReturnItemsPanel } from "@/features/shop/returns/ReturnItemsPanel";
+import { ReturnsList } from "@/features/shop/returns/ReturnsList";
+import {
   formatAmount,
   formatDateTime,
   formatPower,
@@ -56,14 +62,21 @@ export default async function OrderPage({
       ])
     : [[], null];
 
-  // An RX order billed on its shop's combined invoice is as final as issued.
-  const billedOn = order.billed_in ? await getOrder(order.billed_in) : null;
-  // The patient's other RX orders from the same day go to the lab together.
-  const sameDay = order.is_rx ? await listSamePatientSameDay(order) : [];
+  // Independent reads, so they go together rather than one after another.
+  const [billedOn, sameDay, returns] = await Promise.all([
+    // An RX order billed on its shop's combined invoice is as final as issued.
+    order.billed_in ? getOrder(order.billed_in) : null,
+    // The patient's other RX orders from the same day go to the lab together.
+    order.is_rx ? listSamePatientSameDay(order) : [],
+    order.issued_at ? listReturns({ orderId: order.id, limit: 100 }) : [],
+  ]);
   const billed = billedOn !== null;
 
   const issued = order.issued_at !== null;
   const voided = order.voided_at !== null;
+  // Returns stand on the invoice as issued: edit, void and delete wait until
+  // they are undone, or stock and balances would be reversed twice.
+  const hasReturns = returns.length > 0;
   const subtotal = order.lines.reduce((sum, line) => sum + line.line_total, 0);
   const hasDailyLines = order.lines.some(
     (line) => line.stock_source === "daily",
@@ -155,7 +168,7 @@ export default async function OrderPage({
                 canShare={!voided}
                 hasBalance={order.previous_balance !== null}
               />
-              {!voided && (
+              {!voided && !hasReturns && (
                 <ConfirmButton
                   action={reopenInvoiceAction}
                   id={order.id}
@@ -166,15 +179,17 @@ export default async function OrderPage({
                   confirmLabel="Edit"
                 />
               )}
-              <ConfirmButton
-                action={deleteInvoiceAction}
-                id={order.id}
-                name={`invoice ${order.invoice_no}`}
-                idField="orderId"
-                kind="delete"
-                question="Delete? (restorable for 7 days)"
-                confirmLabel="Delete"
-              />
+              {!hasReturns && (
+                <ConfirmButton
+                  action={deleteInvoiceAction}
+                  id={order.id}
+                  name={`invoice ${order.invoice_no}`}
+                  idField="orderId"
+                  kind="delete"
+                  question="Delete? (restorable for 7 days)"
+                  confirmLabel="Delete"
+                />
+              )}
             </>
           )}
           {!issued && !billed && (
@@ -419,6 +434,23 @@ export default async function OrderPage({
         </div>
       </section>
 
+      {issued && !voided && (
+        <ReturnItemsPanel
+          orderId={order.id}
+          lines={order.lines}
+          returned={returnedQuantities(returns)}
+        />
+      )}
+
+      {returns.length > 0 && (
+        <section className="shadow-lift mb-5 overflow-hidden rounded-2xl bg-white">
+          <h2 className="border-b border-mist-200 px-5 py-3 text-base font-semibold">
+            Returns on this invoice
+          </h2>
+          <ReturnsList returns={returns} showInvoice={false} />
+        </section>
+      )}
+
       {billedOn && (
         <p className="rounded-2xl bg-emerald-50 px-5 py-4 text-sm text-emerald-900 ring-1 ring-emerald-200 ring-inset">
           Billed on{" "}
@@ -457,7 +489,14 @@ export default async function OrderPage({
       {issued && !voided && (
         <div className="space-y-5">
           <DispatchPanel order={order} />
-          <VoidPanel order={order} />
+          {hasReturns ? (
+            <p className="text-navy-500 rounded-2xl border border-dashed border-mist-200 p-5 text-sm">
+              This invoice has returns, so it cannot be edited, voided or
+              deleted. Undo its returns first if it needs to change.
+            </p>
+          ) : (
+            <VoidPanel order={order} />
+          )}
         </div>
       )}
 

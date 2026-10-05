@@ -137,6 +137,37 @@ type DailyStockEntryRow = {
   updated_at: string;
 };
 
+type SalesReturnRow = {
+  id: string;
+  return_no: number;
+  order_id: string;
+  customer_id: string;
+  returned_at: string;
+  amount: number;
+  note: string | null;
+  created_at: string;
+};
+
+type SalesReturnLineRow = {
+  id: string;
+  return_id: string;
+  order_line_id: string;
+  product_id: string;
+  product_name: string;
+  unit: string;
+  eye: Eye | null;
+  sph: number | null;
+  cyl: number | null;
+  ax: number | null;
+  add_power: number | null;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  stock_source: string;
+  bin_id: string | null;
+  daily_entry_id: string | null;
+};
+
 type ExpenseRow = {
   id: string;
   expense_date: string;
@@ -479,6 +510,8 @@ export interface Database {
       counters: Table<{ name: string; next_value: number }>;
       suppliers: Table<SupplierRow>;
       expenses: Table<ExpenseRow>;
+      sales_returns: Table<SalesReturnRow>;
+      sales_return_lines: Table<SalesReturnLineRow>;
       purchase_invoices: Table<PurchaseInvoiceRow>;
       purchase_invoice_lines: Table<PurchaseInvoiceLineRow>;
       trash: Table<TrashRow>;
@@ -531,6 +564,18 @@ export interface Database {
       purge_trash: {
         Args: Record<string, never>;
         Returns: number;
+      };
+      record_sales_return: {
+        Args: {
+          p_order_id: string;
+          p_lines: { orderLineId: string; qty: number }[];
+          p_note?: string | null;
+        };
+        Returns: SalesReturnRow;
+      };
+      delete_sales_return: {
+        Args: { p_return_id: string };
+        Returns: boolean;
       };
       issue_orders_invoice: {
         Args: {
@@ -636,6 +681,8 @@ export type CustomerBalance = CustomerBalanceRow;
 export type LowStockLine = LowStockRow;
 export type Supplier = SupplierRow;
 export type Expense = ExpenseRow;
+export type SalesReturn = SalesReturnRow;
+export type SalesReturnLine = SalesReturnLineRow;
 export type PurchaseInvoice = PurchaseInvoiceRow;
 export type PurchaseInvoiceLine = PurchaseInvoiceLineRow;
 export type PurchaseInvoiceSummary = PurchaseInvoiceTotalsRow;
