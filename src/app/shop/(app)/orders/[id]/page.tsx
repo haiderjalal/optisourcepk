@@ -32,6 +32,7 @@ import {
 } from "@/services/shop/return.service";
 import { ReturnItemsPanel } from "@/features/shop/returns/ReturnItemsPanel";
 import { ReturnsList } from "@/features/shop/returns/ReturnsList";
+import { summariseReturns } from "@/features/shop/returns/summary";
 import {
   formatAmount,
   formatDateTime,
@@ -77,6 +78,10 @@ export default async function OrderPage({
   // Returns stand on the invoice as issued: edit, void and delete wait until
   // they are undone, or stock and balances would be reversed twice.
   const hasReturns = returns.length > 0;
+  // Returned items stay on the issued invoice, struck through, and their value
+  // comes off what the shop owes on it.
+  const returned = summariseReturns(returns);
+  const afterReturns = (order.amount_incl_tax ?? 0) - returned.total;
   const subtotal = order.lines.reduce((sum, line) => sum + line.line_total, 0);
   const hasDailyLines = order.lines.some(
     (line) => line.stock_source === "daily",
@@ -162,8 +167,12 @@ export default async function OrderPage({
                 customerId={order.bill_to_customer_id}
                 invoiceNo={order.invoice_no}
                 billTo={order.bill_to_shop ?? order.bill_to_name ?? "Customer"}
-                amount={order.amount_incl_tax ?? 0}
-                closingBalance={order.closing_balance}
+                amount={afterReturns}
+                closingBalance={
+                  order.closing_balance === null
+                    ? null
+                    : order.closing_balance - returned.total
+                }
                 rxNotes={order.combines_rx ? order.notes : null}
                 canShare={!voided}
                 hasBalance={order.previous_balance !== null}
@@ -311,56 +320,81 @@ export default async function OrderPage({
               </tr>
             </thead>
             <tbody>
-              {order.lines.map((line) => (
-                <tr key={line.id} className="border-t border-mist-200">
-                  <td className="text-navy-400 px-3 py-2.5 text-xs">
-                    {line.line_no}
-                  </td>
-                  <td className="px-3 py-2.5 font-medium">
-                    {line.product_name}
-                  </td>
-                  {showStockSource && (
-                    <td className="px-2 py-2.5 text-xs font-medium">
-                      <span
-                        className={
-                          line.stock_source === "daily"
-                            ? "text-violet-700"
-                            : "text-navy-500"
-                        }
-                      >
-                        {line.stock_source === "daily" ? "Daily" : "Normal"}
-                      </span>
+              {order.lines.map((line) => {
+                const back = returned.byLine[line.id];
+                const allBack = back !== undefined && back.qty >= line.quantity;
+                return (
+                  <tr
+                    key={line.id}
+                    className={`border-t border-mist-200 ${
+                      allBack
+                        ? "text-navy-400 [&>td:not(.product-cell)]:line-through"
+                        : ""
+                    }`}
+                  >
+                    <td className="text-navy-400 px-3 py-2.5 text-xs">
+                      {line.line_no}
                     </td>
-                  )}
-                  <td className="text-navy-600 px-2 py-2.5 text-xs whitespace-nowrap">
-                    {line.order_ref ?? ""}
-                  </td>
-                  <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                    {formatPower(line.sph)}
-                  </td>
-                  <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                    {formatPower(line.cyl)}
-                  </td>
-                  <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                    {line.ax ?? ""}
-                  </td>
-                  <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                    {formatPower(line.add_power)}
-                  </td>
-                  <td className="px-2 py-2.5 text-right tabular-nums">
-                    {formatAmount(line.unit_price)}
-                  </td>
-                  <td className="text-navy-500 px-2 py-2.5 text-right tabular-nums">
-                    {line.discount_pct > 0 ? `${line.discount_pct}%` : "—"}
-                  </td>
-                  <td className="px-2 py-2.5 text-right tabular-nums">
-                    {line.quantity}
-                  </td>
-                  <td className="px-3 py-2.5 text-right font-medium tabular-nums">
-                    {formatAmount(line.line_total)}
-                  </td>
-                </tr>
-              ))}
+                    <td className="product-cell px-3 py-2.5 font-medium">
+                      <span className={allBack ? "line-through" : ""}>
+                        {line.product_name}
+                      </span>
+                      {back && (
+                        <span className="mt-0.5 block text-xs font-medium text-amber-700">
+                          {allBack
+                            ? "Returned"
+                            : `${back.qty} of ${line.quantity} returned`}
+                        </span>
+                      )}
+                    </td>
+                    {showStockSource && (
+                      <td className="px-2 py-2.5 text-xs font-medium">
+                        <span
+                          className={
+                            line.stock_source === "daily"
+                              ? "text-violet-700"
+                              : "text-navy-500"
+                          }
+                        >
+                          {line.stock_source === "daily" ? "Daily" : "Normal"}
+                        </span>
+                      </td>
+                    )}
+                    <td className="text-navy-600 px-2 py-2.5 text-xs whitespace-nowrap">
+                      {line.order_ref ?? ""}
+                    </td>
+                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                      {formatPower(line.sph)}
+                    </td>
+                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                      {formatPower(line.cyl)}
+                    </td>
+                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                      {line.ax ?? ""}
+                    </td>
+                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                      {formatPower(line.add_power)}
+                    </td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">
+                      {formatAmount(line.unit_price)}
+                    </td>
+                    <td className="text-navy-500 px-2 py-2.5 text-right tabular-nums">
+                      {line.discount_pct > 0 ? `${line.discount_pct}%` : "—"}
+                    </td>
+                    <td className="px-2 py-2.5 text-right tabular-nums">
+                      {line.quantity}
+                    </td>
+                    <td className="px-3 py-2.5 text-right font-medium tabular-nums">
+                      {formatAmount(line.line_total)}
+                      {back && !allBack && (
+                        <span className="block text-xs font-normal text-amber-700">
+                          −{formatAmount(back.amount)}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -393,10 +427,26 @@ export default async function OrderPage({
                     Rs {formatAmount(order.amount_incl_tax ?? 0)}
                   </dd>
                 </div>
+                {returned.total > 0 && (
+                  <>
+                    <div className="flex justify-between text-amber-700">
+                      <dt>Less returns ({returned.labels})</dt>
+                      <dd className="tabular-nums">
+                        −{formatAmount(returned.total)}
+                      </dd>
+                    </div>
+                    <div className="flex justify-between text-base font-semibold">
+                      <dt>After returns</dt>
+                      <dd className="tabular-nums">
+                        Rs {formatAmount(afterReturns)}
+                      </dd>
+                    </div>
+                  </>
+                )}
                 {order.previous_balance !== null && (
                   <AccountRows
                     previous={order.previous_balance}
-                    payable={order.closing_balance ?? 0}
+                    payable={(order.closing_balance ?? 0) - returned.total}
                   />
                 )}
               </>

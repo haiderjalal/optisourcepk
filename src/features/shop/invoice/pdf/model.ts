@@ -1,5 +1,6 @@
 import type { OrderWithLines } from "@/services/shop/invoice.service";
 import { CONTACT, SITE } from "@/lib/site";
+import type { ReturnSummary } from "@/features/shop/returns/summary";
 
 /**
  * What the invoice document draws.
@@ -85,9 +86,31 @@ function partyLines(...values: (string | null | undefined)[]): string[] {
 
 export function buildInvoicePdfModel(
   order: OrderWithLines,
-  /** false: this invoice only, without the previous balance and total payable. */
-  { showBalance = true }: { showBalance?: boolean } = {},
+  {
+    showBalance = true,
+    returns,
+  }: {
+    /** false: this invoice only, without the previous balance and total payable. */
+    showBalance?: boolean;
+    /** Items sent back: left off the document, their value deducted. */
+    returns?: ReturnSummary;
+  } = {},
 ): InvoicePdfModel {
+  const back = returns?.byLine ?? {};
+  const returnedTotal = returns?.total ?? 0;
+  // A resent invoice shows what the shop kept: fully returned lines drop off,
+  // part-returned ones show the quantity and value that remain.
+  const kept = order.lines
+    .map((line) => {
+      const r = back[line.id];
+      const qty = line.quantity - (r?.qty ?? 0);
+      return { line, qty, total: line.line_total - (r?.amount ?? 0) };
+    })
+    .filter((k) => k.qty > 0);
+  // Lens Qty counts lines with a power, as issuing did.
+  const returnedLenses = order.lines
+    .filter((line) => line.sph !== null)
+    .reduce((sum, line) => sum + (back[line.id]?.qty ?? 0), 0);
   // Prefer the snapshot taken at issue; fall back to the live customer for a
   // draft preview, which has no snapshot yet.
   const billName = order.bill_to_shop ?? order.customer?.shop_name ?? "—";
@@ -154,8 +177,8 @@ export function buildInvoicePdfModel(
     },
     deliverTo: { name: deliverName, lines: deliverLines },
     invoiceTo: { name: billName, lines: billLines },
-    lines: order.lines.map((line) => ({
-      no: line.line_no,
+    lines: kept.map(({ line, qty, total }, index) => ({
+      no: index + 1,
       orderRef: line.order_ref ?? "",
       product: showStockSource
         ? line.stock_source === "daily"
@@ -167,11 +190,9 @@ export function buildInvoicePdfModel(
       ax: line.ax === null ? "" : `+${line.ax}`,
       add: power(line.add_power),
       price: amount(line.unit_price),
-      discount: amount(
-        (line.unit_price * line.quantity * line.discount_pct) / 100,
-      ),
-      qty: String(line.quantity),
-      total: amount(line.line_total),
+      discount: amount((line.unit_price * qty * line.discount_pct) / 100),
+      qty: String(qty),
+      total: amount(total),
     })),
     totals: [
       ...sourceTotals,
@@ -184,8 +205,21 @@ export function buildInvoicePdfModel(
       {
         label: "Amount (Incl. Tax)",
         value: amount(order.amount_incl_tax),
-        strong: true,
+        strong: returnedTotal === 0,
       },
+      ...(returnedTotal > 0
+        ? [
+            {
+              label: `Less Returns (${returns?.labels ?? ""})`,
+              value: `-${amount(returnedTotal)}`,
+            },
+            {
+              label: "Amount After Returns",
+              value: amount((order.amount_incl_tax ?? 0) - returnedTotal),
+              strong: true,
+            },
+          ]
+        : []),
     ],
     // Only when it was snapshotted at issue. Recomputing it now would show a
     // different figure every time an old invoice is reprinted.
@@ -197,15 +231,18 @@ export function buildInvoicePdfModel(
               label: "Previous Balance",
               value: amount(order.previous_balance),
             },
-            { label: "This Invoice", value: amount(order.amount_incl_tax) },
+            {
+              label: "This Invoice",
+              value: amount((order.amount_incl_tax ?? 0) - returnedTotal),
+            },
             {
               label: "Total Payable",
-              value: amount(order.closing_balance),
+              value: amount((order.closing_balance ?? 0) - returnedTotal),
               strong: true,
             },
           ],
     orderQty: String(order.order_qty ?? 1),
-    lensQty: String(order.lens_qty ?? 0),
+    lensQty: String(Math.max((order.lens_qty ?? 0) - returnedLenses, 0)),
     voided: order.voided_at !== null,
   };
 }
