@@ -1,5 +1,7 @@
 import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
+import { listReturns } from "@/services/shop/return.service";
+import { summariseReturns } from "@/features/shop/returns/summary";
 import { buildInvoicePdfModel } from "@/features/shop/invoice/pdf/model";
 import {
   invoiceFileName,
@@ -21,7 +23,10 @@ export async function GET(
   await requireUser();
 
   const { id } = await params;
-  const order = await getOrder(id);
+  const [order, returns] = await Promise.all([
+    getOrder(id),
+    listReturns({ orderId: id, limit: 100 }),
+  ]);
 
   if (!order) {
     return new Response("Not found", { status: 404 });
@@ -30,6 +35,7 @@ export async function GET(
   const url = new URL(request.url);
   const model = buildInvoicePdfModel(order, {
     showBalance: url.searchParams.get("balance") !== "0",
+    returns: summariseReturns(returns),
   });
   const pdf = await renderInvoicePdf(model);
 
