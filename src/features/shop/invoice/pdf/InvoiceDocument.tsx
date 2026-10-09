@@ -6,6 +6,8 @@ import {
   Text,
   View,
 } from "@react-pdf/renderer";
+import { PDF_COMPANY } from "@/features/shop/pdf/company";
+import { MUTED, NAVY, RULE } from "@/features/shop/pdf/theme";
 import type { InvoicePdfLine, InvoicePdfModel } from "./model";
 
 /**
@@ -34,10 +36,6 @@ const COLUMNS = {
   qty: "5%",
   total: "11%",
 } as const;
-
-const NAVY = "#0f2741";
-const RULE = "#9aa8bd";
-const MUTED = "#5b6b84";
 
 const styles = StyleSheet.create({
   page: {
@@ -280,165 +278,198 @@ export function InvoiceDocument({
       author={model.company.name}
       creator={model.company.name}
     >
-      <Page size="A4" style={styles.page}>
-        <View style={styles.headerRow}>
-          {/* eslint-disable-next-line jsx-a11y/alt-text --
+      <InvoicePage model={model} logo={logo} />
+    </Document>
+  );
+}
+
+/**
+ * Several invoices in one file. Each invoice starts on a new page, so the file
+ * reads as separate invoices; the page footer counts across the whole file.
+ */
+export function InvoiceBundleDocument({
+  models,
+  title,
+  logo,
+}: {
+  models: InvoicePdfModel[];
+  title: string;
+  logo?: string;
+}) {
+  return (
+    <Document
+      title={title}
+      author={PDF_COMPANY.name}
+      creator={PDF_COMPANY.name}
+    >
+      {models.map((model) => (
+        <InvoicePage key={model.invoiceNo} model={model} logo={logo} />
+      ))}
+    </Document>
+  );
+}
+
+function InvoicePage({
+  model,
+  logo,
+}: {
+  model: InvoicePdfModel;
+  logo?: string;
+}) {
+  return (
+    <Page size="A4" style={styles.page}>
+      <View style={styles.headerRow}>
+        {/* eslint-disable-next-line jsx-a11y/alt-text --
               react-pdf.s Image is a PDF primitive, not an <img>: it has no alt
               prop. The mark is decorative here; the company name is adjacent
               as real text. */}
-          {logo && <Image src={logo} style={styles.logo} />}
+        {logo && <Image src={logo} style={styles.logo} />}
 
-          <View style={{ flex: 1 }}>
-            <View style={styles.headerLine}>
-              <Text style={styles.headerLabel}>Company</Text>
-              <Text
-                style={[styles.headerValue, { fontFamily: "Helvetica-Bold" }]}
-              >
-                {model.company.name}
-              </Text>
-            </View>
-            <View style={styles.headerLine}>
-              <Text style={styles.headerLabel}>Address</Text>
-              <Text style={styles.headerValue}>{model.company.address}</Text>
-            </View>
-            <View style={styles.headerLine}>
-              <Text style={styles.headerLabel}>Phone</Text>
-              <Text style={styles.headerValue}>{model.company.phone}</Text>
-            </View>
-          </View>
-
-          <View style={{ width: 130 }}>
-            <Text style={styles.invoiceNoSmall}>INVOICE {model.invoiceNo}</Text>
-            <Text style={[styles.right, { color: MUTED, marginTop: 2 }]}>
-              {model.issuedAt}
+        <View style={{ flex: 1 }}>
+          <View style={styles.headerLine}>
+            <Text style={styles.headerLabel}>Company</Text>
+            <Text
+              style={[styles.headerValue, { fontFamily: "Helvetica-Bold" }]}
+            >
+              {model.company.name}
             </Text>
-            {model.priority !== "" && (
-              <Text
-                style={[
-                  styles.right,
-                  {
-                    color: "#c0392b",
-                    fontFamily: "Helvetica-Bold",
-                    marginTop: 2,
-                  },
-                ]}
-              >
-                {model.priority}
-              </Text>
-            )}
+          </View>
+          <View style={styles.headerLine}>
+            <Text style={styles.headerLabel}>Address</Text>
+            <Text style={styles.headerValue}>{model.company.address}</Text>
+          </View>
+          <View style={styles.headerLine}>
+            <Text style={styles.headerLabel}>Phone</Text>
+            <Text style={styles.headerValue}>{model.company.phone}</Text>
           </View>
         </View>
 
-        <View style={[styles.headerLine, { marginTop: 4 }]}>
-          <Text style={styles.headerLabel}>Courier</Text>
-          <Text style={{ width: 150 }}>{model.courier || "—"}</Text>
-          <Text style={styles.headerLabel}>Tracking</Text>
-          <Text style={styles.headerValue}>{model.trackingNo || "—"}</Text>
+        <View style={{ width: 130 }}>
+          <Text style={styles.invoiceNoSmall}>INVOICE {model.invoiceNo}</Text>
+          <Text style={[styles.right, { color: MUTED, marginTop: 2 }]}>
+            {model.issuedAt}
+          </Text>
+          {model.priority !== "" && (
+            <Text
+              style={[
+                styles.right,
+                {
+                  color: "#c0392b",
+                  fontFamily: "Helvetica-Bold",
+                  marginTop: 2,
+                },
+              ]}
+            >
+              {model.priority}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      <View style={[styles.headerLine, { marginTop: 4 }]}>
+        <Text style={styles.headerLabel}>Courier</Text>
+        <Text style={{ width: 150 }}>{model.courier || "—"}</Text>
+        <Text style={styles.headerLabel}>Tracking</Text>
+        <Text style={styles.headerValue}>{model.trackingNo || "—"}</Text>
+      </View>
+
+      <Text style={styles.title}>INVOICE {model.invoiceNo}</Text>
+
+      <View style={styles.boxes}>
+        <Party
+          label="Order By"
+          name={model.orderBy.name}
+          lines={model.orderBy.lines}
+        />
+        <Party
+          label="Deliver To"
+          name={model.deliverTo.name}
+          lines={model.deliverTo.lines}
+        />
+        <Party
+          label="Invoice To"
+          name={model.invoiceTo.name}
+          lines={model.invoiceTo.lines}
+          last
+        />
+      </View>
+
+      {/* `fixed` repeats the header on every page of a long invoice. */}
+      <View style={styles.tableHead} fixed>
+        <HeadCell width={COLUMNS.no} label="#" />
+        <HeadCell width={COLUMNS.ref} label="Ref" />
+        <HeadCell width={COLUMNS.product} label="Product" />
+        <HeadCell width={COLUMNS.sph} label="SPH" align="right" />
+        <HeadCell width={COLUMNS.cyl} label="CYL" align="right" />
+        <HeadCell width={COLUMNS.ax} label="AX" align="right" />
+        <HeadCell width={COLUMNS.add} label="ADD" align="right" />
+        <HeadCell width={COLUMNS.price} label="Price" align="right" />
+        <HeadCell width={COLUMNS.discount} label="Discount" align="right" />
+        <HeadCell width={COLUMNS.qty} label="Qty" align="right" />
+        <HeadCell width={COLUMNS.total} label="Total" align="right" />
+      </View>
+
+      {model.lines.map((line) => (
+        <Row key={line.no} line={line} />
+      ))}
+
+      <View style={styles.summaryRow} wrap={false}>
+        <View style={styles.qtyBlock}>
+          <View style={styles.qtyLine}>
+            <Text style={styles.qtyLabel}>Order Qty:</Text>
+            <Text style={styles.qtyValue}>{model.orderQty}</Text>
+            <Text style={[styles.qtyLabel, { marginLeft: 14 }]}>Lens Qty:</Text>
+            <Text style={styles.qtyValue}>{model.lensQty}</Text>
+          </View>
         </View>
 
-        <Text style={styles.title}>INVOICE {model.invoiceNo}</Text>
-
-        <View style={styles.boxes}>
-          <Party
-            label="Order By"
-            name={model.orderBy.name}
-            lines={model.orderBy.lines}
-          />
-          <Party
-            label="Deliver To"
-            name={model.deliverTo.name}
-            lines={model.deliverTo.lines}
-          />
-          <Party
-            label="Invoice To"
-            name={model.invoiceTo.name}
-            lines={model.invoiceTo.lines}
-            last
-          />
-        </View>
-
-        {/* `fixed` repeats the header on every page of a long invoice. */}
-        <View style={styles.tableHead} fixed>
-          <HeadCell width={COLUMNS.no} label="#" />
-          <HeadCell width={COLUMNS.ref} label="Ref" />
-          <HeadCell width={COLUMNS.product} label="Product" />
-          <HeadCell width={COLUMNS.sph} label="SPH" align="right" />
-          <HeadCell width={COLUMNS.cyl} label="CYL" align="right" />
-          <HeadCell width={COLUMNS.ax} label="AX" align="right" />
-          <HeadCell width={COLUMNS.add} label="ADD" align="right" />
-          <HeadCell width={COLUMNS.price} label="Price" align="right" />
-          <HeadCell width={COLUMNS.discount} label="Discount" align="right" />
-          <HeadCell width={COLUMNS.qty} label="Qty" align="right" />
-          <HeadCell width={COLUMNS.total} label="Total" align="right" />
-        </View>
-
-        {model.lines.map((line) => (
-          <Row key={line.no} line={line} />
-        ))}
-
-        <View style={styles.summaryRow} wrap={false}>
-          <View style={styles.qtyBlock}>
-            <View style={styles.qtyLine}>
-              <Text style={styles.qtyLabel}>Order Qty:</Text>
-              <Text style={styles.qtyValue}>{model.orderQty}</Text>
-              <Text style={[styles.qtyLabel, { marginLeft: 14 }]}>
-                Lens Qty:
-              </Text>
-              <Text style={styles.qtyValue}>{model.lensQty}</Text>
+        <View style={styles.totals}>
+          {model.totals.map((total) => (
+            <View
+              key={total.label}
+              style={[styles.totalRow, total.strong ? styles.totalStrong : {}]}
+            >
+              <Text>{total.label}</Text>
+              <Text>{total.value}</Text>
             </View>
-          </View>
+          ))}
+        </View>
+      </View>
 
-          <View style={styles.totals}>
-            {model.totals.map((total) => (
+      {/* The customer account, printed only when it was snapshotted at
+            issue — an old invoice must keep the figures it went out with. */}
+      {model.account.length > 0 && (
+        <View style={styles.accountRow} wrap={false}>
+          <View style={styles.account}>
+            <Text style={styles.accountTitle}>Account Summary</Text>
+            {model.account.map((row) => (
               <View
-                key={total.label}
+                key={row.label}
                 style={[
                   styles.totalRow,
-                  total.strong ? styles.totalStrong : {},
+                  row.strong ? styles.accountStrong : {},
                 ]}
               >
-                <Text>{total.label}</Text>
-                <Text>{total.value}</Text>
+                <Text>{row.label}</Text>
+                <Text>{row.value}</Text>
               </View>
             ))}
           </View>
         </View>
+      )}
 
-        {/* The customer account, printed only when it was snapshotted at
-            issue — an old invoice must keep the figures it went out with. */}
-        {model.account.length > 0 && (
-          <View style={styles.accountRow} wrap={false}>
-            <View style={styles.account}>
-              <Text style={styles.accountTitle}>Account Summary</Text>
-              {model.account.map((row) => (
-                <View
-                  key={row.label}
-                  style={[
-                    styles.totalRow,
-                    row.strong ? styles.accountStrong : {},
-                  ]}
-                >
-                  <Text>{row.label}</Text>
-                  <Text>{row.value}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+      {model.voided && <Text style={styles.voided}>VOID</Text>}
 
-        {model.voided && <Text style={styles.voided}>VOID</Text>}
-
-        <View style={styles.footer} fixed>
-          <Text>
-            {model.company.name} · {model.company.phone}
-          </Text>
-          <Text
-            render={({ pageNumber, totalPages }) =>
-              `Page ${pageNumber} of ${totalPages}`
-            }
-          />
-        </View>
-      </Page>
-    </Document>
+      <View style={styles.footer} fixed>
+        <Text>
+          {model.company.name} · {model.company.phone}
+        </Text>
+        <Text
+          render={({ pageNumber, totalPages }) =>
+            `Page ${pageNumber} of ${totalPages}`
+          }
+        />
+      </View>
+    </Page>
   );
 }

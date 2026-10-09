@@ -20,6 +20,7 @@ export interface ReturnWithDetail extends SalesReturn {
 /** Returns newest first, with their lines, invoice number and shop. */
 export async function listReturns(filter: {
   orderId?: string;
+  customerId?: string;
   limit?: number;
 }): Promise<ReturnWithDetail[]> {
   const { supabase } = await requireUser();
@@ -30,6 +31,7 @@ export async function listReturns(filter: {
     .order("returned_at", { ascending: false })
     .limit(filter.limit ?? 50);
   if (filter.orderId) query = query.eq("order_id", filter.orderId);
+  if (filter.customerId) query = query.eq("customer_id", filter.customerId);
 
   const { data: returns, error } = await query;
   if (error) throw new Error(describePostgresError(error, "load returns"));

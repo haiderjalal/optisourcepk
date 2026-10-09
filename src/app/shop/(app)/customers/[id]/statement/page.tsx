@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Wallet } from "lucide-react";
+import { ArrowLeft, Download, Wallet } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getCustomer } from "@/services/shop/customer.service";
 import { getBalance, getStatement } from "@/services/shop/ledger.service";
@@ -43,10 +43,20 @@ export default async function StatementPage({
             {customer.customer_name} · {customer.area}
           </p>
         </div>
-        <ButtonLink href={`/shop/payments?customer=${id}`}>
-          <Wallet className="size-4" aria-hidden />
-          Record payment
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink
+            href={`/shop/customers/${id}/statement/pdf?download`}
+            variant="outline"
+            prefetch={false}
+          >
+            <Download className="size-4" aria-hidden />
+            Ledger PDF
+          </ButtonLink>
+          <ButtonLink href={`/shop/payments?customer=${id}`}>
+            <Wallet className="size-4" aria-hidden />
+            Record payment
+          </ButtonLink>
+        </div>
       </div>
 
       <div className="shadow-lift mb-5 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-2 lg:grid-cols-4">

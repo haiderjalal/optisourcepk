@@ -7,6 +7,7 @@ import {
   invoiceFileName,
   renderInvoicePdf,
 } from "@/features/shop/invoice/pdf/render";
+import { pdfResponse, wantsDownload } from "@/features/shop/pdf/pdfResponse";
 
 /**
  * GET /shop/invoices/[id]/pdf — the invoice as a PDF.
@@ -39,15 +40,9 @@ export async function GET(
   });
   const pdf = await renderInvoicePdf(model);
 
-  const download = url.searchParams.has("download");
-  const disposition = download ? "attachment" : "inline";
-
-  return new Response(new Uint8Array(pdf), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `${disposition}; filename="${invoiceFileName(model.invoiceNo)}"`,
-      // An invoice is private and can change while it is still a draft.
-      "Cache-Control": "private, no-store",
-    },
-  });
+  return pdfResponse(
+    pdf,
+    invoiceFileName(model.invoiceNo),
+    wantsDownload(request),
+  );
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
+import { chunk } from "@/lib/utils";
 import type {
   IssueInvoicePayload,
   OrderPayload,
@@ -330,23 +331,89 @@ export async function getOrder(id: string): Promise<OrderWithLines | null> {
   };
 }
 
+/** Lines are read for this many invoices at a time, so each request stays small. */
+const LINE_LOOKUP_BATCH = 100;
+
+/**
+ * Every issued invoice a shop holds, oldest first, each with its lines — the
+ * input to its combined PDF. Read page by page, so no invoice or line is cut
+ * off at the database's row limit.
+ */
+export async function listIssuedInvoicesForCustomer(
+  customer: Customer,
+): Promise<OrderWithLines[]> {
+  const { supabase } = await requireUser();
+
+  const orders = await selectAllPages((from, to) =>
+    supabase
+      .from("orders")
+      .select("*")
+      .eq("bill_to_customer_id", customer.id)
+      .not("issued_at", "is", null)
+      .order("invoice_no")
+      .range(from, to),
+  ).catch((e: unknown) => {
+    throw new Error(describePostgresError(e, "load the invoices"));
+  });
+  if (orders.length === 0) return [];
+
+  // Batched by invoice, not one query per invoice. (order_id, line_no) is
+  // unique, so it is a stable key for paging through the lines.
+  const lineBatches = await Promise.all(
+    chunk(
+      orders.map((order) => order.id),
+      LINE_LOOKUP_BATCH,
+    ).map((orderIds) =>
+      selectAllPages((from, to) =>
+        supabase
+          .from("order_lines")
+          .select("*")
+          .in("order_id", orderIds)
+          .order("order_id")
+          .order("line_no")
+          .range(from, to),
+      ),
+    ),
+  ).catch((e: unknown) => {
+    throw new Error(describePostgresError(e, "load the invoice lines"));
+  });
+
+  const linesByOrder = new Map<string, OrderLine[]>();
+  for (const line of lineBatches.flat()) {
+    const list = linesByOrder.get(line.order_id) ?? [];
+    list.push(line);
+    linesByOrder.set(line.order_id, list);
+  }
+
+  return orders.map((order) => ({
+    ...order,
+    lines: linesByOrder.get(order.id) ?? [],
+    customer,
+  }));
+}
+
 export interface ListOrdersOptions {
   /** `true` for issued invoices, `false` for open drafts. */
   issued?: boolean;
   /** `false` for stock orders only, `true` for RX only; omit for both. */
   rx?: boolean;
+  /** Only orders billed to these shops. An empty list matches nothing. */
+  customerIds?: string[];
   limit?: number;
 }
 
 export async function listOrders({
   issued,
   rx,
+  customerIds,
   limit = 100,
 }: ListOrdersOptions = {}): Promise<Order[]> {
+  if (customerIds?.length === 0) return [];
   const { supabase } = await requireUser();
 
   let query = supabase.from("orders").select("*").limit(limit);
   if (rx !== undefined) query = query.eq("is_rx", rx);
+  if (customerIds) query = query.in("bill_to_customer_id", customerIds);
 
   query =
     issued === true

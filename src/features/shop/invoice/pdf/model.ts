@@ -1,6 +1,10 @@
 import type { OrderWithLines } from "@/services/shop/invoice.service";
-import { CONTACT, SITE } from "@/lib/site";
-import type { ReturnSummary } from "@/features/shop/returns/summary";
+import type { ReturnWithDetail } from "@/services/shop/return.service";
+import { PDF_COMPANY } from "@/features/shop/pdf/company";
+import {
+  summariseReturns,
+  type ReturnSummary,
+} from "@/features/shop/returns/summary";
 
 /**
  * What the invoice document draws.
@@ -161,11 +165,7 @@ export function buildInvoicePdfModel(
     : [];
 
   return {
-    company: {
-      name: SITE.legalName,
-      address: `${CONTACT.address.line1}, ${CONTACT.address.city}, ${CONTACT.address.country}`,
-      phone: `${CONTACT.phone} · WhatsApp ${CONTACT.whatsapp}`,
-    },
+    company: PDF_COMPANY,
     invoiceNo: order.invoice_no ? String(order.invoice_no) : "DRAFT",
     issuedAt: stamp(order.issued_at ?? order.created_at),
     courier: order.courier_name ?? "",
@@ -245,4 +245,26 @@ export function buildInvoicePdfModel(
     lensQty: String(Math.max((order.lens_qty ?? 0) - returnedLenses, 0)),
     voided: order.voided_at !== null,
   };
+}
+
+/**
+ * One model per invoice, in the order given, each carrying only the returns
+ * that belong to it. Returns are matched by invoice, never pooled across a shop.
+ */
+export function buildInvoiceBundleModels(
+  invoices: OrderWithLines[],
+  returns: ReturnWithDetail[],
+): InvoicePdfModel[] {
+  const returnsByOrder = new Map<string, ReturnWithDetail[]>();
+  for (const sale of returns) {
+    const list = returnsByOrder.get(sale.order_id) ?? [];
+    list.push(sale);
+    returnsByOrder.set(sale.order_id, list);
+  }
+
+  return invoices.map((invoice) =>
+    buildInvoicePdfModel(invoice, {
+      returns: summariseReturns(returnsByOrder.get(invoice.id) ?? []),
+    }),
+  );
 }
