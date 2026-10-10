@@ -31,12 +31,13 @@ export default async function ProductPage({
   const product = await getProduct(id);
   if (!product) notFound();
 
-  // Independent reads, so they go together rather than in series.
-  const [bins, movements, suppliers] = await Promise.all([
+  // The movements are read against these bins, so they are read once and
+  // shared rather than fetched again inside the movements query.
+  const [bins, suppliers] = await Promise.all([
     listBinsForProduct(id),
-    listMovements(id, 25),
     listSuppliers(),
   ]);
+  const movements = await listMovements(id, 25, bins);
 
   return (
     <div className="mx-auto max-w-4xl">

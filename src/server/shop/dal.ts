@@ -45,7 +45,9 @@ export const requireUser = cache(async (): Promise<ShopSession> => {
   const { data } = await supabase.auth.getClaims();
   const claims = data?.claims;
 
-  if (!claims?.sub) redirect("/shop/login");
+  // An anonymous session has a `sub` too. The back-office is for the owner's
+  // account only, so an anonymous one is treated as signed out.
+  if (!claims?.sub || claims.is_anonymous === true) redirect("/shop/login");
 
   return {
     user: {

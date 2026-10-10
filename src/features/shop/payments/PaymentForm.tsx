@@ -8,6 +8,7 @@ import { Field } from "@/components/ui/field";
 import { PAYMENT_METHODS } from "@/lib/validations/shop/payment";
 import { formatAmount, todayInKarachi } from "@/lib/format";
 import type { CustomerWithBalance } from "@/services/shop/customer.service";
+import { ShopPicker } from "@/features/shop/customers/ShopPicker";
 import {
   recordPaymentAction,
   type PaymentFormState,
@@ -87,24 +88,19 @@ export function PaymentForm({
         </Field>
         <Field
           name="customerId"
-          label="Customer"
+          label="Shop"
           required
+          hint="Type a few letters of the shop or owner."
           className="sm:col-span-2"
           errors={state.fieldErrors?.customerId}
         >
           {(p) => (
-            <select
+            <ShopPicker
               {...p}
-              value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-            >
-              <option value="">Select a shop…</option>
-              {customers.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.shop_name} — {c.area} (Rs {formatAmount(c.balance)})
-                </option>
-              ))}
-            </select>
+              customers={customers}
+              defaultCustomerId={presetCustomerId}
+              onChange={setCustomerId}
+            />
           )}
         </Field>
 

@@ -12,6 +12,7 @@ import {
   reopenInvoiceAction,
 } from "@/features/shop/orders/actions";
 import { ShopDocumentsList } from "@/features/shop/invoice/ShopDocumentsList";
+import { ShopPageHeader } from "@/features/shop/layout/ShopPageHeader";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { formatAmount, formatDate } from "@/lib/format";
 import { ShowMore } from "@/components/ui/show-more";
@@ -54,22 +55,15 @@ export default async function InvoicesPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow text-accent-600">Trade</p>
-          <h1 className="mt-2 text-2xl font-bold">Invoices</h1>
-          {invoices.length > 0 && (
-            <p className="text-navy-500 mt-1.5 text-sm">
-              Showing {visibleInvoices.length} · Rs {formatAmount(visibleTotal)}
-              shown
-            </p>
-          )}
-        </div>
-        <ButtonLink href="/shop/orders/new">
-          <Plus className="size-4" aria-hidden />
-          New order
-        </ButtonLink>
-      </div>
+      <ShopPageHeader
+        eyebrow="Trade"
+        title="Invoices"
+        description={
+          invoices.length > 0
+            ? `Showing ${visibleInvoices.length} · Rs ${formatAmount(visibleTotal)} shown`
+            : undefined
+        }
+      />
 
       {/* A GET form, as on the customers page: the search lives in the URL, so
           a result is shareable and the back button behaves. */}

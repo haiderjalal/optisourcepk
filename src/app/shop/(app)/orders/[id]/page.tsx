@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Pencil } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
-import { getOrder } from "@/services/shop/invoice.service";
+import { getOrder, getOrderReference } from "@/services/shop/invoice.service";
 import { checkOrderStock } from "@/services/shop/stock.service";
 import { getBalance } from "@/services/shop/ledger.service";
 import { StockCheck } from "@/features/shop/orders/StockCheck";
@@ -66,7 +66,7 @@ export default async function OrderPage({
   // Independent reads, so they go together rather than one after another.
   const [billedOn, sameDay, returns] = await Promise.all([
     // An RX order billed on its shop's combined invoice is as final as issued.
-    order.billed_in ? getOrder(order.billed_in) : null,
+    order.billed_in ? getOrderReference(order.billed_in) : null,
     // The patient's other RX orders from the same day go to the lab together.
     order.is_rx ? listSamePatientSameDay(order) : [],
     order.issued_at ? listReturns({ orderId: order.id, limit: 100 }) : [],

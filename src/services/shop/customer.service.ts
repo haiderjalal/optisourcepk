@@ -40,9 +40,18 @@ function toRow(payload: CustomerPayload) {
   };
 }
 
+export interface CustomerSearchOptions {
+  /**
+   * Match shop, owner and phone only. The shop finder uses this: a word like
+   * "Pakistan" sits in every shop's area and would match them all.
+   */
+  namesOnly?: boolean;
+}
+
 export async function listCustomers(
   search?: string,
   limit?: number,
+  { namesOnly = false }: CustomerSearchOptions = {},
 ): Promise<CustomerWithBalance[]> {
   const { supabase } = await requireUser();
 
@@ -56,8 +65,11 @@ export async function listCustomers(
   const term = search?.trim();
   if (term) {
     const escaped = term.replace(/[%_,()]/g, " ");
+    const columns = namesOnly
+      ? ["shop_name", "customer_name", "phone"]
+      : ["shop_name", "customer_name", "area", "phone"];
     query = query.or(
-      `shop_name.ilike.%${escaped}%,customer_name.ilike.%${escaped}%,area.ilike.%${escaped}%,phone.ilike.%${escaped}%`,
+      columns.map((column) => `${column}.ilike.%${escaped}%`).join(","),
     );
   }
 
