@@ -84,7 +84,7 @@ export default async function DailyStockPage({
           </p>
         </div>
       ) : products.length > 0 ? (
-        <DailyStockForm products={products} history={visibleHistory} />
+        <DailyStockForm products={products} history={history} />
       ) : (
         <p className="text-navy-500 rounded-2xl border border-dashed border-mist-300 bg-white/60 px-5 py-8 text-sm">
           Add a non-service product before entering daily stock.

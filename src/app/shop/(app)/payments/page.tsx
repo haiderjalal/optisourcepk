@@ -7,6 +7,7 @@ import {
   listRecentPayments,
 } from "@/services/shop/ledger.service";
 import { PaymentForm } from "@/features/shop/payments/PaymentForm";
+import { ShopPageHeader } from "@/features/shop/layout/ShopPageHeader";
 import { ButtonLink } from "@/components/ui/button";
 import { formatAmount, formatDate } from "@/lib/format";
 import { ShowMore } from "@/components/ui/show-more";
@@ -36,16 +37,13 @@ export default async function PaymentsPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6">
-        <p className="eyebrow text-accent-600">Accounts</p>
-        <h1 className="mt-2 text-2xl font-bold">Ledger &amp; payments</h1>
-        <p className="text-navy-500 mt-2 max-w-prose text-sm">
-          Record money received or add and remove payment discounts. RX and
-          stock business are counted separately below.
-        </p>
-      </div>
+      <ShopPageHeader
+        eyebrow="Accounts"
+        title="Ledger & payments"
+        description="Record money received, or add and remove payment discounts. RX and stock business are counted separately below."
+      />
 
-      <section className="shadow-lift mb-6 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-2 lg:grid-cols-3">
+      <section className="shadow-lift mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-2xl bg-mist-200 lg:grid-cols-3">
         <LedgerTotal label="Normal stock sales" value={totals.stock_sales} />
         <LedgerTotal
           label="Normal stock purchases"
@@ -146,9 +144,9 @@ export default async function PaymentsPage({
 
 function LedgerTotal({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-white px-5 py-4">
-      <p className="text-navy-500 text-xs">{label}</p>
-      <p className="mt-1 text-xl font-semibold tabular-nums">
+    <div className="bg-white px-4 py-3.5 sm:px-5 sm:py-4">
+      <p className="text-navy-500 text-xs leading-snug">{label}</p>
+      <p className="mt-1 text-base font-semibold tabular-nums sm:text-xl">
         Rs {formatAmount(value)}
       </p>
     </div>

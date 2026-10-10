@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Search, Users } from "lucide-react";
+import { FileText, Pencil, Plus, Search, Users, Wallet } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listCustomers } from "@/services/shop/customer.service";
 import { ButtonLink } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
-import { formatAmount } from "@/lib/format";
 import { ShowMore } from "@/components/ui/show-more";
+import { ShopPageHeader } from "@/features/shop/layout/ShopPageHeader";
 import { listLimit } from "@/lib/list-pagination";
+import { formatPkr } from "@/lib/format";
+import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = { title: "Customers" };
+export const metadata: Metadata = { title: "Shops" };
 
 export default async function CustomersPage({
   searchParams,
@@ -18,7 +20,7 @@ export default async function CustomersPage({
 
   const params = await searchParams;
   const { q } = params;
-  const search = typeof q === "string" ? q : undefined;
+  const search = typeof q === "string" ? q.trim() : "";
   const limit = listLimit(params.limit);
   const customers = await listCustomers(search, limit + 1);
   const hasMore = customers.length > limit;
@@ -26,37 +28,38 @@ export default async function CustomersPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow text-accent-600">Accounts</p>
-          <h1 className="mt-2 text-2xl font-bold">Customers</h1>
-        </div>
-        <ButtonLink href="/shop/customers/new">
-          <Plus className="size-4" aria-hidden />
-          Add customer
-        </ButtonLink>
-      </div>
+      <ShopPageHeader
+        eyebrow="Accounts"
+        title="Shops"
+        description="Each shop's balance, and what you can do for it without opening the shop first."
+        actions={
+          <ButtonLink href="/shop/customers/new">
+            <Plus className="size-4" aria-hidden />
+            Add shop
+          </ButtonLink>
+        }
+      />
 
-      {/* A GET form: the search term lives in the URL, so a result list is
-          shareable and the back button behaves. */}
+      {/* A GET form: the search lives in the URL, so a result is shareable and
+          the back button behaves. */}
       <form className="mb-5 flex gap-2" role="search">
         <div className="relative min-w-0 flex-1">
           <Search
-            className="text-navy-300 pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2"
+            className="text-navy-300 pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2"
             aria-hidden
           />
           <input
             type="search"
             name="q"
-            defaultValue={search ?? ""}
-            placeholder="Shop, contact, area or phone"
-            aria-label="Search customers"
-            className={`${inputClass} pl-9`}
+            defaultValue={search}
+            placeholder="Shop, owner, area or phone"
+            aria-label="Search shops"
+            className={`${inputClass} h-11 pl-10`}
           />
         </div>
         <button
           type="submit"
-          className="text-navy-600 rounded-lg border border-mist-300 bg-white px-4 text-sm font-medium transition-colors hover:bg-mist-100"
+          className="text-navy-600 h-11 rounded-lg border border-mist-300 bg-white px-5 text-sm font-medium transition-colors hover:bg-mist-100"
         >
           Search
         </button>
@@ -66,92 +69,114 @@ export default async function CustomersPage({
         <div className="rounded-2xl border border-dashed border-mist-300 bg-white/60 px-6 py-16 text-center">
           <Users className="text-navy-300 mx-auto size-8" aria-hidden />
           <h2 className="mt-4 font-semibold">
-            {search ? "No customers matched." : "No customers yet."}
+            {search ? "No shop matched." : "No shops yet."}
           </h2>
           <p className="text-navy-500 mx-auto mt-2 max-w-sm text-sm">
             {search
-              ? "Try a shorter search — part of the shop name or the area."
-              : "Add the shops you supply. Each one gets a ledger, and their opening balance carries over."}
+              ? "Try a shorter part of the shop, owner, area or phone."
+              : "Add the shops you supply. Each one gets a ledger, and its opening balance carries over."}
           </p>
           {!search && (
             <ButtonLink href="/shop/customers/new" className="mt-6">
               <Plus className="size-4" aria-hidden />
-              Add the first customer
+              Add the first shop
             </ButtonLink>
           )}
         </div>
       ) : (
         <div className="shadow-lift overflow-hidden rounded-2xl bg-white">
-          <table className="w-full text-sm">
-            <caption className="sr-only">
-              Customers with their current account balance
-            </caption>
-            <thead>
-              <tr className="text-navy-500 bg-mist-100 text-left">
-                <th scope="col" className="px-4 py-3 font-medium">
-                  Shop
-                </th>
-                <th
-                  scope="col"
-                  className="hidden px-4 py-3 font-medium sm:table-cell"
-                >
-                  Area
-                </th>
-                <th
-                  scope="col"
-                  className="hidden px-4 py-3 font-medium md:table-cell"
-                >
-                  Phone
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">
-                  Balance (Rs)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleCustomers.map((customer) => (
-                <tr
-                  key={customer.id}
-                  className="border-t border-mist-200 hover:bg-mist-50"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/shop/customers/${customer.id}`}
-                      className="hover:text-accent-600 font-medium"
-                    >
-                      {customer.shop_name}
-                    </Link>
-                    <span className="text-navy-400 block text-xs">
-                      {customer.customer_name}
-                    </span>
-                  </td>
-                  <td className="text-navy-500 hidden px-4 py-3 sm:table-cell">
-                    {customer.area}
-                  </td>
-                  <td className="text-navy-500 hidden px-4 py-3 md:table-cell">
-                    {customer.phone}
-                  </td>
-                  <td
-                    className={`px-4 py-3 text-right font-medium tabular-nums ${
-                      customer.balance > 0
-                        ? "text-amber-700"
-                        : customer.balance < 0
-                          ? "text-emerald-700"
-                          : "text-navy-400"
-                    }`}
+          <div
+            className="text-navy-500 hidden items-center gap-4 bg-mist-100 px-4 py-3 text-xs font-medium md:flex"
+            aria-hidden
+          >
+            <span className="min-w-0 flex-1">Shop</span>
+            <span className="w-40">Area</span>
+            <span className="w-36">Phone</span>
+            <span className="w-32 text-right">Balance</span>
+            <span className="w-36 text-right">Actions</span>
+          </div>
+
+          <ul className="divide-y divide-mist-200">
+            {visibleCustomers.map((shop) => (
+              <li
+                key={shop.id}
+                className="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-3 transition-colors hover:bg-mist-50/60"
+              >
+                <div className="min-w-0 flex-1 basis-56">
+                  <Link
+                    href={`/shop/customers/${shop.id}/statement`}
+                    className="group block"
                   >
-                    {formatAmount(customer.balance)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <span className="group-hover:text-accent-700 block truncate text-sm font-medium">
+                      {shop.shop_name}
+                    </span>
+                    <span className="text-navy-400 block truncate text-xs">
+                      {shop.customer_name}
+                    </span>
+                  </Link>
+                </div>
+
+                <span className="text-navy-500 hidden w-40 truncate text-sm md:block">
+                  {shop.area}
+                </span>
+                <span className="text-navy-500 hidden w-36 truncate text-sm md:block">
+                  {shop.phone}
+                </span>
+
+                <span
+                  className={cn(
+                    "w-32 text-right text-sm font-semibold whitespace-nowrap tabular-nums",
+                    shop.balance > 0
+                      ? "text-amber-700"
+                      : shop.balance < 0
+                        ? "text-emerald-700"
+                        : "text-navy-400",
+                  )}
+                >
+                  <span className="text-navy-400 mr-1 text-xs font-normal md:hidden">
+                    Balance
+                  </span>
+                  {formatPkr(shop.balance)}
+                </span>
+
+                <div className="flex w-full items-center justify-end gap-1.5 md:w-auto md:justify-end">
+                  <ButtonLink
+                    href={`/shop/payments?customer=${shop.id}`}
+                    size="sm"
+                    aria-label={`Collect payment from ${shop.shop_name}`}
+                  >
+                    <Wallet className="size-3.5" aria-hidden />
+                    Collect
+                  </ButtonLink>
+                  <ButtonLink
+                    href={`/shop/customers/${shop.id}/invoices/pdf?download`}
+                    variant="outline"
+                    size="sm"
+                    prefetch={false}
+                    aria-label={`Download all invoices for ${shop.shop_name}`}
+                  >
+                    <FileText className="size-3.5" aria-hidden />
+                    PDF
+                  </ButtonLink>
+                  <Link
+                    href={`/shop/customers/${shop.id}`}
+                    aria-label={`Edit ${shop.shop_name}`}
+                    title="Edit shop"
+                    className="text-navy-400 hover:text-navy-700 grid size-9 place-items-center rounded-full transition-colors hover:bg-mist-100"
+                  >
+                    <Pencil className="size-4" aria-hidden />
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+
           <ShowMore
             pathname="/shop/customers"
             searchParams={params}
             current={limit}
             hasMore={hasMore}
-            noun="customers"
+            noun="shops"
           />
         </div>
       )}

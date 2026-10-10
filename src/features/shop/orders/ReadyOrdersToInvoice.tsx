@@ -61,7 +61,7 @@ function ShopCard({ shop }: { shop: ReadyOrdersShop }) {
   }
 
   return (
-    <li className="rounded-xl border border-mist-200 p-4">
+    <li className="min-w-0 rounded-xl border border-mist-200 p-4">
       <form action={formAction}>
         <input type="hidden" name="customerId" value={shop.customerId} />
         <div className="flex flex-wrap items-baseline justify-between gap-2">

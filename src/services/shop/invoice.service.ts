@@ -335,6 +335,25 @@ export async function getOrder(id: string): Promise<OrderWithLines | null> {
 const LINE_LOOKUP_BATCH = 100;
 
 /**
+ * An order's id and invoice number: enough to link to it, without reading its
+ * lines or customer the way `getOrder` does.
+ */
+export async function getOrderReference(
+  id: string,
+): Promise<Pick<Order, "id" | "invoice_no"> | null> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, invoice_no")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(describePostgresError(error, "load the invoice"));
+  return data;
+}
+
+/**
  * Every issued invoice a shop holds, oldest first, each with its lines — the
  * input to its combined PDF. Read page by page, so no invoice or line is cut
  * off at the database's row limit.

@@ -2,82 +2,49 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import {
-  Boxes,
-  Building2,
-  ClipboardList,
-  FileText,
-  Glasses,
-  LayoutDashboard,
-  Package,
-  Receipt,
-  Trash2,
-  Undo2,
-  Truck,
-  Users,
-  Wallet,
-} from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SHOP_NAV, isActiveShopPath } from "./shopNav";
 
 /**
- * Back-office navigation.
+ * Desktop back-office navigation, grouped by the work it supports.
  *
  * A Client Component only because it highlights the active route; everything
  * it links to renders on the server.
  */
-
-const NAV = [
-  { href: "/shop", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { href: "/shop/orders", label: "Orders", icon: ClipboardList },
-  { href: "/shop/rx", label: "RX orders", icon: Glasses },
-  { href: "/shop/invoices", label: "Invoices", icon: FileText },
-  { href: "/shop/returns", label: "Returns", icon: Undo2 },
-  { href: "/shop/customers", label: "Customers", icon: Users },
-  { href: "/shop/payments", label: "Payments", icon: Wallet },
-  { href: "/shop/expenses", label: "Expenses", icon: Receipt },
-  { href: "/shop/stock", label: "Stock", icon: Boxes },
-  { href: "/shop/products", label: "Products", icon: Package },
-  { href: "/shop/purchases", label: "Purchases", icon: Truck },
-  { href: "/shop/suppliers", label: "Suppliers", icon: Building2 },
-  { href: "/shop/trash", label: "Recently deleted", icon: Trash2 },
-] as const;
-
-export function ShopSidebar({
-  orientation = "vertical",
-}: {
-  /** "horizontal" is the scrolling strip shown above the content on mobile. */
-  orientation?: "vertical" | "horizontal";
-}) {
+export function ShopSidebar() {
   const pathname = usePathname();
-  const horizontal = orientation === "horizontal";
 
   return (
-    <nav aria-label="Back office" className="p-3">
-      <ul className={cn(horizontal ? "flex gap-1" : "space-y-0.5")}>
-        {NAV.map(({ href, label, icon: Icon, ...rest }) => {
-          const exact = "exact" in rest && rest.exact;
-          const active = exact ? pathname === href : pathname.startsWith(href);
-
-          return (
-            <li key={href}>
-              <Link
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                  horizontal && "whitespace-nowrap",
-                  active
-                    ? "bg-accent-600 text-white"
-                    : "text-silver-400 hover:bg-navy-800 hover:text-white",
-                )}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                {label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+    <nav aria-label="Back office" className="space-y-5 px-3 py-4">
+      {SHOP_NAV.map((group) => (
+        <div key={group.label}>
+          <p className="text-silver-500 px-3 pb-1.5 text-[0.6875rem] font-semibold tracking-[0.18em] uppercase">
+            {group.label}
+          </p>
+          <ul className="space-y-0.5">
+            {group.items.map((item) => {
+              const active = isActiveShopPath(pathname, item);
+              return (
+                <li key={item.href}>
+                  <Link
+                    href={item.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-accent-600 text-white shadow-[0_8px_20px_-10px_rgb(37_99_235/0.9)]"
+                        : "text-silver-400 hover:bg-navy-800 hover:text-white",
+                    )}
+                  >
+                    <item.icon className="size-4 shrink-0" aria-hidden />
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </nav>
   );
 }

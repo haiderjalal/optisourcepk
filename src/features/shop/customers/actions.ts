@@ -8,8 +8,39 @@ import { customerSchema } from "@/lib/validations/shop/customer";
 import {
   archiveCustomer,
   createCustomer,
+  listCustomers,
   updateCustomer,
 } from "@/services/shop/customer.service";
+
+const FINDER_LIMIT = 8;
+const finderQuerySchema = z.string().trim().max(80);
+
+export interface ShopMatch {
+  id: string;
+  shopName: string;
+  ownerName: string;
+  area: string;
+  balance: number;
+}
+
+/** Shops matching what was typed into the top-bar finder. Two letters minimum. */
+export async function findShopsAction(query: string): Promise<ShopMatch[]> {
+  await requireUser();
+
+  const parsed = finderQuerySchema.safeParse(query);
+  if (!parsed.success || parsed.data.length < 2) return [];
+
+  const shops = await listCustomers(parsed.data, FINDER_LIMIT, {
+    namesOnly: true,
+  });
+  return shops.map((shop) => ({
+    id: shop.id,
+    shopName: shop.shop_name,
+    ownerName: shop.customer_name,
+    area: shop.area,
+    balance: shop.balance,
+  }));
+}
 
 /**
  * Customer mutations.

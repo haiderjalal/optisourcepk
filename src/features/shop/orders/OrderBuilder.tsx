@@ -6,6 +6,7 @@ import Link from "next/link";
 import { AlertCircle, Copy, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
+import { ShopPicker } from "@/features/shop/customers/ShopPicker";
 import { sphPlaceholder } from "@/lib/power";
 import { formatAmount } from "@/lib/format";
 import type { Customer, Order, OrderLine, Product } from "@/types/database";
@@ -254,18 +255,12 @@ export function OrderBuilder({
             errors={state.fieldErrors?.customerId}
           >
             {(p) => (
-              <select
+              <ShopPicker
                 {...p}
-                value={customerId}
-                onChange={(e) => setCustomerId(e.target.value)}
-              >
-                <option value="">Select a shop…</option>
-                {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.shop_name} — {c.area}
-                  </option>
-                ))}
-              </select>
+                customers={customers}
+                defaultCustomerId={order?.bill_to_customer_id}
+                onChange={setCustomerId}
+              />
             )}
           </Field>
 

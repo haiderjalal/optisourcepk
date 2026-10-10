@@ -15,6 +15,10 @@ import {
 } from "@/features/shop/stock/availability";
 import { describePostgresError } from "./errors";
 import { selectAllPages } from "./paging";
+import { chunk } from "@/lib/utils";
+
+/** Ids sent per `in` filter: long enough to batch well, short enough for a URL. */
+const LOOKUP_BATCH = 100;
 
 export type { LineAvailability } from "@/features/shop/stock/availability";
 export type {
@@ -204,6 +208,7 @@ export async function listDailyStock(): Promise<DailyStockLine[]> {
           .select("bin_id, delta")
           .gte("created_at", `${day}T00:00:00+05:00`)
           .lt("created_at", next.toISOString())
+          .order("id")
           .range(from, to),
     );
   } catch (error) {
@@ -211,32 +216,64 @@ export async function listDailyStock(): Promise<DailyStockLine[]> {
   }
   if (movements.length === 0) return [];
 
+  // Every page is read to the end and each id list is sent in batches: a plain
+  // read stops at the database's row cap, and one long `in` list overflows the
+  // request URL.
   const movedBinIds = [...new Set(movements.map((m) => m.bin_id))];
-  const { data: movedBins, error: movedError } = await supabase
-    .from("stock_bins")
-    .select("id, product_id")
-    .in("id", movedBinIds);
-  if (movedError) {
-    throw new Error(describePostgresError(movedError, "load daily stock bins"));
+  let movedBins: { id: string; product_id: string }[];
+  try {
+    movedBins = (
+      await Promise.all(
+        chunk(movedBinIds, LOOKUP_BATCH).map((ids) =>
+          selectAllPages<{ id: string; product_id: string }>((from, to) =>
+            supabase
+              .from("stock_bins")
+              .select("id, product_id")
+              .in("id", ids)
+              .order("id")
+              .range(from, to),
+          ),
+        ),
+      )
+    ).flat();
+  } catch (error) {
+    throw new Error(describePostgresError(error, "load daily stock bins"));
   }
 
   const productByBin = new Map(
-    (movedBins ?? []).map((bin) => [bin.id, bin.product_id]),
+    movedBins.map((bin) => [bin.id, bin.product_id]),
   );
   const productIds = [...new Set(productByBin.values())];
-  const [allBins, products] = await Promise.all([
-    supabase
-      .from("stock_bins")
-      .select("product_id, qty_on_hand")
-      .in("product_id", productIds),
-    supabase.from("products").select("id, name, unit").in("id", productIds),
-  ]);
-  if (allBins.error || products.error) {
+  if (productIds.length === 0) return [];
+
+  let bins: { product_id: string; qty_on_hand: number }[];
+  try {
+    bins = (
+      await Promise.all(
+        chunk(productIds, LOOKUP_BATCH).map((ids) =>
+          selectAllPages<{ product_id: string; qty_on_hand: number }>(
+            (from, to) =>
+              supabase
+                .from("stock_bins")
+                .select("id, product_id, qty_on_hand")
+                .in("product_id", ids)
+                .order("id")
+                .range(from, to),
+          ),
+        ),
+      )
+    ).flat();
+  } catch (error) {
+    throw new Error(describePostgresError(error, "load daily stock totals"));
+  }
+
+  const products = await supabase
+    .from("products")
+    .select("id, name, unit")
+    .in("id", productIds);
+  if (products.error) {
     throw new Error(
-      describePostgresError(
-        allBins.error ?? products.error,
-        "load daily stock totals",
-      ),
+      describePostgresError(products.error, "load daily stock totals"),
     );
   }
 
@@ -259,7 +296,7 @@ export async function listDailyStock(): Promise<DailyStockLine[]> {
   }
 
   const closingByProduct = new Map<string, number>();
-  for (const bin of allBins.data ?? []) {
+  for (const bin of bins) {
     closingByProduct.set(
       bin.product_id,
       (closingByProduct.get(bin.product_id) ?? 0) + bin.qty_on_hand,
@@ -290,38 +327,54 @@ export async function listDailyStock(): Promise<DailyStockLine[]> {
 /**
  * Recent movements for one product, newest first — the audit trail.
  *
- * Two queries rather than an embedded join: the bins for a product are a short
- * list, and resolving the power in memory keeps this independent of PostgREST
- * relationship metadata.
+ * Two queries rather than an embedded join: resolving the power in memory keeps
+ * this independent of PostgREST relationship metadata. A wide lens range has
+ * hundreds of bins, so they are queried in batches and the newest rows merged —
+ * the newest `limit` overall is always among each batch's newest `limit`.
+ *
+ * `knownBins` lets a caller that already loaded the bins skip the second read.
  */
 export async function listMovements(
   productId: string,
   limit = 50,
+  knownBins?: StockBin[],
 ): Promise<StockMovementLine[]> {
   const { supabase } = await requireUser();
 
-  const bins = await listBinsForProduct(productId);
+  const bins = knownBins ?? (await listBinsForProduct(productId));
   if (bins.length === 0) return [];
 
   const sphByBin = new Map(bins.map((bin) => [bin.id, bin.sph]));
 
-  const { data, error } = await supabase
-    .from("stock_movements")
-    .select(
-      "id, bin_id, delta, reason, note, created_at, order_id, purchase_invoice_id",
-    )
-    .in(
-      "bin_id",
+  const batches = await Promise.all(
+    chunk(
       bins.map((bin) => bin.id),
-    )
-    .order("created_at", { ascending: false })
-    .limit(limit);
+      LOOKUP_BATCH,
+    ).map((binIds) =>
+      supabase
+        .from("stock_movements")
+        .select(
+          "id, bin_id, delta, reason, note, created_at, order_id, purchase_invoice_id",
+        )
+        .in("bin_id", binIds)
+        .order("created_at", { ascending: false })
+        .limit(limit),
+    ),
+  );
 
-  if (error) {
-    throw new Error(describePostgresError(error, "load the stock history"));
-  }
+  const rows = batches.flatMap((batch) => {
+    if (batch.error) {
+      throw new Error(
+        describePostgresError(batch.error, "load the stock history"),
+      );
+    }
+    return batch.data ?? [];
+  });
+  const newest = rows
+    .sort((a, b) => b.created_at.localeCompare(a.created_at))
+    .slice(0, limit);
 
-  return (data ?? []).map((row) => ({
+  return newest.map((row) => ({
     id: row.id,
     delta: row.delta,
     reason: row.reason,
