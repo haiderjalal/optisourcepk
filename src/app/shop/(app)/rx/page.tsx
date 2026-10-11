@@ -358,50 +358,52 @@ export default async function RxOrdersPage({
                             compact
                           />
                         )}
-                        {job.invoiceNo === null &&
-                          !job.voided &&
-                          job.rxStage !== null && (
-                            <RxLabOrderNumberButton
-                              orderId={job.orderId}
-                              initialValue={job.labOrderNo}
-                              compact
-                            />
-                          )}
-                        {job.invoiceNo === null && !job.voided && (
-                          <RxPriceForm
+                        {!job.voided && job.rxStage !== null && (
+                          <RxLabOrderNumberButton
                             orderId={job.orderId}
-                            salePrice={job.unit_price}
-                            purchasePrice={job.unit_cost}
-                            labOrderNo={job.labOrderNo}
-                            customerId={job.customerId}
-                            ready={job.rxStage === "back"}
+                            initialValue={job.labOrderNo}
+                            compact
                           />
                         )}
+                        {job.invoiceNo === null &&
+                          job.billedIn === null &&
+                          !job.voided && (
+                            <RxPriceForm
+                              orderId={job.orderId}
+                              salePrice={job.unit_price}
+                              purchasePrice={job.unit_cost}
+                              labOrderNo={job.labOrderNo}
+                              customerId={job.customerId}
+                              ready={job.rxStage === "back"}
+                            />
+                          )}
                       </td>
                       <td className="px-3 py-2.5">
-                        {job.invoiceNo === null && !job.voided && (
-                          <div className="flex items-center justify-end gap-1">
-                            <Link
-                              href={`/shop/orders/${job.orderId}/edit`}
-                              className="text-navy-300 hover:text-accent-700 rounded-md p-1.5 transition-colors hover:bg-mist-100"
-                              title={`Edit ${formatRxNo(job.rxNo)}`}
-                            >
-                              <Pencil className="size-4" aria-hidden />
-                              <span className="sr-only">
-                                Edit {formatRxNo(job.rxNo)}
-                              </span>
-                            </Link>
-                            <ConfirmButton
-                              action={deleteRxOrderAction}
-                              id={job.orderId}
-                              name={formatRxNo(job.rxNo)}
-                              idField="orderId"
-                              kind="delete"
-                              question="Delete? (restorable for 7 days)"
-                              confirmLabel="Yes"
-                            />
-                          </div>
-                        )}
+                        {job.invoiceNo === null &&
+                          job.billedIn === null &&
+                          !job.voided && (
+                            <div className="flex items-center justify-end gap-1">
+                              <Link
+                                href={`/shop/orders/${job.orderId}/edit`}
+                                className="text-navy-300 hover:text-accent-700 rounded-md p-1.5 transition-colors hover:bg-mist-100"
+                                title={`Edit ${formatRxNo(job.rxNo)}`}
+                              >
+                                <Pencil className="size-4" aria-hidden />
+                                <span className="sr-only">
+                                  Edit {formatRxNo(job.rxNo)}
+                                </span>
+                              </Link>
+                              <ConfirmButton
+                                action={deleteRxOrderAction}
+                                id={job.orderId}
+                                name={formatRxNo(job.rxNo)}
+                                idField="orderId"
+                                kind="delete"
+                                question="Delete? (restorable for 7 days)"
+                                confirmLabel="Yes"
+                              />
+                            </div>
+                          )}
                       </td>
                     </tr>
                   );

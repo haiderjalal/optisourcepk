@@ -409,9 +409,6 @@ export async function updateRxLabOrderNo(
     .update({ lab_order_no: labOrderNo.trim() })
     .eq("id", orderId)
     .eq("is_rx", true)
-    .is("issued_at", null)
-    .is("voided_at", null)
-    .is("billed_in", null)
     .select("id")
     .maybeSingle();
 
@@ -419,9 +416,7 @@ export async function updateRxLabOrderNo(
     throw new Error(describePostgresError(error, "save the lab order number"));
   }
   if (!data) {
-    throw new Error(
-      "This RX order is already invoiced, so its lab order number can no longer change.",
-    );
+    throw new Error("That RX order could not be found.");
   }
 
   logger.info("RX lab order number saved", { orderId });

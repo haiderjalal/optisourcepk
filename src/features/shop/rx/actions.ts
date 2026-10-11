@@ -94,10 +94,11 @@ export async function saveLabOrderNumberAction(
     };
   }
 
-  revalidatePath("/shop/rx");
-  revalidatePath(`/shop/orders/${parsed.data.orderId}`);
+  // The number shows on the RX list, the job, the WhatsApp text and the
+  // customer statements, so every page under /shop is refreshed.
+  revalidatePath("/shop", "layout");
   return {
-    message: "Lab order number saved. Generate the invoice whenever you want.",
+    message: "Lab order number saved.",
     saved: true,
     labOrderNo: parsed.data.labOrderNo,
   };
