@@ -1,10 +1,8 @@
+import { MAX_LINE_QUANTITY, MAX_QUOTE_LINES } from "@/lib/quote-limits";
 import type { QuoteLine } from "@/types/catalogue";
 
 // v3: lines no longer carry a minimum order quantity.
 const STORAGE_KEY = "optisource.quote.v3";
-
-/** Guard rail so a runaway loop cannot build an un-quotable request. */
-export const MAX_QUOTE_LINES = 40;
 
 export interface QuoteState {
   lines: QuoteLine[];
@@ -39,6 +37,11 @@ function commit(lines: QuoteLine[]): void {
   notify();
 }
 
+/** Whole-number count inside the limits the server will accept. */
+function clampQuantity(quantity: number): number {
+  return Math.min(MAX_LINE_QUANTITY, Math.max(1, Math.round(quantity)));
+}
+
 function isLine(value: unknown): value is QuoteLine {
   if (typeof value !== "object" || value === null) return false;
   const line = value as QuoteLine;
@@ -50,13 +53,23 @@ function isLine(value: unknown): value is QuoteLine {
   );
 }
 
+/**
+ * Storage is untrusted: anything a visitor (or a script) wrote there is
+ * re-validated and clamped before it reaches the form.
+ */
 function read(): QuoteLine[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isLine).slice(0, MAX_QUOTE_LINES);
+    return parsed
+      .filter(isLine)
+      .slice(0, MAX_QUOTE_LINES)
+      .map((line) => ({
+        productId: line.productId,
+        quantity: clampQuantity(line.quantity),
+      }));
   } catch {
     return [];
   }
@@ -109,30 +122,37 @@ function write(next: QuoteLine[]): void {
   commit(next);
 }
 
-export function addLine(productId: string, quantity = 1): void {
-  const requested = Math.max(1, Math.round(quantity));
+/**
+ * Add a line, or raise the count on one already on the list.
+ *
+ * Returns `false` when a new line would exceed the list limit, so the caller
+ * can say so instead of confirming an add that never happened.
+ */
+export function addLine(productId: string, quantity = 1): boolean {
+  const requested = clampQuantity(quantity);
   const existing = state.lines.find((line) => line.productId === productId);
 
   if (existing) {
     write(
       state.lines.map((line) =>
         line.productId === productId
-          ? { ...line, quantity: line.quantity + requested }
+          ? { ...line, quantity: clampQuantity(line.quantity + requested) }
           : line,
       ),
     );
-    return;
+    return true;
   }
 
-  if (state.lines.length >= MAX_QUOTE_LINES) return;
+  if (state.lines.length >= MAX_QUOTE_LINES) return false;
   write([...state.lines, { productId, quantity: requested }]);
+  return true;
 }
 
 export function setLineQuantity(productId: string, quantity: number): void {
   write(
     state.lines.map((line) =>
       line.productId === productId
-        ? { ...line, quantity: Math.max(1, Math.round(quantity)) }
+        ? { ...line, quantity: clampQuantity(quantity) }
         : line,
     ),
   );

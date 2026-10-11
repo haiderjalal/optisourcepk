@@ -98,3 +98,27 @@ the blueprint ground used throughout the brand.
 
 Replace these with real photography when it exists; `ProductGlyph` is the
 single swap point.
+
+### Brand-book photography on the site
+
+Three brand-book images appear where their content matches the copy beside
+them. They are imported from `brandbook/` and served through `next/image`.
+
+| Image        | Where                                  | Why it fits                                  |
+| ------------ | -------------------------------------- | -------------------------------------------- |
+| `image4.jpeg` | Home hero                              | Lens packaging and lens blanks               |
+| `image5.jpeg` | Home, "How we supply"                  | Packing station and the Receive, Pick, Pack, Dispatch board |
+| `image6.jpeg` | Home, "Frames & counter lines"         | Frames, cases and cloths                     |
+
+Four brand-book images are deliberately **not** used:
+
+- `image1.jpeg` mocks up a website layout that is not this site.
+- `image2.jpeg` shows a retail showroom. The company is trade-only and has no
+  retail counter.
+- `image3.jpeg` is a stationery set with a sample invoice, including bank
+  details and priced lines. The site publishes no prices.
+- `logo.jpeg` and `logo 1.jpeg` are artwork for the traced mark, not imagery.
+
+The brand-book renders look like composed mock-ups rather than photographs of
+the stock on hand. Confirm they may be published, and replace them with real
+product photography when it is available.

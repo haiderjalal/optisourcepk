@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
 
 /**
- * Headers every response carries. Framing is blocked everywhere, and the
- * back-office is never framed at all: a page that can be embedded in another
- * site can be made to click for its visitor.
+ * Headers every response carries.
+ *
+ * Framing is blocked on every route, not only the back-office: the public
+ * inquiry form is a page a visitor can be tricked into submitting if another
+ * site embeds it. A full Content-Security-Policy is deliberately not set here —
+ * it needs a per-request nonce, which would stop the marketing pages from being
+ * prerendered. See docs/architecture.md.
  */
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -12,11 +16,11 @@ const securityHeaders = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=()",
   },
-];
-
-const backOfficeHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  // HTTPS only for two years. No includeSubDomains: that would pin every
+  // subdomain too, and this change should not reach beyond the site itself.
+  { key: "Strict-Transport-Security", value: "max-age=63072000" },
 ];
 
 const nextConfig: NextConfig = {
@@ -29,10 +33,7 @@ const nextConfig: NextConfig = {
     inlineCss: true,
   },
   async headers() {
-    return [
-      { source: "/:path*", headers: securityHeaders },
-      { source: "/shop/:path*", headers: backOfficeHeaders },
-    ];
+    return [{ source: "/:path*", headers: securityHeaders }];
   },
 };
 

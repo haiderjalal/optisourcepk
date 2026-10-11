@@ -1,6 +1,7 @@
 import { CONTACT, SITE } from "@/lib/site";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { JsonLd } from "@/components/shared/JsonLd";
 
 /**
  * Chrome for the public marketing site.
@@ -39,11 +40,8 @@ const organisationSchema = {
 export default function SiteLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex min-h-full flex-col">
-      <script
-        type="application/ld+json"
-        suppressHydrationWarning
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organisationSchema) }}
-      />
+      <JsonLd data={organisationSchema} />
+      <div className="scroll-progress" aria-hidden />
       <a
         href="#main"
         className="bg-navy-700 sr-only rounded-full px-4 py-2 text-sm font-medium text-white focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100"

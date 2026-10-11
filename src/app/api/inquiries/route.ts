@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { logger } from "@/lib/logger";
 import { clientKey, rateLimit } from "@/lib/rateLimit";
+import { readJsonBody } from "@/lib/request-body";
 import { inquirySchema } from "@/lib/validations/inquiry";
 import { submitInquiry, type InquiryResult } from "@/services/inquiry.service";
 import type { ApiResponse } from "@/types/api";
 
 type Body = ApiResponse<Pick<InquiryResult, "reference">>;
+
+const MAX_BODY_BYTES = 32 * 1024;
 
 /**
  * POST /api/inquiries — accept a trade inquiry.
@@ -28,17 +31,22 @@ export async function POST(request: Request): Promise<NextResponse<Body>> {
     );
   }
 
-  let raw: unknown;
-  try {
-    raw = await request.json();
-  } catch {
+  // A full request (40 lines, 2000 characters of notes) is well under this.
+  const body = await readJsonBody(request, MAX_BODY_BYTES);
+
+  if (!body.ok) {
+    const message =
+      body.status === 413
+        ? "That request is too large. Please shorten your notes or split the list."
+        : "We could not read that request.";
+
     return NextResponse.json(
-      { success: false, message: "We could not read that request." },
-      { status: 400 },
+      { success: false, message },
+      { status: body.status },
     );
   }
 
-  const parsed = inquirySchema.safeParse(raw);
+  const parsed = inquirySchema.safeParse(body.value);
 
   if (!parsed.success) {
     return NextResponse.json(

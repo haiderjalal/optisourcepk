@@ -10,17 +10,16 @@ list, and submit a trade inquiry. **No payment is taken anywhere on the site.**
 
 ## Stack
 
-| Concern    | Choice                                        |
-| ---------- | --------------------------------------------- |
-| Framework  | Next.js 16 (App Router) · React 19            |
-| Language   | TypeScript, strict                            |
-| Styling    | Tailwind CSS v4 (`@theme` tokens)             |
-| 3D         | React Three Fiber + drei (`three`)            |
-| Motion     | Motion (`motion/react`) + Lenis smooth scroll |
-| Forms      | React Hook Form + Zod                         |
-| Icons      | Lucide React                                  |
-| Email      | Resend (optional — see Environment)           |
-| Deployment | Vercel                                        |
+| Concern    | Choice                                                         |
+| ---------- | -------------------------------------------------------------- |
+| Framework  | Next.js 16 (App Router) · React 19                             |
+| Language   | TypeScript, strict                                             |
+| Styling    | Tailwind CSS v4 (`@theme` tokens)                              |
+| Motion     | CSS scroll-driven animation; `motion/react` on the catalogue and inquiry only |
+| Forms      | React Hook Form + Zod                                          |
+| Icons      | Lucide React                                                   |
+| Email      | Resend (optional — see Environment)                            |
+| Deployment | Vercel                                                         |
 
 ---
 
@@ -73,7 +72,7 @@ Key directories:
 | ---------------------- | ------------------------------------------------------ |
 | `src/app`              | Routes only — no business logic                        |
 | `src/components/ui`    | Generic primitives (Button, Badge, SectionHeading)     |
-| `src/components/three` | The WebGL hero — lens geometry, iris, backdrop shader  |
+| `src/components/three` | Hero background — CSS only (the folder name is historical) |
 | `src/features/inquiry` | Request list store + inquiry form                      |
 | `src/services`         | `inquiry.service.ts` — notification + business rules   |
 | `src/lib`              | `site.ts` (copy & contact), validations, logger, utils |

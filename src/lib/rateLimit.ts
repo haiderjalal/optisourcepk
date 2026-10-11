@@ -50,9 +50,20 @@ export function rateLimit(
   };
 }
 
-/** Best-effort client identity behind Vercel's proxy. */
+/**
+ * Best-effort client identity behind Vercel's proxy.
+ *
+ * `x-forwarded-for` is a chain. Its leftmost entry is whatever the client sent,
+ * so keying on it lets a caller rotate a fake address per request and never hit
+ * the limit. The rightmost entry is appended by the proxy nearest the platform,
+ * so that is the one to trust.
+ */
 export function clientKey(request: Request): string {
-  const forwarded = request.headers.get("x-forwarded-for");
-  const real = request.headers.get("x-real-ip");
-  return forwarded?.split(",")[0]?.trim() || real || "unknown";
+  const forwarded = request.headers.get("x-forwarded-for") ?? "";
+  const hops = forwarded
+    .split(",")
+    .map((hop) => hop.trim())
+    .filter(Boolean);
+
+  return hops.at(-1) || request.headers.get("x-real-ip")?.trim() || "unknown";
 }

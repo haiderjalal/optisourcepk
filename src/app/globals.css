@@ -203,6 +203,215 @@
 }
 
 /* ============================================================
+   Motion primitives
+   Every effect here is decorative: content is fully visible without it, and
+   the components apply the load-time ones with `motion-safe:`. Scroll-driven
+   rules sit behind feature checks, so a browser that cannot drive them from
+   scroll simply shows the static page.
+   ============================================================ */
+
+@keyframes enter-rise {
+  from {
+    opacity: 0;
+    translate: 0 1rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes reveal-rise {
+  from {
+    opacity: 0;
+    translate: 0 2.5rem;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes draw-x {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes draw-y {
+  from {
+    transform: scaleY(0);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes grow-progress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -0.75rem;
+  }
+}
+
+@keyframes drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3%, -4%, 0) scale(1.08);
+  }
+}
+
+@keyframes ping-soft {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+@keyframes ray-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Load-time entrance, run on first paint. */
+@utility animate-rise {
+  animation: enter-rise 0.9s var(--ease-out-expo) both;
+}
+
+@utility spin-orbit {
+  animation: orbit 70s linear infinite;
+}
+
+@utility float-bob {
+  animation: bob 7s ease-in-out infinite;
+}
+
+@utility drift-glow {
+  animation: drift 22s ease-in-out infinite;
+}
+
+@utility pulse-ping {
+  animation: ping-soft 2.6s var(--ease-out-expo) infinite;
+}
+
+/* Lens rays draw themselves in, one after another. Dasharray is set on the
+   path via pathLength="1". */
+@media (prefers-reduced-motion: no-preference) {
+  .ray-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: ray-draw 1.8s var(--ease-out-expo) forwards;
+    animation-delay: var(--delay, 0s);
+  }
+}
+
+/* Scroll-driven reveals. Elements are visible by default; the motion only
+   applies where the browser can drive it from scroll. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    .reveal {
+      animation: reveal-rise linear backwards;
+      animation-timeline: view();
+      animation-range: entry calc(var(--i, 0) * 6%) entry
+        calc(40% + var(--i, 0) * 6%);
+    }
+
+    /* Siblings start a little later than the one before them. */
+    .stagger > :nth-child(2) {
+      --i: 1;
+    }
+    .stagger > :nth-child(3) {
+      --i: 2;
+    }
+    .stagger > :nth-child(4) {
+      --i: 3;
+    }
+    .stagger > :nth-child(5) {
+      --i: 4;
+    }
+    .stagger > :nth-child(6) {
+      --i: 5;
+    }
+    .stagger > :nth-child(7) {
+      --i: 6;
+    }
+    .stagger > :nth-child(8) {
+      --i: 7;
+    }
+
+    .draw-x {
+      transform-origin: 0 50%;
+      animation: draw-x linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 80%;
+    }
+
+    .draw-y {
+      transform-origin: 50% 0;
+      animation: draw-y linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 80%;
+    }
+  }
+
+  @supports (animation-timeline: scroll()) {
+    .scroll-progress {
+      animation: grow-progress linear both;
+      animation-timeline: scroll(root block);
+    }
+  }
+}
+
+/* The reading-progress bar is decorative: hidden until a browser can drive it,
+   so it never appears as a static full-width stripe. */
+.scroll-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 3px;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(
+    90deg,
+    var(--color-accent-600),
+    var(--color-accent-400)
+  );
+  pointer-events: none;
+}
+
+/* ============================================================
    Motion — every scroll-reveal honours this
    ============================================================ */
 

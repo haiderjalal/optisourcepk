@@ -12,12 +12,13 @@ import {
   subscribe,
 } from "./quoteStore";
 
-export { MAX_QUOTE_LINES } from "./quoteStore";
+export { MAX_QUOTE_LINES } from "@/lib/quote-limits";
 
 export interface QuoteView {
   lines: QuoteLine[];
   count: number;
-  add: (productId: string, quantity?: number) => void;
+  /** `false` when the list is full and the line could not be added. */
+  add: (productId: string, quantity?: number) => boolean;
   setQuantity: (productId: string, quantity: number) => void;
   remove: (productId: string) => void;
   clear: () => void;

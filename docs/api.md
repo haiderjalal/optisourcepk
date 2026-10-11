@@ -51,13 +51,15 @@ this handler.
 
 ### Responses
 
-| Status | Meaning                                                  |
-| ------ | -------------------------------------------------------- |
-| `200`  | Accepted. `data.reference` is the customer-quotable ref. |
-| `400`  | Body was not valid JSON.                                 |
-| `422`  | Validation failed. `errors` is keyed by form field name. |
-| `429`  | Rate limited. `Retry-After` header carries seconds.      |
-| `500`  | Unexpected failure. Nothing internal is exposed.         |
+| Status | Meaning                                                             |
+| ------ | ------------------------------------------------------------------- |
+| `200`  | Accepted. `data.reference` is the customer-quotable ref.            |
+| `400`  | Body was not valid JSON.                                            |
+| `413`  | Body larger than 32 KB, declared or measured.                       |
+| `415`  | `Content-Type` is not `application/json`.                           |
+| `422`  | Validation failed. `errors` is keyed by form field name.            |
+| `429`  | Rate limited. `Retry-After` header carries seconds.                 |
+| `500`  | Unexpected failure. Nothing internal is exposed.                    |
 
 A submission that trips the honeypot returns `200` with a normal success
 message and is never processed — the bot learns nothing from the response.

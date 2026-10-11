@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { PRODUCTS, getProductById } from "@/data/products";
 import type { Product, QuoteLine } from "@/types/catalogue";
 import { pruneLines } from "./quoteStore";
@@ -23,18 +23,27 @@ export interface QuoteItemsView extends QuoteView {
 export function useQuoteItems(): QuoteItemsView {
   const quote = useQuote();
 
-  return useMemo<QuoteItemsView>(() => {
-    const items = quote.lines.flatMap<QuoteItem>((line) => {
-      const product = getProductById(line.productId);
-      if (!product) return [];
-      return [{ ...line, product }];
-    });
+  const items = useMemo<QuoteItem[]>(
+    () =>
+      quote.lines.flatMap<QuoteItem>((line) => {
+        const product = getProductById(line.productId);
+        if (!product) return [];
+        return [{ ...line, product }];
+      }),
+    [quote.lines],
+  );
 
-    // Self-heal a saved list that references products we no longer carry.
-    if (quote.hydrated && items.length !== quote.lines.length) {
-      pruneLines(new Set(PRODUCTS.map((product) => product.id)));
-    }
+  // Self-heal a saved list that references products we no longer carry. This
+  // writes to the shared store, so it runs after render, never during it.
+  const hasStaleLines = quote.hydrated && items.length !== quote.lines.length;
 
-    return { ...quote, items, count: items.length };
-  }, [quote]);
+  useEffect(() => {
+    if (!hasStaleLines) return;
+    pruneLines(new Set(PRODUCTS.map((product) => product.id)));
+  }, [hasStaleLines]);
+
+  return useMemo<QuoteItemsView>(
+    () => ({ ...quote, items, count: items.length }),
+    [quote, items],
+  );
 }

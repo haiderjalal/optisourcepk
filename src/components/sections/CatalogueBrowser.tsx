@@ -80,7 +80,9 @@ export function CatalogueBrowser({
   return (
     <div>
       {/* Controls */}
-      <div className="border-navy-100 sticky top-16 z-30 -mx-5 border-y bg-mist-100/88 px-5 py-4 backdrop-blur-lg lg:top-[4.5rem] lg:-mx-8 lg:px-8">
+      {/* Sits under the sticky header, whose height grows by the trade strip
+          at md and up. The offsets track that height so the bar never hides. */}
+      <div className="border-navy-100 sticky top-[4.05rem] z-30 -mx-5 border-y bg-mist-100/88 px-5 py-3 backdrop-blur-lg md:top-[6.3rem] md:py-4 lg:top-[6.8rem] lg:-mx-8 lg:px-8">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="relative w-full lg:max-w-sm">
             <Search
@@ -125,7 +127,9 @@ export function CatalogueBrowser({
 
         {/* Filter chips */}
         {(showCategoryFilter || ranges) && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
+          // On a phone the chips run on one scrolling line; wrapping them would
+          // leave the sticky bar covering a third of the screen.
+          <div className="mt-4 flex [scrollbar-width:none] gap-1.5 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible [&::-webkit-scrollbar]:hidden">
             <FilterChip
               active={showCategoryFilter ? category === "all" : range === "all"}
               onClick={() =>
@@ -219,7 +223,7 @@ function FilterChip({
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors",
+        "shrink-0 rounded-full px-3.5 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
         active
           ? "bg-navy-700 text-white"
           : "text-navy-500 ring-navy-200 hover:text-navy-700 hover:ring-navy-300 bg-white ring-1 ring-inset",

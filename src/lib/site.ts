@@ -75,6 +75,7 @@ export const FOOTER_NAV: { title: string; links: NavLink[] }[] = [
       { label: "Accessories", href: "/catalogue/accessories" },
       { label: "Lab Supplies", href: "/catalogue/lab-supplies" },
       { label: "Frame Parts & Tools", href: "/catalogue/frame-parts-tools" },
+      { label: "Optometric Equipment", href: "/catalogue/optometric" },
     ],
   },
   {

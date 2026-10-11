@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "motion/react";
-import { Check, Minus, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Info, Minus, Plus } from "lucide-react";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { MAX_LINE_QUANTITY } from "@/lib/quote-limits";
 import { useQuote } from "./useQuote";
 import type { Product } from "@/types/catalogue";
+
+type Feedback =
+  | { kind: "idle" }
+  | { kind: "added"; quantity: number; id: number }
+  | { kind: "full"; id: number };
+
+const FEEDBACK_MS = 2600;
 
 /**
  * Quantity stepper + add, for the product detail page.
@@ -17,12 +24,21 @@ import type { Product } from "@/types/catalogue";
 export function QuantityAdd({ product }: { product: Product }) {
   const { add } = useQuote();
   const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>({ kind: "idle" });
+  const timer = useRef<number | undefined>(undefined);
+
+  useEffect(() => () => window.clearTimeout(timer.current), []);
 
   function handleAdd() {
-    add(product.id, quantity);
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 2600);
+    const added = add(product.id, quantity);
+    const id = Date.now();
+
+    setFeedback(added ? { kind: "added", quantity, id } : { kind: "full", id });
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(
+      () => setFeedback({ kind: "idle" }),
+      FEEDBACK_MS,
+    );
   }
 
   return (
@@ -45,19 +61,28 @@ export function QuantityAdd({ product }: { product: Product }) {
               type="number"
               value={quantity}
               min={1}
+              max={MAX_LINE_QUANTITY}
               step={1}
               onChange={(event) => {
                 const next = Number(event.target.value);
-                setQuantity(Number.isFinite(next) ? next : 1);
+                setQuantity(
+                  Number.isFinite(next) ? Math.min(MAX_LINE_QUANTITY, next) : 1,
+                );
               }}
-              onBlur={() => setQuantity((q) => Math.max(1, Math.round(q)))}
+              onBlur={() =>
+                setQuantity((q) =>
+                  Math.min(MAX_LINE_QUANTITY, Math.max(1, Math.round(q))),
+                )
+              }
               className="font-display w-16 [appearance:textfield] bg-transparent text-center text-base font-semibold tabular-nums focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </label>
 
           <button
             type="button"
-            onClick={() => setQuantity((q) => q + 1)}
+            onClick={() =>
+              setQuantity((q) => Math.min(MAX_LINE_QUANTITY, q + 1))
+            }
             className="text-navy-500 hover:text-navy-700 grid size-11 place-items-center rounded-full transition-colors"
             aria-label={`Increase quantity of ${product.name}`}
           >
@@ -79,19 +104,24 @@ export function QuantityAdd({ product }: { product: Product }) {
       </div>
 
       <div aria-live="polite" className="min-h-6">
-        <AnimatePresence>
-          {added && (
-            <motion.p
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              className="mt-3 flex items-center gap-2 text-sm font-medium text-emerald-700"
-            >
-              <Check className="size-4" aria-hidden />
-              Added {quantity} {product.unit} to your request list.
-            </motion.p>
-          )}
-        </AnimatePresence>
+        {feedback.kind === "added" && (
+          <p
+            key={feedback.id}
+            className="animate-rise mt-3 flex items-center gap-2 text-sm font-medium text-emerald-700"
+          >
+            <Check className="size-4" aria-hidden />
+            Added {feedback.quantity} {product.unit} to your request list.
+          </p>
+        )}
+        {feedback.kind === "full" && (
+          <p
+            key={feedback.id}
+            className="animate-rise text-navy-600 mt-3 flex items-center gap-2 text-sm font-medium"
+          >
+            <Info className="size-4" aria-hidden />
+            Your request list is full. Remove a line to add another.
+          </p>
+        )}
       </div>
     </div>
   );
