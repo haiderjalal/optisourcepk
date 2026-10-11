@@ -232,7 +232,7 @@ export default async function OrderPage({
                 backAt={order.rx_back_at}
                 final={issued || voided || billed}
               />
-              {!issued && !voided && !billed && order.rx_stage !== "booked" && (
+              {!issued && !voided && !billed && (
                 <RxLabOrderNumberButton
                   orderId={order.id}
                   initialValue={order.lab_order_no}

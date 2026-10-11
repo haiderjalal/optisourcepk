@@ -360,8 +360,7 @@ export default async function RxOrdersPage({
                         )}
                         {job.invoiceNo === null &&
                           !job.voided &&
-                          job.rxStage !== null &&
-                          job.rxStage !== "booked" && (
+                          job.rxStage !== null && (
                             <RxLabOrderNumberButton
                               orderId={job.orderId}
                               initialValue={job.labOrderNo}
