@@ -409,7 +409,6 @@ export async function updateRxLabOrderNo(
     .update({ lab_order_no: labOrderNo.trim() })
     .eq("id", orderId)
     .eq("is_rx", true)
-    .in("rx_stage", ["sent", "back"])
     .is("issued_at", null)
     .is("voided_at", null)
     .is("billed_in", null)
@@ -421,7 +420,7 @@ export async function updateRxLabOrderNo(
   }
   if (!data) {
     throw new Error(
-      "Send the RX order to the lab before adding its lab order number.",
+      "This RX order is already invoiced, so its lab order number can no longer change.",
     );
   }
 
