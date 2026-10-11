@@ -307,6 +307,8 @@ type OrderLineRow = {
   order_id: string;
   line_no: number;
   order_ref: string | null;
+  /** The patient this pair is for. Set on both lines of an R + L pair. */
+  patient_name: string | null;
   /** The separate inventory register this line is deducted from. */
   stock_source: "normal" | "daily";
   product_id: string;

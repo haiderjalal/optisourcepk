@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -33,6 +34,7 @@ import {
 import { ReturnItemsPanel } from "@/features/shop/returns/ReturnItemsPanel";
 import { ReturnsList } from "@/features/shop/returns/ReturnsList";
 import { summariseReturns } from "@/features/shop/returns/summary";
+import { patientHeads } from "@/features/shop/invoice/patients";
 import {
   formatAmount,
   formatDateTime,
@@ -101,6 +103,11 @@ export default async function OrderPage({
   const draftAdditionalTax =
     Math.round(((draftNet * order.additional_tax_rate) / 100) * 100) / 100;
   const draftTotal = draftNet + draftGst + draftAdditionalTax;
+  // The patient for each pair, printed above the pair's first line.
+  const patients = patientHeads(order.lines, (line) => ({
+    eye: line.eye,
+    patient: line.patient_name,
+  }));
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -323,76 +330,91 @@ export default async function OrderPage({
               {order.lines.map((line) => {
                 const back = returned.byLine[line.id];
                 const allBack = back !== undefined && back.qty >= line.quantity;
+                const patient = patients.get(line);
                 return (
-                  <tr
-                    key={line.id}
-                    className={`border-t border-mist-200 ${
-                      allBack
-                        ? "text-navy-400 [&>td:not(.product-cell)]:line-through"
-                        : ""
-                    }`}
-                  >
-                    <td className="text-navy-400 px-3 py-2.5 text-xs">
-                      {line.line_no}
-                    </td>
-                    <td className="product-cell px-3 py-2.5 font-medium">
-                      <span className={allBack ? "line-through" : ""}>
-                        {line.product_name}
-                      </span>
-                      {back && (
-                        <span className="mt-0.5 block text-xs font-medium text-amber-700">
-                          {allBack
-                            ? "Returned"
-                            : `${back.qty} of ${line.quantity} returned`}
-                        </span>
-                      )}
-                    </td>
-                    {showStockSource && (
-                      <td className="px-2 py-2.5 text-xs font-medium">
-                        <span
-                          className={
-                            line.stock_source === "daily"
-                              ? "text-violet-700"
-                              : "text-navy-500"
-                          }
+                  <Fragment key={line.id}>
+                    {patient && (
+                      <tr className="border-t border-mist-200 bg-mist-100/50">
+                        <td
+                          colSpan={showStockSource ? 12 : 11}
+                          className="px-3 py-2 text-xs"
                         >
-                          {line.stock_source === "daily" ? "Daily" : "Normal"}
-                        </span>
-                      </td>
+                          <span className="text-navy-500 mr-2">Patient</span>
+                          <span className="text-navy-800 font-medium">
+                            {patient}
+                          </span>
+                        </td>
+                      </tr>
                     )}
-                    <td className="text-navy-600 px-2 py-2.5 text-xs whitespace-nowrap">
-                      {line.order_ref ?? ""}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {formatPower(line.sph)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {formatPower(line.cyl)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {line.ax ?? ""}
-                    </td>
-                    <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
-                      {formatPower(line.add_power)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right tabular-nums">
-                      {formatAmount(line.unit_price)}
-                    </td>
-                    <td className="text-navy-500 px-2 py-2.5 text-right tabular-nums">
-                      {line.discount_pct > 0 ? `${line.discount_pct}%` : "—"}
-                    </td>
-                    <td className="px-2 py-2.5 text-right tabular-nums">
-                      {line.quantity}
-                    </td>
-                    <td className="px-3 py-2.5 text-right font-medium tabular-nums">
-                      {formatAmount(line.line_total)}
-                      {back && !allBack && (
-                        <span className="block text-xs font-normal text-amber-700">
-                          −{formatAmount(back.amount)}
+                    <tr
+                      className={`border-t border-mist-200 ${
+                        allBack
+                          ? "text-navy-400 [&>td:not(.product-cell)]:line-through"
+                          : ""
+                      }`}
+                    >
+                      <td className="text-navy-400 px-3 py-2.5 text-xs">
+                        {line.line_no}
+                      </td>
+                      <td className="product-cell px-3 py-2.5 font-medium">
+                        <span className={allBack ? "line-through" : ""}>
+                          {line.product_name}
                         </span>
+                        {back && (
+                          <span className="mt-0.5 block text-xs font-medium text-amber-700">
+                            {allBack
+                              ? "Returned"
+                              : `${back.qty} of ${line.quantity} returned`}
+                          </span>
+                        )}
+                      </td>
+                      {showStockSource && (
+                        <td className="px-2 py-2.5 text-xs font-medium">
+                          <span
+                            className={
+                              line.stock_source === "daily"
+                                ? "text-violet-700"
+                                : "text-navy-500"
+                            }
+                          >
+                            {line.stock_source === "daily" ? "Daily" : "Normal"}
+                          </span>
+                        </td>
                       )}
-                    </td>
-                  </tr>
+                      <td className="text-navy-600 px-2 py-2.5 text-xs whitespace-nowrap">
+                        {line.order_ref ?? ""}
+                      </td>
+                      <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                        {formatPower(line.sph)}
+                      </td>
+                      <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                        {formatPower(line.cyl)}
+                      </td>
+                      <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                        {line.ax ?? ""}
+                      </td>
+                      <td className="px-2 py-2.5 text-right font-mono text-xs tabular-nums">
+                        {formatPower(line.add_power)}
+                      </td>
+                      <td className="px-2 py-2.5 text-right tabular-nums">
+                        {formatAmount(line.unit_price)}
+                      </td>
+                      <td className="text-navy-500 px-2 py-2.5 text-right tabular-nums">
+                        {line.discount_pct > 0 ? `${line.discount_pct}%` : "—"}
+                      </td>
+                      <td className="px-2 py-2.5 text-right tabular-nums">
+                        {line.quantity}
+                      </td>
+                      <td className="px-3 py-2.5 text-right font-medium tabular-nums">
+                        {formatAmount(line.line_total)}
+                        {back && !allBack && (
+                          <span className="block text-xs font-normal text-amber-700">
+                            −{formatAmount(back.amount)}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>

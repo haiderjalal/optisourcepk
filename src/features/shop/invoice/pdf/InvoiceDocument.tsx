@@ -106,6 +106,19 @@ const styles = StyleSheet.create({
   right: { textAlign: "right" },
   centre: { textAlign: "center" },
 
+  // The patient for a pair, printed once above its first line.
+  patientRow: {
+    flexDirection: "row",
+    borderBottom: `0.5pt solid #d9e0ea`,
+    borderLeft: `1pt solid ${RULE}`,
+    borderRight: `1pt solid ${RULE}`,
+    backgroundColor: "#f7f9fc",
+    paddingVertical: 2.5,
+    paddingHorizontal: 3,
+  },
+  patientLabel: { color: MUTED, marginRight: 4 },
+  patientName: { fontFamily: "Helvetica-Bold" },
+
   summaryRow: { flexDirection: "row", marginTop: 6 },
   qtyBlock: { flex: 1, paddingTop: 2 },
   qtyLine: { flexDirection: "row", marginBottom: 2 },
@@ -229,7 +242,7 @@ function Party({
 }
 
 function Row({ line }: { line: InvoicePdfLine }) {
-  return (
+  const row = (
     <View style={styles.row} wrap={false}>
       <Text style={[styles.cell, { width: COLUMNS.no }]}>{line.no}</Text>
       <Text style={[styles.cell, { width: COLUMNS.ref }]}>{line.orderRef}</Text>
@@ -260,6 +273,18 @@ function Row({ line }: { line: InvoicePdfLine }) {
       <Text style={[styles.cell, { width: COLUMNS.total }, styles.right]}>
         {line.total}
       </Text>
+    </View>
+  );
+  if (!line.patient) return row;
+
+  // The name and the pair's first line stay on one page together.
+  return (
+    <View wrap={false}>
+      <View style={styles.patientRow}>
+        <Text style={styles.patientLabel}>Patient</Text>
+        <Text style={styles.patientName}>{line.patient}</Text>
+      </View>
+      {row}
     </View>
   );
 }

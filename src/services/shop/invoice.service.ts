@@ -250,6 +250,9 @@ async function replaceLines(
         optional(line.orderRef) ??
         optional(payload.externalOrderRef) ??
         (payload.isRx ? optional(payload.patientName) : null),
+      // Only written when given, so a stock order with no patient still saves
+      // on a database that has not had this column yet.
+      ...(line.patientName ? { patient_name: line.patientName } : {}),
       stock_source: rx ? "normal" : line.stockSource,
       product_id: product.id,
       product_name: product.name,

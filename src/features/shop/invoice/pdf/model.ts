@@ -5,6 +5,7 @@ import {
   summariseReturns,
   type ReturnSummary,
 } from "@/features/shop/returns/summary";
+import { patientHeads } from "@/features/shop/invoice/patients";
 
 /**
  * What the invoice document draws.
@@ -22,6 +23,8 @@ export interface InvoicePdfParty {
 export interface InvoicePdfLine {
   no: number;
   orderRef: string;
+  /** Set on the first line of a pair that has a patient name; printed above it. */
+  patient?: string;
   product: string;
   sph: string;
   cyl: string;
@@ -138,6 +141,12 @@ export function buildInvoicePdfModel(
     : billLines;
 
   const net = order.net_amount;
+  // Pairs are read from the lines still on the document, so a returned eye
+  // leaves its partner standing alone with its own name.
+  const patients = patientHeads(kept, ({ line }) => ({
+    eye: line.eye,
+    patient: line.patient_name,
+  }));
   const showStockSource =
     !order.is_rx &&
     !order.combines_rx &&
@@ -177,23 +186,27 @@ export function buildInvoicePdfModel(
     },
     deliverTo: { name: deliverName, lines: deliverLines },
     invoiceTo: { name: billName, lines: billLines },
-    lines: kept.map(({ line, qty, total }, index) => ({
-      no: index + 1,
-      orderRef: line.order_ref ?? "",
-      product: showStockSource
-        ? line.stock_source === "daily"
-          ? `${line.product_name} [Daily]`
-          : `${line.product_name} [Normal]`
-        : line.product_name,
-      sph: power(line.sph),
-      cyl: power(line.cyl),
-      ax: line.ax === null ? "" : `+${line.ax}`,
-      add: power(line.add_power),
-      price: amount(line.unit_price),
-      discount: amount((line.unit_price * qty * line.discount_pct) / 100),
-      qty: String(qty),
-      total: amount(total),
-    })),
+    lines: kept.map((item, index) => {
+      const { line, qty, total } = item;
+      return {
+        no: index + 1,
+        orderRef: line.order_ref ?? "",
+        patient: patients.get(item) || undefined,
+        product: showStockSource
+          ? line.stock_source === "daily"
+            ? `${line.product_name} [Daily]`
+            : `${line.product_name} [Normal]`
+          : line.product_name,
+        sph: power(line.sph),
+        cyl: power(line.cyl),
+        ax: line.ax === null ? "" : `+${line.ax}`,
+        add: power(line.add_power),
+        price: amount(line.unit_price),
+        discount: amount((line.unit_price * qty * line.discount_pct) / 100),
+        qty: String(qty),
+        total: amount(total),
+      };
+    }),
     totals: [
       ...sourceTotals,
       { label: "Invoice Amount", value: amount(order.invoice_amount) },

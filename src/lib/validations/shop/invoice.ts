@@ -58,6 +58,13 @@ export const orderLineSchema = z
       .optional()
       .transform((value) => value || null),
     orderRef: z.string().trim().max(40).optional().or(z.literal("")),
+    // The patient this pair is for, printed in front of it. Blank means none.
+    patientName: z
+      .string()
+      .trim()
+      .max(120, "Keep a patient name under 120 characters.")
+      .optional()
+      .transform((value) => value || null),
     /** Which separate inventory register supplies this line. */
     stockSource: z.enum(["normal", "daily"]).default("normal"),
     eye: z.enum(["", "R", "L"]).optional(),

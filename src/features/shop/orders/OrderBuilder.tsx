@@ -1,12 +1,13 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { Fragment, useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
 import { AlertCircle, Copy, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { ShopPicker } from "@/features/shop/customers/ShopPicker";
+import { cleanPatient, patientGroups } from "@/features/shop/invoice/patients";
 import { sphPlaceholder } from "@/lib/power";
 import { formatAmount } from "@/lib/format";
 import type { Customer, Order, OrderLine, Product } from "@/types/database";
@@ -17,15 +18,21 @@ import { saveOrder, type OrderFormState } from "./actions";
  *
  * Each eye is its own line, matching the printed invoice — the R/L buttons add
  * a matched pair in one click, because that is how a prescription arrives.
+ * Each pair has a patient name in front of it, printed above it on the invoice.
  * Totals are computed here for immediate feedback, but the figures that end up
  * on the invoice are recomputed by the database from the stored lines; nothing
  * a browser sends is trusted as money.
  */
 
+/** One cell per heading in the lines table, the actions column included. */
+const TABLE_COLUMNS = 14;
+
 interface LineDraft {
   key: string;
   productId: string;
   orderRef: string;
+  /** The patient for the pair this line is in. Kept on both lines of a pair. */
+  patientName: string;
   stockSource: "normal" | "daily";
   eye: "" | "R" | "L";
   sph: string;
@@ -50,6 +57,7 @@ function emptyLine(
     key: nextKey(),
     productId: "",
     orderRef: "",
+    patientName: "",
     stockSource,
     eye: "",
     sph: "",
@@ -69,6 +77,7 @@ function fromExisting(line: OrderLine): LineDraft {
     key: nextKey(),
     productId: line.product_id,
     orderRef: line.order_ref ?? "",
+    patientName: line.patient_name ?? "",
     stockSource: line.stock_source,
     eye: line.eye ?? "",
     sph: text(line.sph),
@@ -160,6 +169,15 @@ export function OrderBuilder({
     );
   }
 
+  /** The patient for a pair: set on every line of it at once. */
+  function setPatient(keys: string[], patientName: string) {
+    setLines((rows) =>
+      rows.map((row) =>
+        keys.includes(row.key) ? { ...row, patientName } : row,
+      ),
+    );
+  }
+
   /** Picking a product fills in its rate and the customer's standing discount. */
   function pickProduct(key: string, productId: string) {
     const product = productById.get(productId);
@@ -223,10 +241,31 @@ export function OrderBuilder({
     return product?.tracks_power ? sum + (Number(line.quantity) || 0) : sum;
   }, 0);
 
+  // A pair is one patient: its first line's name goes on both of its lines.
+  const groups = patientGroups(lines, (line) => ({
+    eye: line.eye || null,
+    patient: line.patientName,
+  }));
+  const pairPatient = new Map<string, string>();
+  for (const group of groups) {
+    const name = group[0].eye ? cleanPatient(group[0].patientName) : "";
+    for (const line of group) pairPatient.set(line.key, name);
+  }
+  // The keys of each pair, by its first line: where a pair's header sits.
+  const pairKeys = new Map(
+    groups
+      .filter((group) => group[0].eye)
+      .map((group): [string, string[]] => [
+        group[0].key,
+        group.map((line) => line.key),
+      ]),
+  );
+
   // What the server actually validates. Blank strings become nulls there.
   const payload = lines.map((line) => ({
     productId: line.productId,
     orderRef: line.orderRef,
+    patientName: pairPatient.get(line.key) ?? "",
     stockSource: line.stockSource,
     eye: line.eye,
     sph: line.sph,
@@ -373,231 +412,253 @@ export function OrderBuilder({
               {lines.map((line, index) => {
                 const product = productById.get(line.productId);
                 const power = product?.tracks_power ?? false;
+                const pair = pairKeys.get(line.key);
 
                 return (
-                  <tr
-                    key={line.key}
-                    className="border-t border-mist-200 align-top"
-                  >
-                    <td className="text-navy-400 px-3 py-2 text-xs">
-                      {index + 1}
-                    </td>
+                  <Fragment key={line.key}>
+                    {pair && (
+                      <tr className="border-t border-mist-200 bg-mist-100/50">
+                        <td colSpan={TABLE_COLUMNS} className="px-3 py-2">
+                          <label className="flex max-w-md items-center gap-3">
+                            <span className="text-navy-500 text-xs font-medium">
+                              Patient
+                            </span>
+                            <input
+                              aria-label={`Patient for the pair at line ${index + 1}`}
+                              className={cell}
+                              type="text"
+                              maxLength={120}
+                              placeholder="Patient name"
+                              value={line.patientName}
+                              onChange={(e) => setPatient(pair, e.target.value)}
+                            />
+                          </label>
+                        </td>
+                      </tr>
+                    )}
+                    <tr className="border-t border-mist-200 align-top">
+                      <td className="text-navy-400 px-3 py-2 text-xs">
+                        {index + 1}
+                      </td>
 
-                    <td className="px-3 py-2">
-                      <select
-                        aria-label={`Product for line ${index + 1}`}
-                        className={cell}
-                        value={line.productId}
-                        onChange={(e) => pickProduct(line.key, e.target.value)}
-                      >
-                        <option value="">Select…</option>
-                        {products.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-
-                    <td className="px-2 py-2">
-                      <select
-                        aria-label={`Stock source for line ${index + 1}`}
-                        className={cell}
-                        value={line.stockSource}
-                        onChange={(e) =>
-                          pickStockSource(
-                            line.key,
-                            e.target.value as LineDraft["stockSource"],
-                          )
-                        }
-                      >
-                        <option value="normal">Normal</option>
-                        <option
-                          value="daily"
-                          disabled={product?.category === "services"}
+                      <td className="px-3 py-2">
+                        <select
+                          aria-label={`Product for line ${index + 1}`}
+                          className={cell}
+                          value={line.productId}
+                          onChange={(e) =>
+                            pickProduct(line.key, e.target.value)
+                          }
                         >
-                          Daily
-                        </option>
-                      </select>
-                    </td>
+                          <option value="">Select…</option>
+                          {products.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
 
-                    <td className="px-2 py-2">
-                      <select
-                        aria-label={`Eye for line ${index + 1}`}
-                        className={cell}
-                        value={line.eye}
-                        onChange={(e) =>
-                          update(line.key, {
-                            eye: e.target.value as LineDraft["eye"],
-                          })
-                        }
-                      >
-                        <option value="">—</option>
-                        <option value="R">R</option>
-                        <option value="L">L</option>
-                      </select>
-                    </td>
-
-                    {/* Powers stay editable on every line: a coating billed
-                        against a prescription may still carry them. */}
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`SPH for line ${index + 1}`}
-                        className={cell}
-                        type="number"
-                        step="0.25"
-                        inputMode="decimal"
-                        placeholder={
-                          power ? sphPlaceholder(product?.lens_sign) : ""
-                        }
-                        value={line.sph}
-                        onChange={(e) =>
-                          update(line.key, { sph: e.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`CYL for line ${index + 1}`}
-                        className={cell}
-                        type="number"
-                        step="0.25"
-                        inputMode="decimal"
-                        value={line.cyl}
-                        onChange={(e) =>
-                          update(line.key, { cyl: e.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`AX for line ${index + 1}`}
-                        className={cell}
-                        type="number"
-                        step="1"
-                        min={0}
-                        max={180}
-                        inputMode="numeric"
-                        value={line.ax}
-                        onChange={(e) =>
-                          update(line.key, { ax: e.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`ADD for line ${index + 1}`}
-                        className={cell}
-                        type="number"
-                        step="0.25"
-                        inputMode="decimal"
-                        value={line.addPower}
-                        onChange={(e) =>
-                          update(line.key, { addPower: e.target.value })
-                        }
-                      />
-                    </td>
-
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`Purchase price for line ${index + 1}`}
-                        className={`${cell} disabled:text-navy-300 disabled:bg-mist-100`}
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        inputMode="decimal"
-                        value={line.unitCost}
-                        disabled={line.stockSource !== "daily"}
-                        placeholder={
-                          line.stockSource === "daily" ? "Cost" : "—"
-                        }
-                        onChange={(e) =>
-                          update(line.key, { unitCost: e.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`Rate for line ${index + 1}`}
-                        className={cell}
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        inputMode="decimal"
-                        value={line.unitPrice}
-                        onChange={(e) =>
-                          update(line.key, { unitPrice: e.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`Discount for line ${index + 1}`}
-                        className={cell}
-                        type="number"
-                        step="0.01"
-                        min={0}
-                        max={100}
-                        inputMode="decimal"
-                        value={line.discountPct}
-                        onChange={(e) =>
-                          update(line.key, { discountPct: e.target.value })
-                        }
-                      />
-                    </td>
-                    <td className="px-2 py-2">
-                      <input
-                        aria-label={`Quantity for line ${index + 1}`}
-                        className={cell}
-                        type="number"
-                        step="1"
-                        min={1}
-                        inputMode="numeric"
-                        value={line.quantity}
-                        onChange={(e) =>
-                          update(line.key, { quantity: e.target.value })
-                        }
-                      />
-                    </td>
-
-                    <td className="px-3 py-2 text-right font-medium tabular-nums">
-                      {formatAmount(lineTotal(line))}
-                    </td>
-
-                    <td className="px-2 py-2">
-                      <div className="flex gap-1">
-                        <button
-                          type="button"
-                          onClick={() => duplicate(line.key)}
-                          className="text-navy-400 hover:text-navy-600 rounded p-1.5 transition-colors hover:bg-mist-100"
-                          title="Duplicate line"
-                        >
-                          <Copy className="size-4" aria-hidden />
-                          <span className="sr-only">
-                            Duplicate line {index + 1}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setLines((rows) =>
-                              rows.length === 1
-                                ? rows
-                                : rows.filter((r) => r.key !== line.key),
+                      <td className="px-2 py-2">
+                        <select
+                          aria-label={`Stock source for line ${index + 1}`}
+                          className={cell}
+                          value={line.stockSource}
+                          onChange={(e) =>
+                            pickStockSource(
+                              line.key,
+                              e.target.value as LineDraft["stockSource"],
                             )
                           }
-                          disabled={lines.length === 1}
-                          className="text-navy-400 rounded p-1.5 transition-colors hover:bg-amber-50 hover:text-amber-700 disabled:opacity-30"
-                          title="Remove line"
                         >
-                          <Trash2 className="size-4" aria-hidden />
-                          <span className="sr-only">
-                            Remove line {index + 1}
-                          </span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                          <option value="normal">Normal</option>
+                          <option
+                            value="daily"
+                            disabled={product?.category === "services"}
+                          >
+                            Daily
+                          </option>
+                        </select>
+                      </td>
+
+                      <td className="px-2 py-2">
+                        <select
+                          aria-label={`Eye for line ${index + 1}`}
+                          className={cell}
+                          value={line.eye}
+                          onChange={(e) =>
+                            update(line.key, {
+                              eye: e.target.value as LineDraft["eye"],
+                            })
+                          }
+                        >
+                          <option value="">—</option>
+                          <option value="R">R</option>
+                          <option value="L">L</option>
+                        </select>
+                      </td>
+
+                      {/* Powers stay editable on every line: a coating billed
+                        against a prescription may still carry them. */}
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`SPH for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="0.25"
+                          inputMode="decimal"
+                          placeholder={
+                            power ? sphPlaceholder(product?.lens_sign) : ""
+                          }
+                          value={line.sph}
+                          onChange={(e) =>
+                            update(line.key, { sph: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`CYL for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="0.25"
+                          inputMode="decimal"
+                          value={line.cyl}
+                          onChange={(e) =>
+                            update(line.key, { cyl: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`AX for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="1"
+                          min={0}
+                          max={180}
+                          inputMode="numeric"
+                          value={line.ax}
+                          onChange={(e) =>
+                            update(line.key, { ax: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`ADD for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="0.25"
+                          inputMode="decimal"
+                          value={line.addPower}
+                          onChange={(e) =>
+                            update(line.key, { addPower: e.target.value })
+                          }
+                        />
+                      </td>
+
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`Purchase price for line ${index + 1}`}
+                          className={`${cell} disabled:text-navy-300 disabled:bg-mist-100`}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          inputMode="decimal"
+                          value={line.unitCost}
+                          disabled={line.stockSource !== "daily"}
+                          placeholder={
+                            line.stockSource === "daily" ? "Cost" : "—"
+                          }
+                          onChange={(e) =>
+                            update(line.key, { unitCost: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`Rate for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          inputMode="decimal"
+                          value={line.unitPrice}
+                          onChange={(e) =>
+                            update(line.key, { unitPrice: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`Discount for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="0.01"
+                          min={0}
+                          max={100}
+                          inputMode="decimal"
+                          value={line.discountPct}
+                          onChange={(e) =>
+                            update(line.key, { discountPct: e.target.value })
+                          }
+                        />
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`Quantity for line ${index + 1}`}
+                          className={cell}
+                          type="number"
+                          step="1"
+                          min={1}
+                          inputMode="numeric"
+                          value={line.quantity}
+                          onChange={(e) =>
+                            update(line.key, { quantity: e.target.value })
+                          }
+                        />
+                      </td>
+
+                      <td className="px-3 py-2 text-right font-medium tabular-nums">
+                        {formatAmount(lineTotal(line))}
+                      </td>
+
+                      <td className="px-2 py-2">
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => duplicate(line.key)}
+                            className="text-navy-400 hover:text-navy-600 rounded p-1.5 transition-colors hover:bg-mist-100"
+                            title="Duplicate line"
+                          >
+                            <Copy className="size-4" aria-hidden />
+                            <span className="sr-only">
+                              Duplicate line {index + 1}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setLines((rows) =>
+                                rows.length === 1
+                                  ? rows
+                                  : rows.filter((r) => r.key !== line.key),
+                              )
+                            }
+                            disabled={lines.length === 1}
+                            className="text-navy-400 rounded p-1.5 transition-colors hover:bg-amber-50 hover:text-amber-700 disabled:opacity-30"
+                            title="Remove line"
+                          >
+                            <Trash2 className="size-4" aria-hidden />
+                            <span className="sr-only">
+                              Remove line {index + 1}
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </Fragment>
                 );
               })}
             </tbody>
