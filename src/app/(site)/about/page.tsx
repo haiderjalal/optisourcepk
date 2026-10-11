@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { LogoMark } from "@/components/shared/Logo";
 import { Reveal, Stagger, StaggerItem } from "@/components/shared/Reveal";
+import { TiltCard } from "@/components/shared/TiltCard";
 import { ButtonLink } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { CONTACT, SITE } from "@/lib/site";
@@ -120,15 +121,17 @@ export default function AboutPage() {
           <Stagger as="ul" className="mt-14 grid gap-5 sm:grid-cols-2">
             {VALUES.map((value) => (
               <StaggerItem as="li" key={value.word}>
-                <div className="rounded-card border-navy-100 flex h-full flex-col border bg-mist-50 p-7">
-                  <h3 className="font-display text-navy-700 text-2xl font-bold">
-                    {value.word}
-                  </h3>
-                  <span className="brand-rule mt-4" />
-                  <p className="text-navy-500 mt-5 text-sm leading-relaxed">
-                    {value.body}
-                  </p>
-                </div>
+                <TiltCard className="h-full">
+                  <div className="rounded-card border-navy-100 flex h-full flex-col border bg-mist-50 p-7">
+                    <h3 className="font-display text-navy-700 text-2xl font-bold">
+                      {value.word}
+                    </h3>
+                    <span className="brand-rule mt-4" />
+                    <p className="text-navy-500 mt-5 text-sm leading-relaxed">
+                      {value.body}
+                    </p>
+                  </div>
+                </TiltCard>
               </StaggerItem>
             ))}
           </Stagger>

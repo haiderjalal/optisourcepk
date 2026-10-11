@@ -1,6 +1,7 @@
 import { Boxes, FileCheck2, Handshake, Timer } from "lucide-react";
 import { CountUp } from "@/components/shared/CountUp";
 import { Reveal, Stagger, StaggerItem } from "@/components/shared/Reveal";
+import { TiltCard } from "@/components/shared/TiltCard";
 import { SectionHeading } from "@/components/ui/section-heading";
 
 const STATS: {
@@ -65,15 +66,17 @@ export function WhySection() {
         <Stagger as="ul" className="grid gap-4 sm:grid-cols-2 lg:mt-4">
           {REASONS.map(({ icon: Icon, title, body }) => (
             <StaggerItem as="li" key={title}>
-              <div className="rounded-card border-navy-100 shadow-lift flex h-full flex-col border bg-white p-6">
-                <span className="bg-accent-600/10 ring-accent-600/15 grid size-11 place-items-center rounded-xl ring-1 ring-inset">
-                  <Icon className="text-accent-700 size-5" aria-hidden />
-                </span>
-                <h3 className="mt-5 text-base font-semibold">{title}</h3>
-                <p className="text-navy-500 mt-2 text-sm leading-relaxed">
-                  {body}
-                </p>
-              </div>
+              <TiltCard className="h-full">
+                <div className="rounded-card border-navy-100 shadow-lift flex h-full flex-col border bg-white p-6 [transform-style:preserve-3d]">
+                  <span className="tilt-depth bg-accent-600/10 ring-accent-600/15 grid size-11 place-items-center rounded-xl ring-1 ring-inset">
+                    <Icon className="text-accent-700 size-5" aria-hidden />
+                  </span>
+                  <h3 className="mt-5 text-base font-semibold">{title}</h3>
+                  <p className="text-navy-500 mt-2 text-sm leading-relaxed">
+                    {body}
+                  </p>
+                </div>
+              </TiltCard>
             </StaggerItem>
           ))}
         </Stagger>

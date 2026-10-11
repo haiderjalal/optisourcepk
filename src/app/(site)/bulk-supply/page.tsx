@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal, Stagger, StaggerItem } from "@/components/shared/Reveal";
+import { TiltCard } from "@/components/shared/TiltCard";
 import { ButtonLink } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 
@@ -126,17 +127,19 @@ export default function BulkSupplyPage() {
         <Stagger as="ul" className="mt-12 grid gap-5 sm:grid-cols-2">
           {SEGMENTS.map(({ icon: Icon, title, body }) => (
             <StaggerItem as="li" key={title}>
-              <div className="rounded-card border-navy-100 flex h-full gap-5 border bg-white p-6">
-                <span className="bg-navy-50 ring-navy-100 grid size-11 shrink-0 place-items-center rounded-xl ring-1 ring-inset">
-                  <Icon className="text-navy-600 size-5" aria-hidden />
-                </span>
-                <div>
-                  <h3 className="text-base font-semibold">{title}</h3>
-                  <p className="text-navy-500 mt-2 text-sm leading-relaxed">
-                    {body}
-                  </p>
+              <TiltCard className="h-full">
+                <div className="rounded-card border-navy-100 flex h-full gap-5 border bg-white p-6 [transform-style:preserve-3d]">
+                  <span className="tilt-depth bg-navy-50 ring-navy-100 grid size-11 shrink-0 place-items-center rounded-xl ring-1 ring-inset">
+                    <Icon className="text-navy-600 size-5" aria-hidden />
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold">{title}</h3>
+                    <p className="text-navy-500 mt-2 text-sm leading-relaxed">
+                      {body}
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </TiltCard>
             </StaggerItem>
           ))}
         </Stagger>
@@ -155,73 +158,75 @@ export default function BulkSupplyPage() {
           <Stagger as="ul" className="mt-14 grid gap-5 lg:grid-cols-3">
             {TIERS.map((tier) => (
               <StaggerItem as="li" key={tier.name}>
-                <div
-                  className={
-                    tier.highlighted
-                      ? "rounded-card bg-navy-700 relative flex h-full flex-col overflow-hidden p-7 text-white"
-                      : "rounded-card border-navy-100 flex h-full flex-col border bg-mist-50 p-7"
-                  }
-                >
-                  {tier.highlighted && (
-                    <>
-                      <div
-                        className="grid-blueprint absolute inset-0 opacity-20"
-                        aria-hidden
-                      />
-                      <span className="bg-accent-600 relative mb-4 self-start rounded-full px-3 py-1 text-[0.625rem] font-bold tracking-[0.12em] uppercase">
-                        Most common
-                      </span>
-                    </>
-                  )}
+                <TiltCard className="h-full">
+                  <div
+                    className={
+                      tier.highlighted
+                        ? "rounded-card bg-navy-700 relative flex h-full flex-col overflow-hidden p-7 text-white"
+                        : "rounded-card border-navy-100 flex h-full flex-col border bg-mist-50 p-7"
+                    }
+                  >
+                    {tier.highlighted && (
+                      <>
+                        <div
+                          className="grid-blueprint absolute inset-0 opacity-20"
+                          aria-hidden
+                        />
+                        <span className="bg-accent-600 relative mb-4 self-start rounded-full px-3 py-1 text-[0.625rem] font-bold tracking-[0.12em] uppercase">
+                          Most common
+                        </span>
+                      </>
+                    )}
 
-                  <div className="relative">
-                    <h3
-                      className={
-                        tier.highlighted
-                          ? "font-display text-xl font-bold text-white"
-                          : "font-display text-xl font-bold"
-                      }
-                    >
-                      {tier.name}
-                    </h3>
-                    <p
-                      className={
-                        tier.highlighted
-                          ? "text-silver-400 mt-1 text-xs"
-                          : "text-navy-400 mt-1 text-xs"
-                      }
-                    >
-                      {tier.qualifier}
-                    </p>
-                    <p
-                      className={
-                        tier.highlighted
-                          ? "font-display text-accent-400 mt-5 text-lg font-semibold"
-                          : "font-display text-accent-700 mt-5 text-lg font-semibold"
-                      }
-                    >
-                      {tier.price}
-                    </p>
+                    <div className="relative">
+                      <h3
+                        className={
+                          tier.highlighted
+                            ? "font-display text-xl font-bold text-white"
+                            : "font-display text-xl font-bold"
+                        }
+                      >
+                        {tier.name}
+                      </h3>
+                      <p
+                        className={
+                          tier.highlighted
+                            ? "text-silver-400 mt-1 text-xs"
+                            : "text-navy-400 mt-1 text-xs"
+                        }
+                      >
+                        {tier.qualifier}
+                      </p>
+                      <p
+                        className={
+                          tier.highlighted
+                            ? "font-display text-accent-400 mt-5 text-lg font-semibold"
+                            : "font-display text-accent-700 mt-5 text-lg font-semibold"
+                        }
+                      >
+                        {tier.price}
+                      </p>
 
-                    <ul
-                      className={
-                        tier.highlighted
-                          ? "text-silver-300 mt-6 space-y-3 border-t border-white/10 pt-6 text-sm"
-                          : "border-navy-100 text-navy-600 mt-6 space-y-3 border-t pt-6 text-sm"
-                      }
-                    >
-                      {tier.features.map((feature) => (
-                        <li key={feature} className="flex gap-2.5">
-                          <span
-                            className="bg-accent-600 mt-2 size-1.5 shrink-0 rounded-full"
-                            aria-hidden
-                          />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
+                      <ul
+                        className={
+                          tier.highlighted
+                            ? "text-silver-300 mt-6 space-y-3 border-t border-white/10 pt-6 text-sm"
+                            : "border-navy-100 text-navy-600 mt-6 space-y-3 border-t pt-6 text-sm"
+                        }
+                      >
+                        {tier.features.map((feature) => (
+                          <li key={feature} className="flex gap-2.5">
+                            <span
+                              className="bg-accent-600 mt-2 size-1.5 shrink-0 rounded-full"
+                              aria-hidden
+                            />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                </div>
+                </TiltCard>
               </StaggerItem>
             ))}
           </Stagger>
@@ -245,17 +250,19 @@ export default function BulkSupplyPage() {
           <Stagger className="space-y-5">
             {LOGISTICS.map(({ icon: Icon, title, body }) => (
               <StaggerItem key={title}>
-                <div className="rounded-card border-navy-100 flex gap-5 border bg-white p-6">
-                  <span className="bg-accent-600/10 grid size-11 shrink-0 place-items-center rounded-xl">
-                    <Icon className="text-accent-700 size-5" aria-hidden />
-                  </span>
-                  <div>
-                    <h3 className="text-base font-semibold">{title}</h3>
-                    <p className="text-navy-500 mt-2 text-sm leading-relaxed">
-                      {body}
-                    </p>
+                <TiltCard className="h-full">
+                  <div className="rounded-card border-navy-100 flex h-full gap-5 border bg-white p-6 [transform-style:preserve-3d]">
+                    <span className="tilt-depth bg-accent-600/10 grid size-11 shrink-0 place-items-center rounded-xl">
+                      <Icon className="text-accent-700 size-5" aria-hidden />
+                    </span>
+                    <div>
+                      <h3 className="text-base font-semibold">{title}</h3>
+                      <p className="text-navy-500 mt-2 text-sm leading-relaxed">
+                        {body}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </TiltCard>
               </StaggerItem>
             ))}
           </Stagger>

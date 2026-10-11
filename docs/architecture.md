@@ -15,6 +15,7 @@ Server Components (app/)            ← default; almost all of the site
    │
    ├── Client islands ("use client")
    │     · MobileNav (sheet state, closes on route change)
+   │     · TiltCard (3D pointer tilt on the site's cards)
    │     · CatalogueBrowser (filter/sort)
    │     · CountUp (counts figures into view)
    │     · Request list + inquiry form
@@ -76,10 +77,16 @@ are in `src/app/globals.css`.
   with `motion-safe:animate-rise` and a short stagger.
 - **Lens graphic.** `LensFocus` is an inline SVG. Its rays draw in, its focal
   point pulses and its dashed ring turns, all behind `motion-safe:`.
-- **Counters.** `CountUp` is the one client motion component on the home page.
-  It renders the final figure on the server, so crawlers and no-JS readers get
-  the real number. It counts up once it scrolls into view, and it respects
-  reduced motion through `usePrefersReducedMotion`.
+- **Counters.** `CountUp` is a small client component. It renders the final
+  figure on the server, so crawlers and no-JS readers get the real number. It
+  counts up once it scrolls into view, and it respects reduced motion through
+  `usePrefersReducedMotion`.
+- **3D cards.** `TiltCard` is a client component that wraps the site's cards.
+  The pointer position goes straight into CSS custom properties, so there is no
+  re-rendering. The card turns up to 10° toward a mouse, a blue glare follows
+  the pointer, and icon badges lift off the card plane. Touch and pen get the
+  flat card. Every effect is gated on fine pointers and on
+  `prefers-reduced-motion`, and the motion CSS lives in `.tilt-card`.
 - **Framer `motion`** is used only on `/catalogue` (filter layout) and
   `/inquiry` (form feedback). Product pages do not load it.
 

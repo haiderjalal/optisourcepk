@@ -412,6 +412,68 @@
 }
 
 /* ============================================================
+   3D cards (TiltCard)
+   The wrapper turns toward the pointer; its glare and lift follow the pointer
+   on fine-pointer devices only. Children marked `.tilt-depth` lift off the
+   card plane, which needs every element between them and the wrapper to keep
+   `transform-style: preserve-3d` (so no overflow-hidden on those).
+   ============================================================ */
+
+.tilt-card {
+  --tilt-x: 0deg;
+  --tilt-y: 0deg;
+  --lift: 0px;
+  position: relative;
+  transform-style: preserve-3d;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tilt-card {
+    transform: perspective(1100px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y))
+      translateZ(var(--lift));
+    transition: transform 0.35s var(--ease-out-expo);
+  }
+
+  .tilt-depth {
+    transform: translateZ(var(--depth, 30px));
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tilt-card:hover {
+    --lift: 10px;
+  }
+}
+
+.tilt-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  /* A blue sheen rather than white, so it shows on the white cards as well as
+     the navy ones. */
+  background: radial-gradient(
+    circle at var(--glare-x, 50%) var(--glare-y, 50%),
+    rgb(96 165 250 / 0.28),
+    transparent 60%
+  );
+  transition: opacity 0.4s var(--ease-out-expo);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tilt-card:hover .tilt-glare {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-glare {
+    display: none;
+  }
+}
+
+/* ============================================================
    Motion — every scroll-reveal honours this
    ============================================================ */
 
