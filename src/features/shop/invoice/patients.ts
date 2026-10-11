@@ -60,3 +60,29 @@ export function patientHeads<T>(
   }
   return heads;
 }
+
+/** One pair (or a lone lens line): its lines and the patient they share. */
+export interface PatientBlock<T> {
+  members: T[];
+  patient: string;
+}
+
+/**
+ * Each lens group with its lines and patient, keyed by the group's first line.
+ * Unlike `patientHeads`, it also hands back the member lines, so a screen can
+ * save a name against exactly the lines the pair is made of.
+ */
+export function patientBlocks<T>(
+  lines: readonly T[],
+  read: (line: T) => PairRead,
+): Map<T, PatientBlock<T>> {
+  const blocks = new Map<T, PatientBlock<T>>();
+  for (const group of patientGroups(lines, read)) {
+    const [first] = group;
+    const { eye, patient } = read(first);
+    if (eye === "R" || eye === "L") {
+      blocks.set(first, { members: group, patient: cleanPatient(patient) });
+    }
+  }
+  return blocks;
+}
