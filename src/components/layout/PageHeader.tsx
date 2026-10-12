@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
-import { SITE } from "@/lib/site";
+import { JsonLd } from "@/components/shared/JsonLd";
+import { breadcrumbSchema, type BreadcrumbItem } from "@/lib/json-ld";
 import { cn } from "@/lib/utils";
 
-export interface Crumb {
-  label: string;
-  href?: string;
-}
+export type Crumb = BreadcrumbItem;
 
 /**
  * Navy masthead used at the top of every inner page. Emits BreadcrumbList
@@ -29,17 +27,6 @@ export function PageHeader({
 }) {
   const trail: Crumb[] = [{ label: "Home", href: "/" }, ...crumbs];
 
-  const breadcrumbSchema = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: trail.map((crumb, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: crumb.label,
-      ...(crumb.href ? { item: `${SITE.url}${crumb.href}` } : {}),
-    })),
-  };
-
   return (
     <section
       className={cn(
@@ -47,10 +34,7 @@ export function PageHeader({
         className,
       )}
     >
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbSchema) }}
-      />
+      <JsonLd data={breadcrumbSchema(trail)} />
       <div className="grid-blueprint absolute inset-0 opacity-25" aria-hidden />
       <div
         className="bg-accent-600/14 absolute -top-40 right-0 h-96 w-96 rounded-full blur-[120px]"
@@ -86,13 +70,23 @@ export function PageHeader({
         </nav>
 
         <div className="mt-8 max-w-3xl">
-          {eyebrow && <p className="eyebrow text-accent-400">{eyebrow}</p>}
+          {eyebrow && (
+            <p className="eyebrow text-accent-400 motion-safe:animate-rise">
+              {eyebrow}
+            </p>
+          )}
           <span className="brand-rule mt-4" />
-          <h1 className="mt-5 text-3xl leading-[1.05] font-bold text-white sm:text-4xl lg:text-[3.25rem]">
+          <h1
+            className="motion-safe:animate-rise mt-5 text-3xl leading-[1.05] font-bold text-white sm:text-4xl lg:text-[3.25rem]"
+            style={{ animationDelay: "120ms" }}
+          >
             {title}
           </h1>
           {lede && (
-            <p className="text-silver-400 mt-5 max-w-2xl text-base leading-relaxed sm:text-lg">
+            <p
+              className="text-silver-400 motion-safe:animate-rise mt-5 max-w-2xl text-base leading-relaxed sm:text-lg"
+              style={{ animationDelay: "240ms" }}
+            >
               {lede}
             </p>
           )}

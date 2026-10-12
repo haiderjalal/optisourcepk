@@ -1,3 +1,4 @@
+import Image from "next/image";
 import {
   ClipboardCheck,
   PackageCheck,
@@ -5,6 +6,7 @@ import {
   Truck,
   type LucideIcon,
 } from "lucide-react";
+import warehouse from "../../../brandbook/image5.jpeg";
 import { Reveal, Stagger, StaggerItem } from "@/components/shared/Reveal";
 import { SectionHeading } from "@/components/ui/section-heading";
 
@@ -65,21 +67,38 @@ export function SupplyFlow() {
           lede="The same four stages every consignment passes through, whether it is fifty pairs of stock lenses or a full practice fit-out."
         />
 
+        <Reveal className="mt-14">
+          <figure className="relative overflow-hidden rounded-[1.75rem] shadow-[0_40px_90px_-40px_rgb(0_0_0/0.8)] ring-1 ring-white/10">
+            <Image
+              src={warehouse}
+              alt="Packing station in the OptiSource PK warehouse, with sealed cartons and mailers beside a receive, pick, pack, dispatch board"
+              placeholder="blur"
+              sizes="(min-width: 1280px) 1200px, 100vw"
+              className="aspect-[4/3] h-auto w-full object-cover sm:aspect-[16/9]"
+            />
+            <div
+              className="from-navy-900/60 absolute inset-0 bg-gradient-to-t via-transparent to-transparent"
+              aria-hidden
+            />
+          </figure>
+        </Reveal>
+
         <div className="relative mt-16">
-          {/* Rail — draws itself once the section enters view. Horizontal on
-              desktop, vertical on mobile. */}
-          <Reveal
-            direction="none"
+          {/* Rail — draws itself as the section scrolls into view. Horizontal
+              on desktop, vertical on mobile. Decorative, so it stays out of
+              the accessibility tree. */}
+          <span
             className="absolute top-7 right-0 left-0 hidden h-px bg-white/10 lg:block"
+            aria-hidden
           >
-            <span className="from-accent-600 to-accent-400 block h-px bg-gradient-to-r" />
-          </Reveal>
-          <Reveal
-            direction="none"
+            <span className="draw-x from-accent-600 to-accent-400 block h-px bg-gradient-to-r" />
+          </span>
+          <span
             className="absolute top-0 bottom-0 left-7 w-px bg-white/10 lg:hidden"
+            aria-hidden
           >
-            <span className="from-accent-600 to-accent-400 block h-full w-px bg-gradient-to-b" />
-          </Reveal>
+            <span className="draw-y from-accent-600 to-accent-400 block h-full w-px bg-gradient-to-b" />
+          </span>
 
           <Stagger as="ul" className="grid gap-10 lg:grid-cols-4 lg:gap-8">
             {STEPS.map(({ icon: Icon, step, title, detail }) => (
