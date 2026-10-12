@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronRight, Clock, Layers, ShieldCheck } from "lucide-react";
+import { JsonLd } from "@/components/shared/JsonLd";
 import { ProductCard } from "@/components/shared/ProductCard";
 import { ProductGlyph } from "@/components/shared/ProductGlyph";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import {
   getProductsByCategory,
   getRelatedProducts,
 } from "@/data/products";
+import { breadcrumbSchema } from "@/lib/json-ld";
 import { CONTACT, SITE } from "@/lib/site";
 
 export function generateStaticParams() {
@@ -23,11 +25,24 @@ export function generateStaticParams() {
   }));
 }
 
+/**
+ * Resolve a product only when the URL's category is the one it belongs to.
+ *
+ * Products are looked up by slug alone, so without this check
+ * `/catalogue/frames/<lens-slug>` would render the lens under the wrong path —
+ * duplicate content that search engines would index under the wrong category.
+ */
+function findProduct(categorySlug: string, productSlug: string) {
+  const product = getProduct(productSlug);
+  if (!product || product.category !== categorySlug) return undefined;
+  return product;
+}
+
 export async function generateMetadata({
   params,
 }: PageProps<"/catalogue/[category]/[product]">): Promise<Metadata> {
-  const { product: slug } = await params;
-  const product = getProduct(slug);
+  const { category: categorySlug, product: slug } = await params;
+  const product = findProduct(categorySlug, slug);
   if (!product) return {};
 
   const url = `/catalogue/${product.category}/${product.slug}`;
@@ -47,8 +62,8 @@ export async function generateMetadata({
 export default async function ProductPage({
   params,
 }: PageProps<"/catalogue/[category]/[product]">) {
-  const { product: slug } = await params;
-  const product = getProduct(slug);
+  const { category: categorySlug, product: slug } = await params;
+  const product = findProduct(categorySlug, slug);
   if (!product) notFound();
 
   const category = getCategory(product.category);
@@ -57,6 +72,13 @@ export default async function ProductPage({
   const related = getRelatedProducts(product);
   const categoryTotal = getProductsByCategory(category.slug).length;
   const exStock = product.leadTime.startsWith("Ex-stock");
+
+  const trail = [
+    { label: "Home", href: "/" },
+    { label: "Catalogue", href: "/catalogue" },
+    { label: category.name, href: `/catalogue/${category.slug}` },
+    { label: product.name },
+  ];
 
   const productSchema = {
     "@context": "https://schema.org",
@@ -81,39 +103,32 @@ export default async function ProductPage({
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productSchema) }}
-      />
+      <JsonLd data={productSchema} />
+      <JsonLd data={breadcrumbSchema(trail)} />
 
       <div className="border-navy-100 border-b bg-white">
         <div className="container-brand py-4">
           <nav aria-label="Breadcrumb">
             <ol className="text-navy-400 flex flex-wrap items-center gap-1.5 text-xs">
-              <li>
-                <Link href="/" className="hover:text-navy-700">
-                  Home
-                </Link>
-              </li>
-              <ChevronRight className="text-navy-300 size-3.5" aria-hidden />
-              <li>
-                <Link href="/catalogue" className="hover:text-navy-700">
-                  Catalogue
-                </Link>
-              </li>
-              <ChevronRight className="text-navy-300 size-3.5" aria-hidden />
-              <li>
-                <Link
-                  href={`/catalogue/${category.slug}`}
-                  className="hover:text-navy-700"
-                >
-                  {category.name}
-                </Link>
-              </li>
-              <ChevronRight className="text-navy-300 size-3.5" aria-hidden />
-              <li className="text-navy-600" aria-current="page">
-                {product.name}
-              </li>
+              {trail.map((crumb, index) => (
+                <li key={crumb.label} className="flex items-center gap-1.5">
+                  {index > 0 && (
+                    <ChevronRight
+                      className="text-navy-300 size-3.5"
+                      aria-hidden
+                    />
+                  )}
+                  {crumb.href ? (
+                    <Link href={crumb.href} className="hover:text-navy-700">
+                      {crumb.label}
+                    </Link>
+                  ) : (
+                    <span className="text-navy-600" aria-current="page">
+                      {crumb.label}
+                    </span>
+                  )}
+                </li>
+              ))}
             </ol>
           </nav>
         </div>

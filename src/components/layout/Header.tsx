@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowRight, FileText, Menu, Phone } from "lucide-react";
+import { ArrowRight, FileText, Phone } from "lucide-react";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { Logo } from "@/components/shared/Logo";
 import { ButtonLink } from "@/components/ui/button";
 import { CONTACT, PRIMARY_NAV, SITE } from "@/lib/site";
@@ -76,51 +77,10 @@ export function Header() {
               />
             </ButtonLink>
 
-            <MobileMenu />
+            <MobileNav />
           </div>
         </div>
       </div>
     </header>
-  );
-}
-
-function MobileMenu() {
-  return (
-    <details className="group relative lg:hidden">
-      <summary
-        className="text-navy-600 hover:bg-navy-50 grid size-10 cursor-pointer list-none place-items-center rounded-full transition-colors [&::-webkit-details-marker]:hidden"
-        aria-label="Toggle navigation menu"
-      >
-        <Menu className="size-5" aria-hidden />
-      </summary>
-
-      <div className="border-navy-100 shadow-lift-lg absolute top-12 right-0 w-[min(20rem,calc(100vw-2.5rem))] overflow-hidden rounded-2xl border bg-white p-3">
-        <nav className="flex flex-col" aria-label="Mobile">
-          {PRIMARY_NAV.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-navy-700 hover:bg-navy-50 rounded-xl px-4 py-3 text-base font-semibold transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="border-navy-100 mt-2 space-y-2 border-t pt-3">
-          <ButtonLink href="/inquiry" className="w-full">
-            Start a Trade Inquiry
-            <ArrowRight className="size-4" aria-hidden />
-          </ButtonLink>
-          <a
-            href={CONTACT.phoneHref}
-            className="text-navy-500 hover:text-navy-700 flex items-center justify-center gap-2 rounded-xl py-2 text-sm transition-colors"
-          >
-            <Phone className="size-4" aria-hidden />
-            {CONTACT.phone}
-          </a>
-        </div>
-      </div>
-    </details>
   );
 }

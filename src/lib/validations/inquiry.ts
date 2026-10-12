@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_LINE_QUANTITY, MAX_QUOTE_LINES } from "@/lib/quote-limits";
 import { PHONE_PATTERN } from "./phone";
 
 /**
@@ -9,7 +10,7 @@ import { PHONE_PATTERN } from "./phone";
  */
 export const inquiryLineSchema = z.object({
   productId: z.string().min(1).max(64),
-  quantity: z.number().int().positive().max(1_000_000),
+  quantity: z.number().int().positive().max(MAX_LINE_QUANTITY),
 });
 
 export const inquirySchema = z.object({
@@ -25,11 +26,14 @@ export const inquirySchema = z.object({
     .min(2, "Please enter your practice or business name.")
     .max(120, "That business name is too long."),
 
+  // Trim before validating: a pasted address with a stray space is common on
+  // phones, and `.email()` rejects it if it runs first.
   email: z
-    .email("Please enter a valid email address.")
+    .string()
     .trim()
     .toLowerCase()
-    .max(160),
+    .max(160, "That email address is too long.")
+    .pipe(z.email("Please enter a valid email address.")),
 
   phone: z
     .string()
@@ -58,7 +62,10 @@ export const inquirySchema = z.object({
 
   lines: z
     .array(inquiryLineSchema)
-    .max(40, "Please split requests over 40 lines across two inquiries.")
+    .max(
+      MAX_QUOTE_LINES,
+      `Please split requests over ${MAX_QUOTE_LINES} lines across two inquiries.`,
+    )
     .default([]),
 
   /**

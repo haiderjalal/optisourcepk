@@ -1,10 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Check, Info, Plus } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useQuote } from "./useQuote";
+
+type Feedback = "idle" | "added" | "full";
+
+const FEEDBACK_MS = 1800;
 
 /**
  * Adds a product to the visitor's request list. Confirms inline for a beat
@@ -30,17 +34,19 @@ export function AddToQuoteButton({
   label?: string;
 }) {
   const { add } = useQuote();
-  const [justAdded, setJustAdded] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>("idle");
   const timer = useRef<number | undefined>(undefined);
 
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
   function handleAdd() {
-    add(product.id, quantity);
-    setJustAdded(true);
+    const added = add(product.id, quantity);
+    setFeedback(added ? "added" : "full");
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setJustAdded(false), 1800);
+    timer.current = window.setTimeout(() => setFeedback("idle"), FEEDBACK_MS);
   }
+
+  const showingFeedback = feedback !== "idle";
 
   return (
     <Button
@@ -49,30 +55,40 @@ export function AddToQuoteButton({
       variant={variant}
       size={size}
       className={className}
-      aria-label={`Add ${product.name} to your request list`}
     >
       {/* Both labels sit in the same grid cell so the button keeps a stable
-          width through the swap. */}
+          width through the swap. The product name is visually hidden so the
+          accessible name still contains the visible label. */}
       <span className="grid place-items-center">
         <span
           className={cn(
             "col-start-1 row-start-1 flex items-center gap-2 transition-opacity duration-150",
-            justAdded ? "opacity-0" : "opacity-100",
+            showingFeedback ? "opacity-0" : "opacity-100",
           )}
         >
           <Plus className="size-4" aria-hidden />
           {label}
+          <span className="sr-only">{product.name}</span>
         </span>
         <span
-          aria-hidden={!justAdded}
+          aria-hidden={!showingFeedback}
           className={cn(
             "col-start-1 row-start-1 flex items-center gap-2 transition-opacity duration-150",
-            justAdded ? "opacity-100" : "opacity-0",
+            showingFeedback ? "opacity-100" : "opacity-0",
           )}
         >
-          <Check className="size-4" aria-hidden />
-          Added
+          {feedback === "full" ? (
+            <Info className="size-4" aria-hidden />
+          ) : (
+            <Check className="size-4" aria-hidden />
+          )}
+          {feedback === "full" ? "List full" : "Added"}
         </span>
+      </span>
+      <span role="status" className="sr-only">
+        {feedback === "added" && `${product.name} added to your request list.`}
+        {feedback === "full" &&
+          "Your request list is full. Remove a line to add another."}
       </span>
     </Button>
   );
