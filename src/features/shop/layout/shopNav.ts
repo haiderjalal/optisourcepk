@@ -1,4 +1,5 @@
 import {
+  BookOpen,
   Boxes,
   Building2,
   ClipboardList,
@@ -8,6 +9,7 @@ import {
   Package,
   Receipt,
   Trash2,
+  TrendingUp,
   Truck,
   Undo2,
   Users,
@@ -61,6 +63,13 @@ export const SHOP_NAV: ShopNavGroup[] = [
       { href: "/shop/products", label: "Products", icon: Package },
       { href: "/shop/purchases", label: "Purchases", icon: Truck },
       { href: "/shop/suppliers", label: "Suppliers", icon: Building2 },
+    ],
+  },
+  {
+    label: "Reports",
+    items: [
+      { href: "/shop/sales", label: "Monthly sales", icon: TrendingUp },
+      { href: "/shop/ledger", label: "Ledger", icon: BookOpen },
     ],
   },
   {
