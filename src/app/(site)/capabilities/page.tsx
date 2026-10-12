@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Stagger, StaggerItem } from "@/components/shared/Reveal";
+import { TiltCard } from "@/components/shared/TiltCard";
 import { ButtonLink } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 
@@ -103,15 +104,17 @@ export default function CapabilitiesPage() {
         <Stagger as="ul" className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {CAPABILITIES.map(({ icon: Icon, title, body }) => (
             <StaggerItem as="li" key={title}>
-              <div className="rounded-card border-navy-100 flex h-full flex-col border bg-white p-7">
-                <span className="bg-navy-50 ring-navy-100 grid size-12 place-items-center rounded-2xl ring-1 ring-inset">
-                  <Icon className="text-navy-600 size-5" aria-hidden />
-                </span>
-                <h2 className="mt-6 text-lg font-semibold">{title}</h2>
-                <p className="text-navy-500 mt-2.5 text-sm leading-relaxed">
-                  {body}
-                </p>
-              </div>
+              <TiltCard className="h-full">
+                <div className="rounded-card border-navy-100 flex h-full flex-col border bg-white p-7 [transform-style:preserve-3d]">
+                  <span className="tilt-depth bg-navy-50 ring-navy-100 grid size-12 place-items-center rounded-2xl ring-1 ring-inset">
+                    <Icon className="text-navy-600 size-5" aria-hidden />
+                  </span>
+                  <h2 className="mt-6 text-lg font-semibold">{title}</h2>
+                  <p className="text-navy-500 mt-2.5 text-sm leading-relaxed">
+                    {body}
+                  </p>
+                </div>
+              </TiltCard>
             </StaggerItem>
           ))}
         </Stagger>
@@ -142,25 +145,27 @@ export default function CapabilitiesPage() {
           <Stagger as="ul" className="mt-14 grid gap-6 lg:grid-cols-3">
             {QUALITY_CHECKS.map((group, index) => (
               <StaggerItem as="li" key={group.stage}>
-                <div className="rounded-card h-full border border-white/10 bg-white/4 p-7">
-                  <p className="font-display text-accent-500 text-xs font-bold tracking-[0.18em]">
-                    {String(index + 1).padStart(2, "0")}
-                  </p>
-                  <h3 className="mt-3 text-lg font-semibold text-white">
-                    {group.stage}
-                  </h3>
-                  <ul className="text-silver-400 mt-5 space-y-3 border-t border-white/10 pt-5 text-sm">
-                    {group.checks.map((check) => (
-                      <li key={check} className="flex gap-2.5">
-                        <span
-                          className="bg-accent-500 mt-2 size-1.5 shrink-0 rounded-full"
-                          aria-hidden
-                        />
-                        {check}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                <TiltCard className="h-full">
+                  <div className="rounded-card h-full border border-white/10 bg-white/4 p-7">
+                    <p className="font-display text-accent-500 text-xs font-bold tracking-[0.18em]">
+                      {String(index + 1).padStart(2, "0")}
+                    </p>
+                    <h3 className="mt-3 text-lg font-semibold text-white">
+                      {group.stage}
+                    </h3>
+                    <ul className="text-silver-400 mt-5 space-y-3 border-t border-white/10 pt-5 text-sm">
+                      {group.checks.map((check) => (
+                        <li key={check} className="flex gap-2.5">
+                          <span
+                            className="bg-accent-500 mt-2 size-1.5 shrink-0 rounded-full"
+                            aria-hidden
+                          />
+                          {check}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </TiltCard>
               </StaggerItem>
             ))}
           </Stagger>

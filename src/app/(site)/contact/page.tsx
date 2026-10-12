@@ -3,6 +3,7 @@ import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { JsonLd } from "@/components/shared/JsonLd";
 import { Stagger, StaggerItem } from "@/components/shared/Reveal";
+import { TiltCard } from "@/components/shared/TiltCard";
 import { ButtonLink } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { CONTACT, SITE } from "@/lib/site";
@@ -106,29 +107,31 @@ export default function ContactPage() {
           {CHANNELS.map(
             ({ icon: Icon, label, value, href, detail, external }) => (
               <StaggerItem as="li" key={label}>
-                <a
-                  href={href}
-                  {...(external
-                    ? { target: "_blank", rel: "noopener noreferrer" }
-                    : {})}
-                  className="group rounded-card border-navy-100 hover:border-accent-600/30 hover:shadow-lift flex h-full flex-col border bg-white p-7 transition-[border-color,box-shadow]"
-                >
-                  <span className="bg-navy-50 ring-navy-100 group-hover:bg-accent-600 group-hover:ring-accent-600 grid size-12 place-items-center rounded-2xl ring-1 transition-colors ring-inset">
-                    <Icon
-                      className="text-navy-600 size-5 transition-colors group-hover:text-white"
-                      aria-hidden
-                    />
-                  </span>
-                  <p className="eyebrow text-navy-400 mt-6 text-[0.625rem]">
-                    {label}
-                  </p>
-                  <p className="font-display text-navy-700 mt-2 text-lg font-semibold">
-                    {value}
-                  </p>
-                  <p className="text-navy-500 mt-3 text-sm leading-relaxed">
-                    {detail}
-                  </p>
-                </a>
+                <TiltCard className="group h-full">
+                  <a
+                    href={href}
+                    {...(external
+                      ? { target: "_blank", rel: "noopener noreferrer" }
+                      : {})}
+                    className="rounded-card border-navy-100 hover:border-accent-600/30 hover:shadow-lift flex h-full flex-col border bg-white p-7 transition-[border-color,box-shadow] [transform-style:preserve-3d]"
+                  >
+                    <span className="tilt-depth bg-navy-50 ring-navy-100 group-hover:bg-accent-600 group-hover:ring-accent-600 grid size-12 place-items-center rounded-2xl ring-1 transition-colors ring-inset">
+                      <Icon
+                        className="text-navy-600 size-5 transition-colors group-hover:text-white"
+                        aria-hidden
+                      />
+                    </span>
+                    <p className="eyebrow text-navy-400 mt-6 text-[0.625rem]">
+                      {label}
+                    </p>
+                    <p className="font-display text-navy-700 mt-2 text-lg font-semibold">
+                      {value}
+                    </p>
+                    <p className="text-navy-500 mt-3 text-sm leading-relaxed">
+                      {detail}
+                    </p>
+                  </a>
+                </TiltCard>
               </StaggerItem>
             ),
           )}

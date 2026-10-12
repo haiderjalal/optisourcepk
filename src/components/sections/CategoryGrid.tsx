@@ -32,10 +32,10 @@ export function CategoryGrid({
             <TiltCard className="group rounded-card h-full">
               <Link
                 href={`/catalogue/${category.slug}`}
-                className="rounded-card border-navy-100 shadow-lift hover:border-accent-600/30 hover:shadow-lift-lg flex h-full flex-col border bg-white p-7 transition-[border-color,box-shadow] duration-300"
+                className="rounded-card border-navy-100 shadow-lift hover:border-accent-600/30 hover:shadow-lift-lg flex h-full flex-col border bg-white p-7 transition-[border-color,box-shadow] duration-300 [transform-style:preserve-3d]"
               >
-                <div className="flex items-start justify-between">
-                  <span className="bg-navy-50 ring-navy-100 group-hover:bg-accent-600 group-hover:ring-accent-600 grid size-12 place-items-center rounded-2xl ring-1 transition-colors duration-300 ring-inset">
+                <div className="flex items-start justify-between [transform-style:preserve-3d]">
+                  <span className="tilt-depth bg-navy-50 ring-navy-100 group-hover:bg-accent-600 group-hover:ring-accent-600 grid size-12 place-items-center rounded-2xl ring-1 transition-colors duration-300 ring-inset">
                     <CategoryIcon
                       name={category.icon}
                       className="text-navy-600 size-5 transition-colors duration-300 group-hover:text-white"
