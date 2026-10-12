@@ -185,6 +185,22 @@ export const issueInvoiceSchema = z.object({
     .default(0),
 });
 
+/**
+ * A patient name for one lens pair (or a lone eye) of an existing order. The
+ * name is optional: a blank value clears it, so it is stored as null.
+ */
+export const pairPatientSchema = z.object({
+  orderId: z.uuid("That order could not be found."),
+  lineIds: z.array(z.uuid()).min(1, "Pick the pair to name.").max(2),
+  patientName: z
+    .string()
+    .trim()
+    .max(120, "Keep a patient name under 120 characters.")
+    // Single-spaced, as the grouping and the printed invoice compare names.
+    .transform((value) => value.replace(/\s+/g, " ") || null),
+});
+
 export type OrderPayload = z.output<typeof orderSchema>;
 export type OrderLinePayload = z.output<typeof orderLineSchema>;
 export type IssueInvoicePayload = z.output<typeof issueInvoiceSchema>;
+export type PairPatientPayload = z.output<typeof pairPatientSchema>;

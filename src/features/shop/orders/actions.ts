@@ -7,6 +7,7 @@ import { requireUser } from "@/server/shop/dal";
 import {
   orderSchema,
   issueInvoiceSchema,
+  pairPatientSchema,
 } from "@/lib/validations/shop/invoice";
 import { paymentSchema } from "@/lib/validations/shop/payment";
 import {
@@ -19,6 +20,7 @@ import {
   deleteInvoice,
   reopenInvoice,
   issueOrdersInvoice,
+  setPairPatient,
 } from "@/services/shop/invoice.service";
 import { recordPayment } from "@/services/shop/ledger.service";
 
@@ -70,6 +72,55 @@ function readOrder(formData: FormData) {
     notes: formData.get("notes") ?? "",
     lines,
   };
+}
+
+export interface PairPatientState {
+  error?: string;
+  saved?: boolean;
+}
+
+/**
+ * Save the optional patient for one pair from the order's detail table. The
+ * lines arrive as a JSON array of ids, like the builder's lines field.
+ */
+export async function savePairPatient(
+  _previous: PairPatientState,
+  formData: FormData,
+): Promise<PairPatientState> {
+  await requireUser();
+
+  let lineIds: unknown = [];
+  try {
+    const raw = formData.get("lineIds");
+    lineIds = typeof raw === "string" ? JSON.parse(raw) : [];
+  } catch {
+    lineIds = [];
+  }
+
+  const parsed = pairPatientSchema.safeParse({
+    orderId: formData.get("orderId"),
+    lineIds,
+    patientName: formData.get("patientName") ?? "",
+  });
+
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Check the patient name.",
+    };
+  }
+
+  try {
+    await setPairPatient(parsed.data);
+  } catch (error) {
+    return {
+      error:
+        error instanceof Error ? error.message : "Could not save the patient.",
+    };
+  }
+
+  revalidatePath(`/shop/orders/${parsed.data.orderId}`);
+  revalidatePath(`/shop/orders/${parsed.data.orderId}/edit`);
+  return { saved: true };
 }
 
 export async function saveOrder(

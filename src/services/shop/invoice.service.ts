@@ -536,6 +536,60 @@ export interface DeliveryUpdate {
   note?: string | null;
 }
 
+export interface PairPatientUpdate {
+  orderId: string;
+  /** The lines of one pair, or the single line of a lone eye. */
+  lineIds: string[];
+  patientName: string | null;
+}
+
+/**
+ * Name, rename or clear the patient for one lens pair of an order. The name is
+ * optional, so a null clears it.
+ *
+ * Refused once the order is invoiced, folded into a combined invoice, or
+ * voided: those figures were issued and must print as they were. An RX order
+ * keeps its patient on the job card instead.
+ */
+export async function setPairPatient(update: PairPatientUpdate): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data: order, error: orderError } = await supabase
+    .from("orders")
+    .select("is_rx, issued_at, billed_in, voided_at")
+    .eq("id", update.orderId)
+    .maybeSingle();
+
+  if (orderError) {
+    throw new Error(describePostgresError(orderError, "load the order"));
+  }
+  if (!order) throw new Error("That order could not be found.");
+  if (order.is_rx) {
+    throw new Error("An RX order keeps its patient on the job card.");
+  }
+  if (order.issued_at || order.billed_in || order.voided_at) {
+    throw new Error(
+      "This order is already invoiced, so its patients are fixed.",
+    );
+  }
+
+  const { data: updated, error } = await supabase
+    .from("order_lines")
+    .update({ patient_name: update.patientName })
+    .eq("order_id", update.orderId)
+    .in("id", update.lineIds)
+    .select("id");
+
+  if (error) {
+    throw new Error(describePostgresError(error, "save the patient"));
+  }
+  if ((updated?.length ?? 0) !== update.lineIds.length) {
+    throw new Error(
+      "Some of those lines are no longer on this order. Refresh and try again.",
+    );
+  }
+}
+
 /** Move an order along its lifecycle. Allowed even on an issued invoice. */
 export async function updateDelivery(update: DeliveryUpdate): Promise<Order> {
   const { supabase } = await requireUser();

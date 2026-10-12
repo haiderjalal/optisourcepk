@@ -34,7 +34,8 @@ import {
 import { ReturnItemsPanel } from "@/features/shop/returns/ReturnItemsPanel";
 import { ReturnsList } from "@/features/shop/returns/ReturnsList";
 import { summariseReturns } from "@/features/shop/returns/summary";
-import { patientHeads } from "@/features/shop/invoice/patients";
+import { patientBlocks } from "@/features/shop/invoice/patients";
+import { PairPatientForm } from "@/features/shop/orders/PairPatientForm";
 import {
   formatAmount,
   formatDateTime,
@@ -103,11 +104,15 @@ export default async function OrderPage({
   const draftAdditionalTax =
     Math.round(((draftNet * order.additional_tax_rate) / 100) * 100) / 100;
   const draftTotal = draftNet + draftGst + draftAdditionalTax;
-  // The patient for each pair, printed above the pair's first line.
-  const patients = patientHeads(order.lines, (line) => ({
+  // The patient for each pair, shown above the pair's first line. A name is
+  // optional, so every pair gets the field while the order can still change;
+  // an RX order keeps its patient on the job card, and an invoiced order's
+  // patients are fixed as they were printed.
+  const blocks = patientBlocks(order.lines, (line) => ({
     eye: line.eye,
     patient: line.patient_name,
   }));
+  const patientsEditable = !order.is_rx && !issued && !billed && !voided;
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -330,19 +335,31 @@ export default async function OrderPage({
               {order.lines.map((line) => {
                 const back = returned.byLine[line.id];
                 const allBack = back !== undefined && back.qty >= line.quantity;
-                const patient = patients.get(line);
+                const block = blocks.get(line);
                 return (
                   <Fragment key={line.id}>
-                    {patient && (
+                    {block && (patientsEditable || block.patient) && (
                       <tr className="border-t border-mist-200 bg-mist-100/50">
                         <td
                           colSpan={showStockSource ? 12 : 11}
                           className="px-3 py-2 text-xs"
                         >
-                          <span className="text-navy-500 mr-2">Patient</span>
-                          <span className="text-navy-800 font-medium">
-                            {patient}
-                          </span>
+                          {patientsEditable ? (
+                            <PairPatientForm
+                              orderId={order.id}
+                              lineIds={block.members.map((member) => member.id)}
+                              patientName={block.patient}
+                            />
+                          ) : (
+                            <>
+                              <span className="text-navy-500 mr-2">
+                                Patient
+                              </span>
+                              <span className="text-navy-800 font-medium">
+                                {block.patient}
+                              </span>
+                            </>
+                          )}
                         </td>
                       </tr>
                     )}
