@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { MessageCircle } from "lucide-react";
 import { formatAmount } from "@/lib/format";
 import { whatsappLink } from "@/features/shop/rx/whatsapp";
+import {
+  createPdfLoader,
+  isAbortError,
+  sharePdfFile,
+} from "@/features/shop/pdf/sharePdf";
 
 interface InvoiceWhatsAppButtonProps {
   orderId: string;
@@ -16,7 +21,11 @@ interface InvoiceWhatsAppButtonProps {
   includeBalance?: boolean;
 }
 
-/** Share the rendered invoice PDF, with a download fallback for desktop. */
+/**
+ * Share the rendered invoice PDF. The PDF starts loading on hover or focus, so
+ * the share sheet can open straight from the click. Where the browser cannot
+ * attach a file, the PDF is downloaded and WhatsApp opens for it to be attached.
+ */
 export function InvoiceWhatsAppButton({
   orderId,
   invoiceNo,
@@ -29,11 +38,15 @@ export function InvoiceWhatsAppButton({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
-  async function sharePdf() {
-    setBusy(true);
-    setError(undefined);
+  const pdfUrl = `/shop/invoices/${orderId}/pdf${includeBalance ? "" : "?balance=0"}`;
+  const fileName = `OptiSource-Invoice-${invoiceNo}.pdf`;
+  const loader = useMemo(
+    () => createPdfLoader(pdfUrl, fileName),
+    [pdfUrl, fileName],
+  );
 
-    const message = [
+  function buildMessage(): string {
+    return [
       `Assalam-o-Alaikum, ${billTo}.`,
       `Invoice *${invoiceNo}* has been issued.`,
       rxNotes,
@@ -45,43 +58,31 @@ export function InvoiceWhatsAppButton({
     ]
       .filter(Boolean)
       .join("\n");
+  }
 
+  async function sharePdf() {
+    setBusy(true);
+    setError(undefined);
+
+    const message = buildMessage();
     try {
-      const pdfUrl = `/shop/invoices/${orderId}/pdf${includeBalance ? "" : "?balance=0"}`;
-      const response = await fetch(pdfUrl, {
-        cache: "no-store",
+      const file = await loader.load();
+      const outcome = await sharePdfFile(file, {
+        title: `Invoice ${invoiceNo}`,
+        text: message,
       });
-      if (!response.ok) throw new Error(`PDF failed (${response.status})`);
 
-      const file = new File(
-        [await response.blob()],
-        `OptiSource-Invoice-${invoiceNo}.pdf`,
-        { type: "application/pdf" },
-      );
-
-      // Mobile browsers that support file sharing attach the PDF directly to
-      // the chosen app (including WhatsApp).
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Invoice ${invoiceNo}`,
-          text: message,
-        });
-        return;
-      }
-
-      // WhatsApp Web cannot be given an attachment by a website. Download the
-      // exact PDF, then continue to WhatsApp in this same tab for attachment.
-      const download = document.createElement("a");
-      download.href = URL.createObjectURL(file);
-      download.download = file.name;
-      download.click();
-      window.location.assign(whatsappLink(message));
+      // WhatsApp Web cannot be given an attachment by a website, so after the
+      // download the chat opens in this tab for the PDF to be attached.
+      if (outcome === "downloaded")
+        window.location.assign(whatsappLink(message));
     } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") {
-        return;
-      }
-      setError("Could not prepare the invoice PDF for sharing.");
+      if (isAbortError(caught)) return;
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : "Could not prepare the invoice PDF for sharing.",
+      );
     } finally {
       setBusy(false);
     }
@@ -92,6 +93,8 @@ export function InvoiceWhatsAppButton({
       <button
         type="button"
         onClick={sharePdf}
+        onPointerEnter={loader.prefetch}
+        onFocus={loader.prefetch}
         disabled={busy}
         className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-60"
       >
@@ -99,7 +102,7 @@ export function InvoiceWhatsAppButton({
         {busy ? "Preparing PDF…" : "Share PDF on WhatsApp"}
       </button>
       {error && (
-        <p role="alert" className="mt-1 max-w-52 text-xs text-amber-700">
+        <p role="alert" className="mt-1 max-w-64 text-xs text-amber-700">
           {error}
         </p>
       )}
