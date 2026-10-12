@@ -547,16 +547,17 @@ export interface PairPatientUpdate {
  * Name, rename or clear the patient for one lens pair of an order. The name is
  * optional, so a null clears it.
  *
- * Refused once the order is invoiced, folded into a combined invoice, or
- * voided: those figures were issued and must print as they were. An RX order
- * keeps its patient on the job card instead.
+ * Allowed on an issued invoice: the name is a label, and the figures stay as
+ * issued (migration 0040 lets this one field change). Refused for a voided
+ * invoice, for an order already folded into a combined invoice (that invoice
+ * holds its own copy), and for RX work, whose patients come from the job cards.
  */
 export async function setPairPatient(update: PairPatientUpdate): Promise<void> {
   const { supabase } = await requireUser();
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
-    .select("is_rx, issued_at, billed_in, voided_at")
+    .select("is_rx, combines_rx, billed_in, voided_at")
     .eq("id", update.orderId)
     .maybeSingle();
 
@@ -564,13 +565,16 @@ export async function setPairPatient(update: PairPatientUpdate): Promise<void> {
     throw new Error(describePostgresError(orderError, "load the order"));
   }
   if (!order) throw new Error("That order could not be found.");
-  if (order.is_rx) {
-    throw new Error("An RX order keeps its patient on the job card.");
+  if (order.is_rx || order.combines_rx) {
+    throw new Error("RX work takes its patient names from the RX job cards.");
   }
-  if (order.issued_at || order.billed_in || order.voided_at) {
+  if (order.billed_in) {
     throw new Error(
-      "This order is already invoiced, so its patients are fixed.",
+      "This order is part of a combined invoice, so its names are fixed there.",
     );
+  }
+  if (order.voided_at) {
+    throw new Error("A voided invoice cannot be changed.");
   }
 
   const { data: updated, error } = await supabase

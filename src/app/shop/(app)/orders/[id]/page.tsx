@@ -105,14 +105,16 @@ export default async function OrderPage({
     Math.round(((draftNet * order.additional_tax_rate) / 100) * 100) / 100;
   const draftTotal = draftNet + draftGst + draftAdditionalTax;
   // The patient for each pair, shown above the pair's first line. A name is
-  // optional, so every pair gets the field while the order can still change;
-  // an RX order keeps its patient on the job card, and an invoiced order's
-  // patients are fixed as they were printed.
+  // optional, so every pair gets the field: issued invoices too, since a name
+  // changes no figure. RX work keeps its patients on the job cards, a combined
+  // RX invoice copies them from there, and a voided or combined-in order is
+  // fixed where it sits.
   const blocks = patientBlocks(order.lines, (line) => ({
     eye: line.eye,
     patient: line.patient_name,
   }));
-  const patientsEditable = !order.is_rx && !issued && !billed && !voided;
+  const patientsEditable =
+    !order.is_rx && !order.combines_rx && !billed && !voided;
 
   return (
     <div className="mx-auto max-w-5xl">
