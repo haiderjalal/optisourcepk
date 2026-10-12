@@ -1,3 +1,4 @@
+import { logger } from "@/lib/logger";
 import { requireUser } from "@/server/shop/dal";
 import { getOrder } from "@/services/shop/invoice.service";
 import { listReturns } from "@/services/shop/return.service";
@@ -34,15 +35,24 @@ export async function GET(
   }
 
   const url = new URL(request.url);
-  const model = buildInvoicePdfModel(order, {
-    showBalance: url.searchParams.get("balance") !== "0",
-    returns: summariseReturns(returns),
-  });
-  const pdf = await renderInvoicePdf(model);
+  try {
+    const model = buildInvoicePdfModel(order, {
+      showBalance: url.searchParams.get("balance") !== "0",
+      returns: summariseReturns(returns),
+    });
+    const pdf = await renderInvoicePdf(model);
 
-  return pdfResponse(
-    pdf,
-    invoiceFileName(model.invoiceNo),
-    wantsDownload(request),
-  );
+    return pdfResponse(
+      pdf,
+      invoiceFileName(model.invoiceNo),
+      wantsDownload(request),
+    );
+  } catch (error) {
+    // The browser only sees "error 500"; the log is where the cause lives.
+    logger.error("Invoice PDF failed to render", {
+      orderId: id,
+      reason: error instanceof Error ? error.message : "unknown",
+    });
+    return new Response("Could not build the invoice PDF.", { status: 500 });
+  }
 }
