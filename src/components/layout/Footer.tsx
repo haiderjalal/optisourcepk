@@ -76,6 +76,21 @@ export function Footer() {
               </li>
               <li>
                 <a
+                  href={CONTACT.whatsappHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`WhatsApp ${CONTACT.whatsapp} (opens in a new tab)`}
+                  className="flex items-center gap-3 transition-colors hover:text-white"
+                >
+                  <MessageCircle
+                    className="text-accent-500 size-4 shrink-0"
+                    aria-hidden
+                  />
+                  {CONTACT.whatsapp}
+                </a>
+              </li>
+              <li>
+                <a
                   href={CONTACT.emailHref}
                   className="flex items-center gap-3 transition-colors hover:text-white"
                 >
