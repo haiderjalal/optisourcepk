@@ -14,13 +14,13 @@ Browser
 Server Components (app/)            ← default; almost all of the site
    │
    ├── Client islands ("use client")
-   │     · Header (nav state, request-list badge)
-   │     · HeroCanvas → HeroScene (WebGL, lazy + gated)
+   │     · MobileNav (sheet state, closes on route change)
    │     · CatalogueBrowser (filter/sort)
+   │     · CountUp (counts figures into view)
    │     · Request list + inquiry form
    │
    ▼
-Route handlers (app/api/)           ← thin: parse → rate limit → validate → service
+Route handlers (app/api/)           ← thin: rate limit → read body → validate → service
    │
    ▼
 Services (services/)                ← business rules, notification
@@ -50,18 +50,50 @@ lookup, a CMS fetch — and scope it to that route rather than the root.
 ## Client boundary
 
 Server Components are the default. Client components exist only where
-interaction requires them, and the WebGL scene is pushed as far out as
-possible:
+interaction requires them.
 
-- `HeroCanvas` (client) renders a complete CSS fallback composition
-  immediately.
-- It probes for WebGL, checks the viewport is at least 768px wide, and waits
-  for `requestIdleCallback` before dynamically importing `HeroScene`.
-- `HeroScene` is `ssr: false`, so `three` never reaches the server bundle and
-  never blocks first paint.
-- `PerformanceMonitor` downgrades the expensive transmission material to a
-  cheaper physical material if the device cannot hold frame rate.
-- `prefers-reduced-motion` disables floating, parallax and Lenis entirely.
+- The hero background (`components/three/HeroCanvas.tsx`, a historical folder
+  name) is pure CSS. There is no WebGL and no Three.js in the project.
+- The hero photograph, its lens overlay and the warehouse section are server
+  components. Their motion is CSS.
+- `MobileNav` is the only client code in the header. It keeps the sheet
+  open-state and closes it on route change without an effect.
+
+## Motion
+
+Motion is decorative, so it lives in CSS and costs no JavaScript. The rules
+are in `src/app/globals.css`.
+
+- **Scroll reveals.** `Reveal`, `Stagger` and `StaggerItem` add the `.reveal`
+  and `.stagger` classes. The motion comes from `animation-timeline: view()`.
+  It applies only inside `@supports ((animation-timeline: view()) and
+  (animation-range: entry))` and `prefers-reduced-motion: no-preference`.
+  Browsers without support show the page static. Nothing is hidden in the
+  markup, so there is no flash and no dependency on hydration.
+- **Reading progress.** A fixed bar in the site layout grows with
+  `scroll(root)`. It is decorative and hidden from assistive technology.
+- **Load-time entrances.** Hero and page-header copy rise in on first paint
+  with `motion-safe:animate-rise` and a short stagger.
+- **Lens graphic.** `LensFocus` is an inline SVG. Its rays draw in, its focal
+  point pulses and its dashed ring turns, all behind `motion-safe:`.
+- **Counters.** `CountUp` is the one client motion component on the home page.
+  It renders the final figure on the server, so crawlers and no-JS readers get
+  the real number. It counts up once it scrolls into view, and it respects
+  reduced motion through `usePrefersReducedMotion`.
+- **Framer `motion`** is used only on `/catalogue` (filter layout) and
+  `/inquiry` (form feedback). Product pages do not load it.
+
+## Security headers
+
+`next.config.ts` sets `X-Frame-Options: DENY` and `frame-ancestors 'none'` on
+every route, so no page can be embedded in another site. It also sets HSTS,
+`nosniff`, a referrer policy and a permissions policy.
+
+A full `Content-Security-Policy` is deliberately not set. It needs a
+per-request nonce, and Next only applies a nonce when a page renders
+dynamically. The marketing pages are prerendered static HTML. Adding a nonce
+CSP would make every page dynamic, which is a decision for the owner before it
+is taken. See the Next.js CSP guide.
 
 ## The request list
 
@@ -90,7 +122,9 @@ server's — never a different set.
 ```
 POST /api/inquiries
    │
-   ├─ rate limit          fixed window, 5 per 10 min per IP
+   ├─ rate limit          fixed window, 5 per 10 min per client IP
+   ├─ content type        415 unless application/json
+   ├─ size ceiling        413 above 32 KB (declared, then measured)
    ├─ parse JSON          400 on malformed body
    ├─ Zod validate        422 with field errors
    ├─ honeypot            accepted silently, never processed
@@ -112,6 +146,13 @@ do not hear back — rather than being asked to retype everything.
 - **Rate limiting** is a process-local `Map`. It holds for a single Vercel
   instance. Swap `src/lib/rateLimit.ts` for Upstash or Vercel KV if inquiry
   volume spreads across regions.
+- **Client identity** is the _rightmost_ `X-Forwarded-For` hop, which the
+  nearest proxy appends. The leftmost hop is whatever the client sent, so
+  keying on it let a caller rotate a fake address past the limit. This
+  assumes the platform appends to the chain rather than overwriting it. Verify
+  that on the production deployment once a real request has been traced.
+- **The shop login** (`features/shop/auth/actions.ts`) still reads the
+  leftmost hop. Switch it to `clientKey()` as part of the back-office work.
 - **Catalogue** is a static TypeScript array. Every consumer already reads it
   through accessors (`getProduct`, `getProductsByCategory`, and friends), so
   moving it behind Supabase means rewriting those functions and nothing else.
@@ -120,7 +161,9 @@ do not hear back — rather than being asked to retype everything.
 
 ## Payload budget
 
-Measured against a production build, gzipped, as served.
+Measured against a production build, gzipped, as served. These figures predate
+the motion and photography pass and should be re-measured before the next
+release.
 
 | Route          | Initial JS | HTML  |
 | -------------- | ---------- | ----- |
@@ -149,16 +192,18 @@ Three rules keep it there:
    product id and a quantity. Catalogue pages pass products to client
    components as props, which travel in the RSC payload — not the bundle.
 
-3. **Animation libraries are opt-in per page.** `Reveal`, `Stagger`,
-   `TiltCard`, `CountUp`, `SupplyFlow` and `AddToQuoteButton` are
-   IntersectionObserver plus CSS. `motion` now loads only on `/catalogue`
-   (filter layout animations) and `/inquiry`. The homepage, about,
-   capabilities, contact and bulk-supply ship none of it.
+3. **Animation libraries are opt-in per page.** Scroll reveals, the progress
+   bar, the hero graphic and the photo bands are CSS and cost no JavaScript.
+   `CountUp` and `MobileNav` are small client components. `motion` loads only
+   on `/catalogue` (filter layout animations) and `/inquiry` (form feedback).
+   Every other page ships none of it.
 
-Also split out: `three` and `@react-three/drei` (a 972 KB chunk that loads
-only when the hero scene passes its gates), and the inquiry form with its
-Zod schema and React Hook Form (~100 KB, loaded after the inquiry page
-paints).
+Also split out: the inquiry form with its Zod schema and React Hook Form
+(~100 KB, loaded after the inquiry page paints).
+
+Photography is served through `next/image` from the brand-book files, which
+are imported statically. Each one is resized and encoded to modern formats on
+demand, and the blur placeholder is generated at build time.
 
 ## Pricing and order quantities
 
