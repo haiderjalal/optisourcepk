@@ -450,16 +450,6 @@ export function OrderBuilder({
                         </td>
                       </tr>
                     )}
-                    {!pair && power && !line.eye && (
-                      <tr className="bg-amber-50/60">
-                        <td
-                          colSpan={TABLE_COLUMNS}
-                          className="px-3 py-1.5 text-xs text-amber-800"
-                        >
-                          Pick R or L for this lens to name its patient.
-                        </td>
-                      </tr>
-                    )}
                     <tr className="border-t border-mist-200 align-top">
                       <td className="text-navy-400 px-3 py-2 text-xs">
                         {index + 1}
