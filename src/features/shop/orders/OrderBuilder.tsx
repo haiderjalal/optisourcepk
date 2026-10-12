@@ -251,15 +251,19 @@ export function OrderBuilder({
     const name = group[0].eye ? cleanPatient(group[0].patientName) : "";
     for (const line of group) pairPatient.set(line.key, name);
   }
-  // The keys of each pair, by its first line: where a pair's header sits.
-  const pairKeys = new Map(
-    groups
-      .filter((group) => group[0].eye)
-      .map((group): [string, string[]] => [
-        group[0].key,
-        group.map((line) => line.key),
-      ]),
-  );
+  // Each lens pair (or lone eye), by its first line. Its header sits above it,
+  // numbered, and carries the patient name for the whole pair.
+  let lensNo = 0;
+  const pairs = new Map<string, { keys: string[]; label: string }>();
+  for (const group of groups) {
+    if (!group[0].eye) continue;
+    lensNo += 1;
+    const label =
+      group.length === 2
+        ? `Pair ${lensNo} · ${group[0].eye} + ${group[1].eye}`
+        : `Pair ${lensNo} · ${group[0].eye} eye only`;
+    pairs.set(group[0].key, { keys: group.map((line) => line.key), label });
+  }
 
   // What the server actually validates. Blank strings become nulls there.
   const payload = lines.map((line) => ({
@@ -412,27 +416,47 @@ export function OrderBuilder({
               {lines.map((line, index) => {
                 const product = productById.get(line.productId);
                 const power = product?.tracks_power ?? false;
-                const pair = pairKeys.get(line.key);
+                const pair = pairs.get(line.key);
 
                 return (
                   <Fragment key={line.key}>
                     {pair && (
-                      <tr className="border-t border-mist-200 bg-mist-100/50">
-                        <td colSpan={TABLE_COLUMNS} className="px-3 py-2">
-                          <label className="flex max-w-md items-center gap-3">
-                            <span className="text-navy-500 text-xs font-medium">
-                              Patient
+                      <tr className="border-navy-100 bg-accent-600/5 border-t-2">
+                        <td colSpan={TABLE_COLUMNS} className="px-3 py-2.5">
+                          <label className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                            <span className="text-navy-700 text-sm font-semibold">
+                              {pair.label}
                             </span>
-                            <input
-                              aria-label={`Patient for the pair at line ${index + 1}`}
-                              className={cell}
-                              type="text"
-                              maxLength={120}
-                              placeholder="Patient name"
-                              value={line.patientName}
-                              onChange={(e) => setPatient(pair, e.target.value)}
-                            />
+                            <span className="flex items-center gap-2">
+                              <span className="text-navy-500 text-xs font-medium">
+                                Patient{" "}
+                                <span className="text-navy-400 font-normal">
+                                  (optional)
+                                </span>
+                              </span>
+                              <input
+                                aria-label={`Patient for ${pair.label}`}
+                                className={`${cell} max-w-xs`}
+                                type="text"
+                                maxLength={120}
+                                placeholder="Patient name"
+                                value={line.patientName}
+                                onChange={(e) =>
+                                  setPatient(pair.keys, e.target.value)
+                                }
+                              />
+                            </span>
                           </label>
+                        </td>
+                      </tr>
+                    )}
+                    {!pair && power && !line.eye && (
+                      <tr className="bg-amber-50/60">
+                        <td
+                          colSpan={TABLE_COLUMNS}
+                          className="px-3 py-1.5 text-xs text-amber-800"
+                        >
+                          Pick R or L for this lens to name its patient.
                         </td>
                       </tr>
                     )}
