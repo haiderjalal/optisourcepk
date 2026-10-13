@@ -147,31 +147,6 @@ export function buildInvoicePdfModel(
     eye: line.eye,
     patient: line.patient_name,
   }));
-  const showStockSource =
-    !order.is_rx &&
-    !order.combines_rx &&
-    order.lines.some((line) => line.stock_source === "daily") &&
-    order.lines.some((line) => line.stock_source === "normal");
-  const sourceTotals = showStockSource
-    ? [
-        {
-          label: "Normal Stock Lines",
-          value: amount(
-            order.lines
-              .filter((line) => line.stock_source === "normal")
-              .reduce((sum, line) => sum + line.line_total, 0),
-          ),
-        },
-        {
-          label: "Daily Stock Lines",
-          value: amount(
-            order.lines
-              .filter((line) => line.stock_source === "daily")
-              .reduce((sum, line) => sum + line.line_total, 0),
-          ),
-        },
-      ]
-    : [];
 
   return {
     company: PDF_COMPANY,
@@ -192,11 +167,9 @@ export function buildInvoicePdfModel(
         no: index + 1,
         orderRef: line.order_ref ?? "",
         patient: patients.get(item) || undefined,
-        product: showStockSource
-          ? line.stock_source === "daily"
-            ? `${line.product_name} [Daily]`
-            : `${line.product_name} [Normal]`
-          : line.product_name,
+        // Where a line's stock came from is internal: the customer sees one
+        // product name and one price, whichever register it was drawn from.
+        product: line.product_name,
         sph: power(line.sph),
         cyl: power(line.cyl),
         ax: line.ax === null ? "" : `+${line.ax}`,
@@ -208,7 +181,6 @@ export function buildInvoicePdfModel(
       };
     }),
     totals: [
-      ...sourceTotals,
       { label: "Invoice Amount", value: amount(order.invoice_amount) },
       { label: "Discount Amount", value: amount(order.discount_amount) },
       { label: "Freight Charge", value: amount(order.freight_charge) },
