@@ -2,8 +2,9 @@ import "server-only";
 
 import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
+import { chunk } from "@/lib/utils";
 import type { CustomerPayload } from "@/lib/validations/shop/customer";
-import type { Customer, CustomerBalance } from "@/types/database";
+import type { Customer } from "@/types/database";
 import { describePostgresError } from "./errors";
 
 /**
@@ -90,28 +91,35 @@ export async function listCustomers(
   }));
 }
 
-/** One round trip for every balance, rather than one query per customer. */
+/** Customers per `in` filter: a long id list overflows the request URL, and each read stops at the row cap. */
+const BALANCE_LOOKUP_BATCH = 100;
+
+/**
+ * One balance per customer, read in batches rather than one query per customer.
+ */
 async function loadBalances(
   supabase: Awaited<ReturnType<typeof requireUser>>["supabase"],
   customerIds: string[],
 ): Promise<Map<string, number>> {
   if (customerIds.length === 0) return new Map();
 
-  const { data, error } = await supabase
-    .from("customer_balances")
-    .select("customer_id, balance")
-    .in("customer_id", customerIds);
-
-  if (error) throw new Error(describePostgresError(error, "load balances"));
-
-  return new Map(
-    (data ?? []).map(
-      (row: Pick<CustomerBalance, "customer_id" | "balance">) => [
-        row.customer_id,
-        row.balance,
-      ],
+  const batches = await Promise.all(
+    chunk(customerIds, BALANCE_LOOKUP_BATCH).map((ids) =>
+      supabase
+        .from("customer_balances")
+        .select("customer_id, balance")
+        .in("customer_id", ids),
     ),
   );
+
+  const balances = new Map<string, number>();
+  for (const { data, error } of batches) {
+    if (error) throw new Error(describePostgresError(error, "load balances"));
+    for (const row of data ?? []) {
+      balances.set(row.customer_id, row.balance);
+    }
+  }
+  return balances;
 }
 
 export async function getCustomer(id: string): Promise<Customer | null> {

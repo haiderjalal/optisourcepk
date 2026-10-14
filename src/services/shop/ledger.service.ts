@@ -10,6 +10,7 @@ import type {
   LedgerEntry,
 } from "@/types/database";
 import { describePostgresError } from "./errors";
+import { selectAllPages } from "./paging";
 
 /**
  * The customer account: what each shop owes, and how it got there.
@@ -96,20 +97,25 @@ export async function getBalance(
   return data;
 }
 
-/** Every shop that owes money, most owing first. */
+/**
+ * Every shop that owes money, most owing first. Read a page at a time: the
+ * dashboard totals come from this list, and one read would stop at the row
+ * cap and understate what is owed.
+ */
 export async function listOutstanding(): Promise<CustomerBalance[]> {
   const { supabase } = await requireUser();
 
-  const { data, error } = await supabase
-    .from("customer_balances")
-    .select("*")
-    .gt("balance", 0)
-    .order("balance", { ascending: false });
-
-  if (error) {
+  return selectAllPages<CustomerBalance>((from, to) =>
+    supabase
+      .from("customer_balances")
+      .select("*")
+      .gt("balance", 0)
+      .order("balance", { ascending: false })
+      .order("customer_id")
+      .range(from, to),
+  ).catch((error: unknown) => {
     throw new Error(describePostgresError(error, "load outstanding balances"));
-  }
-  return data ?? [];
+  });
 }
 
 export interface LedgerTotals {

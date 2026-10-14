@@ -2,7 +2,8 @@ import "server-only";
 
 import { requireUser } from "@/server/shop/dal";
 import type { LedgerRow, LedgerType } from "@/features/shop/ledger/summary";
-import { readAllRows } from "./paged";
+import { describePostgresError } from "./errors";
+import { embeddedPage, selectAllPages } from "./paging";
 
 interface EntryRow {
   id: string;
@@ -14,19 +15,28 @@ interface EntryRow {
 }
 
 /** Ledger entries dated within the range (inclusive, Karachi calendar dates), newest first. */
-export async function listLedgerEntries(range: { from: string; to: string }): Promise<LedgerRow[]> {
+export async function listLedgerEntries(range: {
+  from: string;
+  to: string;
+}): Promise<LedgerRow[]> {
   const { supabase } = await requireUser();
-  const rows = await readAllRows<EntryRow>("load ledger entries", (from, to) =>
-    supabase
-      .from("ledger_entries")
-      .select("id, entry_type, amount, entry_date, payment_method, customers!inner(customer_name, shop_name)")
-      .gte("entry_date", range.from)
-      .lte("entry_date", range.to)
-      .order("entry_date", { ascending: false })
-      .order("created_at", { ascending: false })
-      .order("id")
-      .range(from, to),
-  );
+  const rows = await selectAllPages<EntryRow>((from, to) =>
+    embeddedPage<EntryRow>(
+      supabase
+        .from("ledger_entries")
+        .select(
+          "id, entry_type, amount, entry_date, payment_method, customers!inner(customer_name, shop_name)",
+        )
+        .gte("entry_date", range.from)
+        .lte("entry_date", range.to)
+        .order("entry_date", { ascending: false })
+        .order("created_at", { ascending: false })
+        .order("id")
+        .range(from, to),
+    ),
+  ).catch((error: unknown) => {
+    throw new Error(describePostgresError(error, "load ledger entries"));
+  });
 
   return rows.flatMap((row) => {
     if (!row.customers) return [];

@@ -180,17 +180,24 @@ export async function resolveRxProducts(
   const ids = new Map<string, string>();
   if (wanted.size === 0) return ids;
 
-  // ponytail: reads every product name to match case-insensitively; fine for a
-  // shop catalogue, move to a unique index on lower(name) if it grows large.
-  const { data: existing, error } = await supabase
-    .from("products")
-    .select("id, name")
-    .is("deleted_at", null)
-    .eq("is_rx", true)
-    .order("created_at");
-  if (error) throw new Error(describePostgresError(error, "read the products"));
+  // Matching is case-insensitive, so every RX name is read, a page at a time.
+  // A single read stops at the database's row cap, and a name cut off there
+  // would be added again as a duplicate. ponytail: move to a unique index on
+  // lower(name) if the catalogue grows large.
+  const existing = await selectAllPages<{ id: string; name: string }>(
+    (from, to) =>
+      supabase
+        .from("products")
+        .select("id, name")
+        .is("deleted_at", null)
+        .eq("is_rx", true)
+        .order("id")
+        .range(from, to),
+  ).catch((error: unknown) => {
+    throw new Error(describePostgresError(error, "read the products"));
+  });
 
-  for (const product of existing ?? []) {
+  for (const product of existing) {
     const key = nameKey(product.name);
     if (wanted.has(key) && !ids.has(key)) ids.set(key, product.id);
   }
