@@ -1,5 +1,6 @@
 /**
- * Monthly sales by channel, added up from order lines. Pure: the service loads the rows and this file totals them.
+ * Monthly sales by channel. Pure: the database totals each month and channel (see 0042_sales_monthly_views.sql), and
+ * this file lays those totals out as one row per month. Product breakdowns for a single month are still totalled here.
  *
  * The rules match the RX monthly figures: an issued invoice counts and a voided one does not. Sales are line totals
  * after discount and before freight and tax. A line's channel is RX when it has an RX status, daily when it draws on
@@ -27,9 +28,22 @@ export interface SaleLine {
   issuedAt: string;
 }
 
-export interface ReturnLine {
+/** One channel's totals for one Karachi month, summed by the database. */
+export interface ChannelTotal {
+  /** Karachi calendar month, "YYYY-MM". */
+  month: string;
+  channel: SalesChannel;
+  sales: number;
+  cost: number;
+  knownSales: number;
+  linesWithoutCost: number;
+}
+
+/** The returns made in one Karachi month, summed by the database. */
+export interface MonthReturnTotal {
+  /** Karachi calendar month, "YYYY-MM". */
+  month: string;
   amount: number;
-  returnedAt: string;
 }
 
 export interface ChannelFigures {
@@ -62,22 +76,11 @@ export interface ProductRow {
   linesWithoutCost: number;
 }
 
-const KARACHI_MONTH = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Karachi",
-  year: "numeric",
-  month: "2-digit",
-});
-
-/** The Karachi calendar month an instant falls in, as "YYYY-MM". */
-export function karachiMonth(iso: string): string {
-  const parts = KARACHI_MONTH.formatToParts(new Date(iso));
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  return `${year}-${month}`;
-}
-
 /** The UTC instants at which a Karachi calendar month starts and ends. Karachi is UTC+5 all year round. */
-export function karachiMonthBounds(month: string): { start: string; end: string } {
+export function karachiMonthBounds(month: string): {
+  start: string;
+  end: string;
+} {
   const [year, monthNumber] = month.split("-").map(Number);
   return {
     start: new Date(Date.UTC(year, monthNumber - 1, 1, -5)).toISOString(),
@@ -115,15 +118,26 @@ function settle(figures: ChannelFigures): void {
   figures.profit = round2(figures.knownSales - figures.cost);
 }
 
-/** One row per Karachi month, newest first, with each channel's figures and the month's returns netted off. */
-export function monthlySales(lines: SaleLine[], returns: ReturnLine[]): MonthRow[] {
+/**
+ * One row per Karachi month, newest first, with each channel's figures and the month's returns netted off.
+ *
+ * The totals arrive already summed per month and channel, so this only gathers and settles them.
+ */
+export function monthlySalesFromTotals(
+  channels: ChannelTotal[],
+  returns: MonthReturnTotal[],
+): MonthRow[] {
   const months = new Map<string, MonthRow>();
   const rowFor = (month: string): MonthRow => {
     const existing = months.get(month);
     if (existing) return existing;
     const created: MonthRow = {
       month,
-      channels: { rx: emptyFigures(), stock: emptyFigures(), daily: emptyFigures() },
+      channels: {
+        rx: emptyFigures(),
+        stock: emptyFigures(),
+        daily: emptyFigures(),
+      },
       sales: 0,
       returns: 0,
       net: 0,
@@ -132,16 +146,25 @@ export function monthlySales(lines: SaleLine[], returns: ReturnLine[]): MonthRow
     return created;
   };
 
-  for (const line of lines) {
-    addLine(rowFor(karachiMonth(line.issuedAt)).channels[channelOf(line)], line);
+  for (const total of channels) {
+    const figures = rowFor(total.month).channels[total.channel];
+    figures.sales += total.sales;
+    figures.cost += total.cost;
+    figures.knownSales += total.knownSales;
+    figures.linesWithoutCost += total.linesWithoutCost;
   }
   for (const ret of returns) {
-    rowFor(karachiMonth(ret.returnedAt)).returns += ret.amount;
+    rowFor(ret.month).returns += ret.amount;
   }
 
   for (const row of months.values()) {
     for (const channel of CHANNELS) settle(row.channels[channel]);
-    row.sales = round2(CHANNELS.reduce((total, channel) => total + row.channels[channel].sales, 0));
+    row.sales = round2(
+      CHANNELS.reduce(
+        (total, channel) => total + row.channels[channel].sales,
+        0,
+      ),
+    );
     row.returns = round2(row.returns);
     row.net = round2(row.sales - row.returns);
   }
@@ -150,7 +173,10 @@ export function monthlySales(lines: SaleLine[], returns: ReturnLine[]): MonthRow
 
 /** Sales for one month broken down by product and channel, largest sales first. */
 export function productSales(lines: SaleLine[]): ProductRow[] {
-  const products = new Map<string, { row: ProductRow; figures: ChannelFigures }>();
+  const products = new Map<
+    string,
+    { row: ProductRow; figures: ChannelFigures }
+  >();
   for (const line of lines) {
     const channel = channelOf(line);
     const key = `${channel}:${line.productId}`;

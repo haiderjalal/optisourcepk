@@ -36,3 +36,16 @@ export async function selectAllPages<T>(
 
   return rows;
 }
+
+/**
+ * A page of a query whose select embeds another table (`customers!inner(...)`).
+ *
+ * The generated database types carry no relationships, so an embedded column
+ * is typed as an error there. Each embedded page is typed here, at the one
+ * place it is read, against the row its caller declares.
+ */
+export function embeddedPage<T>(
+  query: PromiseLike<unknown>,
+): PromiseLike<PageResult<T>> {
+  return query as PromiseLike<PageResult<T>>;
+}

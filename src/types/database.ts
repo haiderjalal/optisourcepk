@@ -367,6 +367,22 @@ type RxMonthlyRow = {
   missing_cost: number;
 };
 
+type SalesChannelMonthlyRow = {
+  /** First day of the Karachi month, "YYYY-MM-01". */
+  month: string;
+  channel: "rx" | "stock" | "daily";
+  sales: number;
+  cost: number;
+  known_sales: number;
+  lines_without_cost: number;
+};
+
+type SalesReturnsMonthlyRow = {
+  /** First day of the Karachi month, "YYYY-MM-01". */
+  month: string;
+  amount: number;
+};
+
 type LedgerEntryRow = {
   id: string;
   customer_id: string;
@@ -527,6 +543,8 @@ export interface Database {
       low_stock: View<LowStockRow>;
       purchase_invoice_totals: View<PurchaseInvoiceTotalsRow>;
       rx_monthly: View<RxMonthlyRow>;
+      sales_by_channel_monthly: View<SalesChannelMonthlyRow>;
+      sales_returns_monthly: View<SalesReturnsMonthlyRow>;
       business_totals: View<BusinessTotalsRow>;
     };
     Functions: {

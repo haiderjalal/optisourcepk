@@ -3,14 +3,16 @@ import "server-only";
 import { requireUser } from "@/server/shop/dal";
 import {
   karachiMonthBounds,
-  monthlySales,
+  monthlySalesFromTotals,
   productSales,
+  type ChannelTotal,
+  type MonthReturnTotal,
   type MonthRow,
   type ProductRow,
-  type ReturnLine,
   type SaleLine,
 } from "@/features/shop/sales/monthly";
-import { readAllRows } from "./paged";
+import { describePostgresError } from "./errors";
+import { embeddedPage, selectAllPages } from "./paging";
 
 type Shop = Awaited<ReturnType<typeof requireUser>>["supabase"];
 
@@ -26,12 +28,10 @@ interface LineRow {
   orders: { issued_at: string | null } | null;
 }
 
-interface ReturnRow {
-  amount: number | string;
-  returned_at: string;
-}
-
-function sellingLines(supabase: Shop, bounds: { start: string; end: string } | null) {
+function sellingLines(
+  supabase: Shop,
+  bounds: { start: string; end: string } | null,
+) {
   let query = supabase
     .from("order_lines")
     .select(
@@ -40,7 +40,9 @@ function sellingLines(supabase: Shop, bounds: { start: string; end: string } | n
     .not("orders.issued_at", "is", null)
     .is("orders.voided_at", null);
   if (bounds) {
-    query = query.gte("orders.issued_at", bounds.start).lt("orders.issued_at", bounds.end);
+    query = query
+      .gte("orders.issued_at", bounds.start)
+      .lt("orders.issued_at", bounds.end);
   }
   return query.order("id");
 }
@@ -60,28 +62,61 @@ function toSaleLine(row: LineRow): SaleLine | null {
   };
 }
 
-async function loadSaleLines(supabase: Shop, bounds: { start: string; end: string } | null): Promise<SaleLine[]> {
-  const rows = await readAllRows<LineRow>("load sales lines", (from, to) =>
-    sellingLines(supabase, bounds).range(from, to),
-  );
+/** The lines of one Karachi month, for its product breakdown. Only that month is read. */
+async function loadSaleLines(
+  supabase: Shop,
+  bounds: { start: string; end: string },
+): Promise<SaleLine[]> {
+  const rows = await selectAllPages<LineRow>((from, to) =>
+    embeddedPage<LineRow>(sellingLines(supabase, bounds).range(from, to)),
+  ).catch((error: unknown) => {
+    throw new Error(describePostgresError(error, "load sales lines"));
+  });
   return rows.flatMap((row) => {
     const line = toSaleLine(row);
     return line ? [line] : [];
   });
 }
 
-/** Monthly sales by channel, newest month first. `limit` keeps only the latest months. */
+/**
+ * Monthly sales by channel, newest month first. `limit` keeps only the latest months.
+ *
+ * The database totals each month (migration 0042), so this reads a few rows per
+ * month rather than every line of the sales history.
+ */
 export async function listMonthlySales(limit = 12): Promise<MonthRow[]> {
   const { supabase } = await requireUser();
-  const lines = await loadSaleLines(supabase, null);
-  const returns = await readAllRows<ReturnRow>("load sales returns", (from, to) =>
-    supabase.from("sales_returns").select("amount, returned_at").order("id").range(from, to),
-  );
-  const returnLines: ReturnLine[] = returns.map((row) => ({
-    amount: Number(row.amount),
-    returnedAt: row.returned_at,
+
+  const [channels, returns] = await Promise.all([
+    supabase
+      .from("sales_by_channel_monthly")
+      .select("month, channel, sales, cost, known_sales, lines_without_cost"),
+    supabase.from("sales_returns_monthly").select("month, amount"),
+  ]);
+  if (channels.error || returns.error) {
+    throw new Error(
+      describePostgresError(
+        channels.error ?? returns.error,
+        "load monthly sales",
+      ),
+    );
+  }
+
+  // The views key a month by its first day; the screens use "YYYY-MM".
+  const channelTotals: ChannelTotal[] = (channels.data ?? []).map((row) => ({
+    month: row.month.slice(0, 7),
+    channel: row.channel,
+    sales: Number(row.sales),
+    cost: Number(row.cost),
+    knownSales: Number(row.known_sales),
+    linesWithoutCost: row.lines_without_cost,
   }));
-  return monthlySales(lines, returnLines).slice(0, limit);
+  const returnTotals: MonthReturnTotal[] = (returns.data ?? []).map((row) => ({
+    month: row.month.slice(0, 7),
+    amount: Number(row.amount),
+  }));
+
+  return monthlySalesFromTotals(channelTotals, returnTotals).slice(0, limit);
 }
 
 /** Sales of one Karachi month (YYYY-MM) broken down by product and channel. */
