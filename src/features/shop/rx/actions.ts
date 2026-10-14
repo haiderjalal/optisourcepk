@@ -8,6 +8,7 @@ import {
   issueRxInvoice,
   priceRx,
   setRxCost,
+  setRxHold,
   setRxStage,
   updateRxLabOrderNo,
 } from "@/services/shop/rx.service";
@@ -31,6 +32,58 @@ export async function setRxStageAction(formData: FormData): Promise<void> {
   await setRxStage(parsed.data.orderId, parsed.data.stage);
   revalidatePath("/shop/rx");
   revalidatePath(`/shop/orders/${parsed.data.orderId}`);
+}
+
+const holdSchema = z
+  .object({
+    orderId: z.uuid(),
+    onHold: z.enum(["true", "false"]).transform((value) => value === "true"),
+    reason: z
+      .string()
+      .trim()
+      .max(200, "The reason for the hold can be 200 characters at most."),
+  })
+  .refine((input) => !input.onHold || input.reason !== "", {
+    error: "Enter the reason for the hold.",
+    path: ["reason"],
+  });
+
+/** Put an RX order on hold at the lab, with the reason, or release the hold. */
+export async function setRxHoldAction(
+  _previous: RxActionState,
+  formData: FormData,
+): Promise<RxActionState> {
+  await requireUser();
+
+  const parsed = holdSchema.safeParse({
+    orderId: formData.get("orderId"),
+    onHold: formData.get("onHold"),
+    reason: formData.get("reason") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the hold." };
+  }
+
+  try {
+    await setRxHold(
+      parsed.data.orderId,
+      parsed.data.onHold,
+      parsed.data.reason,
+    );
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not save.",
+    };
+  }
+
+  revalidatePath("/shop/rx");
+  revalidatePath(`/shop/orders/${parsed.data.orderId}`);
+  return {
+    message: parsed.data.onHold
+      ? "On hold. The reason is in the notes."
+      : "Hold released.",
+    saved: true,
+  };
 }
 
 const pricingSchema = z.object({

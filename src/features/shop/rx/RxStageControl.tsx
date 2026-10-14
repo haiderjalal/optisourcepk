@@ -34,6 +34,7 @@ export function RxStageControl({
   sentAt,
   backAt,
   final,
+  onHold = false,
   compact = false,
 }: {
   orderId: string;
@@ -42,11 +43,14 @@ export function RxStageControl({
   backAt: string | null;
   /** Invoiced or void: show the stage, offer nothing. */
   final: boolean;
+  /** Held at the lab: the lens cannot be marked back until released. */
+  onHold?: boolean;
   compact?: boolean;
 }) {
   const next = NEXT[stage];
   const previous = PREVIOUS[stage];
   const when = stage === "back" ? backAt : stage === "sent" ? sentAt : null;
+  const nextBlockedByHold = onHold && next?.stage === "back";
 
   return (
     <div
@@ -70,7 +74,19 @@ export function RxStageControl({
         {when && <span className="font-normal">· {formatDate(when)}</span>}
       </span>
 
-      {!final && next && (
+      {!final && next && nextBlockedByHold && (
+        <button
+          type="button"
+          disabled
+          title="Release the hold before it comes back from the lab"
+          className="text-navy-600 inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-mist-300 px-2.5 py-1.5 text-xs font-medium"
+        >
+          {next.label}
+          <ArrowRight className="size-3.5" aria-hidden />
+        </button>
+      )}
+
+      {!final && next && !nextBlockedByHold && (
         <form action={setRxStageAction}>
           <input type="hidden" name="orderId" value={orderId} />
           <input type="hidden" name="stage" value={next.stage} />

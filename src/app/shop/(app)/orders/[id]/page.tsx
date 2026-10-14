@@ -23,6 +23,7 @@ import {
   VoidPanel,
 } from "@/features/shop/orders/InvoiceActions";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
+import { RxHoldControl } from "@/features/shop/rx/RxHoldControl";
 import { RxCostForm } from "@/features/shop/rx/RxCostForm";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
@@ -238,7 +239,15 @@ export default async function OrderPage({
                 sentAt={order.rx_sent_at}
                 backAt={order.rx_back_at}
                 final={issued || voided || billed}
+                onHold={order.rx_on_hold}
               />
+              {!voided && (
+                <RxHoldControl
+                  orderId={order.id}
+                  onHold={order.rx_on_hold}
+                  canHold={!issued && !billed && order.rx_stage !== "back"}
+                />
+              )}
               {!voided && (
                 <RxLabOrderNumberButton
                   orderId={order.id}
