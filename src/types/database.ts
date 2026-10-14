@@ -252,6 +252,8 @@ type OrderRow = {
   rx_stage: RxStage | null;
   rx_sent_at: string | null;
   rx_back_at: string | null;
+  /** RX only: held at the lab; the reason is written into notes. */
+  rx_on_hold: boolean;
   /** RX order: the combined invoice it was billed on. */
   billed_in: string | null;
   /** A combined RX invoice, holding copies of the RX orders billed in it. */
@@ -462,6 +464,7 @@ type Defaulted =
   | "tracks_stock"
   | "is_rx"
   | "combines_rx"
+  | "rx_on_hold"
   | "combines_orders"
   | "is_daily"
   | "stock_source"
@@ -600,6 +603,14 @@ export interface Database {
       };
       set_rx_stage: {
         Args: { p_order_id: string; p_stage: RxStage };
+        Returns: OrderRow;
+      };
+      set_rx_hold: {
+        Args: {
+          p_order_id: string;
+          p_on_hold: boolean;
+          p_reason?: string | null;
+        };
         Returns: OrderRow;
       };
       issue_invoice: {

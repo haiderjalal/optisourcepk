@@ -37,6 +37,7 @@ export interface RxJob extends OrderLine {
   rxStage: RxStage | null;
   rxSentAt: string | null;
   rxBackAt: string | null;
+  rxOnHold: boolean;
   /** The combined invoice this RX order was billed on, if any. */
   billedIn: string | null;
 }
@@ -218,7 +219,7 @@ export async function listRxJobs(
     supabase
       .from("orders")
       .select(
-        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id, rx_no, patient_name, order_by_name, lab_order_no, rx_stage, rx_sent_at, rx_back_at, billed_in, combines_rx",
+        "id, order_no, invoice_no, status, voided_at, bill_to_customer_id, rx_no, patient_name, order_by_name, lab_order_no, rx_stage, rx_sent_at, rx_back_at, rx_on_hold, billed_in, combines_rx",
       )
       .in("id", [...new Set(lines.map((l) => l.order_id))]),
     supplierIds.length
@@ -294,6 +295,7 @@ export async function listRxJobs(
       rxStage: order?.rx_stage ?? null,
       rxSentAt: order?.rx_sent_at ?? null,
       rxBackAt: order?.rx_back_at ?? null,
+      rxOnHold: order?.rx_on_hold ?? false,
     };
   });
 
@@ -397,6 +399,30 @@ export async function setRxStage(
   logger.info("RX stage set", { orderId, stage });
 }
 
+/**
+ * Put an RX order on hold at the lab, with the reason, or release the hold.
+ * The database writes the reason into the order's notes, dated. The reason is
+ * left out of the log: it can name a patient.
+ */
+export async function setRxHold(
+  orderId: string,
+  onHold: boolean,
+  reason: string,
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase.rpc("set_rx_hold", {
+    p_order_id: orderId,
+    p_on_hold: onHold,
+    p_reason: reason,
+  });
+
+  if (error) {
+    throw new Error(describePostgresError(error, "update the RX hold"));
+  }
+  logger.info("RX hold changed", { orderId, onHold });
+}
+
 /** Save the lab's reference without changing prices, stage, or invoicing. */
 export async function updateRxLabOrderNo(
   orderId: string,
@@ -439,13 +465,20 @@ export async function priceRx(pricing: RxPricing): Promise<void> {
 
   const { data: order, error } = await supabase
     .from("orders")
-    .select("id, is_rx, issued_at, voided_at, billed_in, rx_stage")
+    .select("id, is_rx, issued_at, voided_at, billed_in, rx_stage, rx_on_hold")
     .eq("id", pricing.orderId)
     .maybeSingle();
   if (error) throw new Error(describePostgresError(error, "load the RX order"));
   if (!order?.is_rx) throw new Error("That is not an RX order.");
   if (order.issued_at || order.voided_at || order.billed_in) {
     throw new Error("This RX order is already invoiced.");
+  }
+  // Checked before any write: the stage change below would refuse it anyway,
+  // after the prices had already been saved.
+  if (order.rx_on_hold) {
+    throw new Error(
+      "This RX order is on hold. Release the hold before you enter its prices.",
+    );
   }
 
   const { error: referenceError } = await supabase

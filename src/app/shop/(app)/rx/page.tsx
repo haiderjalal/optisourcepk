@@ -10,6 +10,7 @@ import {
   type RxSearch,
 } from "@/services/shop/rx.service";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
+import { RxHoldControl } from "@/features/shop/rx/RxHoldControl";
 import { RxPriceForm } from "@/features/shop/rx/RxPriceForm";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { ReadyToInvoice } from "@/features/shop/rx/ReadyToInvoice";
@@ -355,6 +356,19 @@ export default async function RxOrdersPage({
                             sentAt={job.rxSentAt}
                             backAt={job.rxBackAt}
                             final={job.invoiceNo !== null || job.voided}
+                            onHold={job.rxOnHold}
+                            compact
+                          />
+                        )}
+                        {!job.voided && job.rxStage !== null && (
+                          <RxHoldControl
+                            orderId={job.orderId}
+                            onHold={job.rxOnHold}
+                            canHold={
+                              job.invoiceNo === null &&
+                              job.billedIn === null &&
+                              job.rxStage !== "back"
+                            }
                             compact
                           />
                         )}
