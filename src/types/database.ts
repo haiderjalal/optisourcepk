@@ -408,6 +408,8 @@ type CustomerStatementRow = {
   amount: number;
   running_balance: number;
   sale_type: "rx" | "stock" | "adjustment" | null;
+  /** Position in the order the running balance is summed; the statement reads in this order. */
+  statement_seq: number;
 };
 
 type BusinessTotalsRow = {
