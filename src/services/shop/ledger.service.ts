@@ -63,7 +63,11 @@ export async function recordPayment(
   return data;
 }
 
-/** Dated statement with a running balance, oldest first. */
+/**
+ * Dated statement with a running balance, oldest first. Ordered by the sequence
+ * the balance was summed in, so entries on the same day read in the order they
+ * happened and each balance follows the row above it.
+ */
 export async function getStatement(
   customerId: string,
 ): Promise<CustomerStatementLine[]> {
@@ -73,8 +77,7 @@ export async function getStatement(
     .from("customer_statement")
     .select("*")
     .eq("customer_id", customerId)
-    .order("entry_date")
-    .order("running_balance");
+    .order("statement_seq");
 
   if (error) {
     throw new Error(describePostgresError(error, "load the statement"));
