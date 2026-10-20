@@ -683,3 +683,24 @@ export async function setRxCost(
   }
   logger.info("RX cost changed", { orderId });
 }
+
+/**
+ * Take an RX order off its shop's combined invoice. The database removes its
+ * copies from the invoice, works the invoice total out again and moves the
+ * shop's balances, keeping the invoice number (migration 0044). The order is
+ * left uninvoiced for the caller to delete.
+ */
+export async function removeRxFromInvoice(orderId: string): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase.rpc("remove_rx_from_invoice", {
+    p_rx_order_id: orderId,
+  });
+
+  if (error) {
+    throw new Error(
+      describePostgresError(error, "remove the RX order from its invoice"),
+    );
+  }
+  logger.info("RX order removed from invoice", { orderId });
+}

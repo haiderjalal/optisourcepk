@@ -7,6 +7,7 @@ import { requireUser } from "@/server/shop/dal";
 import {
   issueRxInvoice,
   priceRx,
+  removeRxFromInvoice,
   setRxCost,
   setRxHold,
   setRxStage,
@@ -155,6 +156,42 @@ export async function saveLabOrderNumberAction(
     saved: true,
     labOrderNo: parsed.data.labOrderNo,
   };
+}
+
+/**
+ * Take a duplicate RX order off its shop's combined invoice, recalculate that
+ * invoice, then move the order to Recently deleted (restorable for 7 days).
+ */
+export async function removeRxFromInvoiceAction(
+  _previous: RxActionState,
+  formData: FormData,
+): Promise<RxActionState> {
+  await requireUser();
+
+  const orderId = z.uuid().safeParse(formData.get("orderId"));
+  if (!orderId.success) return { error: "Choose an RX order." };
+
+  try {
+    await removeRxFromInvoice(orderId.data);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not remove it.",
+    };
+  }
+
+  // The lens is off the invoice already. If the order cannot be moved to
+  // Recently deleted, say so: it would otherwise show as a new order to invoice.
+  revalidatePath("/shop", "layout");
+  try {
+    await deleteOrder(orderId.data);
+  } catch (error) {
+    return {
+      error:
+        `Removed from the invoice, but it could not be moved to Recently deleted. ${error instanceof Error ? error.message : ""}`.trim(),
+    };
+  }
+
+  return { message: "Removed from the invoice and moved to Recently deleted." };
 }
 
 /** Save an RX order's prices; it is then ready for the shop's invoice. */
