@@ -17,7 +17,13 @@ export interface DeletedItem {
   key: string;
   id: string;
   source: "trash" | "expense";
-  kind: "Invoice" | "Order" | "RX order" | "Stock entry" | "Expense";
+  kind:
+    | "Invoice"
+    | "Order"
+    | "RX order"
+    | "Stock entry"
+    | "Ledger entry"
+    | "Expense";
   label: string;
   deletedAt: string;
   /** Whole days left before it is gone for good (0 = last day). */
@@ -79,11 +85,13 @@ export async function listRecentlyDeleted(): Promise<{
       kind:
         t.kind === "stock_movement"
           ? "Stock entry"
-          : t.label.startsWith("Invoice")
-            ? "Invoice"
-            : t.label.startsWith("RX-")
-              ? "RX order"
-              : "Order",
+          : t.kind === "ledger_entry"
+            ? "Ledger entry"
+            : t.label.startsWith("Invoice")
+              ? "Invoice"
+              : t.label.startsWith("RX-")
+                ? "RX order"
+                : "Order",
       label: t.label,
       deletedAt: t.deleted_at,
       daysLeft: daysLeft(t.deleted_at),

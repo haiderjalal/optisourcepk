@@ -150,6 +150,24 @@ export async function listRecentPayments(limit = 10): Promise<LedgerEntry[]> {
   return data ?? [];
 }
 
+/**
+ * Move a payment or adjustment entered by hand into Recently deleted. The
+ * database takes it out of the later invoices' stored balances (migration 0045),
+ * and it can be restored for 7 days.
+ */
+export async function removeLedgerEntry(entryId: string): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase.rpc("trash_ledger_entry", {
+    p_entry_id: entryId,
+  });
+
+  if (error) {
+    throw new Error(describePostgresError(error, "remove the entry"));
+  }
+  logger.info("Ledger entry moved to Recently deleted", { entryId });
+}
+
 /** Lifetime RX and stock sales/purchases, kept as four separate figures. */
 export async function getBusinessTotals(): Promise<BusinessTotals> {
   const { supabase } = await requireUser();
