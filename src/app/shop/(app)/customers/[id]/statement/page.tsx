@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Wallet } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getCustomer } from "@/services/shop/customer.service";
 import { getBalance, getStatement } from "@/services/shop/ledger.service";
+import { LedgerEntryRemoveButton } from "@/features/shop/ledger/LedgerEntryRemoveButton";
 import { ButtonLink } from "@/components/ui/button";
 import { formatAmount, formatDate } from "@/lib/format";
 
@@ -97,6 +98,9 @@ export default async function StatementPage({
               <th scope="col" className="px-4 py-3 text-right font-medium">
                 Balance
               </th>
+              <th scope="col" className="px-2 py-3 font-medium">
+                <span className="sr-only">Remove</span>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -144,6 +148,14 @@ export default async function StatementPage({
                 </td>
                 <td className="px-4 py-2.5 text-right font-medium tabular-nums">
                   {formatAmount(line.running_balance)}
+                </td>
+                <td className="px-2 py-2.5 text-right">
+                  {line.removable && line.entry_id && (
+                    <LedgerEntryRemoveButton
+                      entryId={line.entry_id}
+                      label={line.description}
+                    />
+                  )}
                 </td>
               </tr>
             ))}

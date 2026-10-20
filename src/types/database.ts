@@ -350,7 +350,7 @@ type OrderLineRow = {
 /** Something deleted in the last 7 days, restorable from Recently deleted. */
 type TrashRow = {
   id: string;
-  kind: "order" | "stock_movement";
+  kind: "order" | "stock_movement" | "ledger_entry";
   label: string;
   payload: unknown;
   deleted_at: string;
@@ -410,6 +410,8 @@ type CustomerStatementRow = {
   sale_type: "rx" | "stock" | "adjustment" | null;
   /** Position in the order the running balance is summed; the statement reads in this order. */
   statement_seq: number;
+  /** A payment or adjustment entered by hand, which the statement can remove. */
+  removable: boolean;
 };
 
 type BusinessTotalsRow = {
@@ -636,6 +638,10 @@ export interface Database {
       remove_rx_from_invoice: {
         Args: { p_rx_order_id: string };
         Returns: OrderRow;
+      };
+      trash_ledger_entry: {
+        Args: { p_entry_id: string };
+        Returns: string;
       };
       issue_invoice: {
         Args: {
