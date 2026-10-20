@@ -633,6 +633,10 @@ export interface Database {
         };
         Returns: OrderRow;
       };
+      remove_rx_from_invoice: {
+        Args: { p_rx_order_id: string };
+        Returns: OrderRow;
+      };
       issue_invoice: {
         Args: {
           p_order_id: string;

@@ -11,6 +11,7 @@ import {
 } from "@/services/shop/rx.service";
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxHoldControl } from "@/features/shop/rx/RxHoldControl";
+import { RxRemoveFromInvoice } from "@/features/shop/rx/RxRemoveFromInvoice";
 import { RxPriceForm } from "@/features/shop/rx/RxPriceForm";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { ReadyToInvoice } from "@/features/shop/rx/ReadyToInvoice";
@@ -418,6 +419,13 @@ export default async function RxOrdersPage({
                               />
                             </div>
                           )}
+                        {job.billedIn !== null && !job.voided && (
+                          <RxRemoveFromInvoice
+                            orderId={job.orderId}
+                            label={formatRxNo(job.rxNo)}
+                            compact
+                          />
+                        )}
                       </td>
                     </tr>
                   );
