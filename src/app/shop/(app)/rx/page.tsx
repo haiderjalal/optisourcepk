@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Glasses, Pencil, Plus, Search } from "lucide-react";
+import { FileSpreadsheet, Glasses, Pencil, Plus, Search } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import {
   listRxJobs,
@@ -103,10 +103,16 @@ export default async function RxOrdersPage({
             search its power to see which shop it is for, then mark it received.
           </p>
         </div>
-        <ButtonLink href="/shop/rx/new" size="lg">
-          <Plus className="size-4" aria-hidden />
-          New RX order
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/shop/rx-lab-report" variant="outline" size="lg">
+            <FileSpreadsheet className="size-4" aria-hidden />
+            Lab report
+          </ButtonLink>
+          <ButtonLink href="/shop/rx/new" size="lg">
+            <Plus className="size-4" aria-hidden />
+            New RX order
+          </ButtonLink>
+        </div>
       </div>
 
       <ReadyToInvoice shops={ready} />

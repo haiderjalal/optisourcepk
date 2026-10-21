@@ -3,6 +3,7 @@ import {
   Boxes,
   Building2,
   ClipboardList,
+  FileSpreadsheet,
   FileText,
   Glasses,
   LayoutDashboard,
@@ -70,6 +71,11 @@ export const SHOP_NAV: ShopNavGroup[] = [
     items: [
       { href: "/shop/sales", label: "Monthly sales", icon: TrendingUp },
       { href: "/shop/ledger", label: "Ledger", icon: BookOpen },
+      {
+        href: "/shop/rx-lab-report",
+        label: "RX lab report",
+        icon: FileSpreadsheet,
+      },
     ],
   },
   {
