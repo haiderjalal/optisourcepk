@@ -6,6 +6,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import {
   createPdfLoader,
   isAbortError,
+  printPdfFile,
   sharePdfFile,
 } from "@/features/shop/pdf/sharePdf";
 import type { SheetLayout } from "./orientation";
@@ -42,25 +43,7 @@ export function StockSheetActions({
     setBusy("print");
     setNote(undefined);
     try {
-      const blobUrl = URL.createObjectURL(await loader.load());
-      // A hidden frame keeps the operator on this page; the browser's PDF
-      // viewer inside it owns the print dialog.
-      document.getElementById("stock-sheet-print")?.remove();
-      const frame = document.createElement("iframe");
-      frame.id = "stock-sheet-print";
-      frame.style.cssText =
-        "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
-      frame.src = blobUrl;
-      frame.onload = () => {
-        try {
-          frame.contentWindow?.focus();
-          frame.contentWindow?.print();
-        } catch {
-          // Some mobile browsers refuse to print a framed PDF.
-          window.location.assign(blobUrl);
-        }
-      };
-      document.body.appendChild(frame);
+      printPdfFile(await loader.load(), "stock-sheet-print");
     } catch (caught) {
       setNote({
         tone: "error",

@@ -152,3 +152,52 @@ export function rxLabTotals(rows: RxLabRow[]): RxLabTotals {
     sale: round2(totals.sale),
   };
 }
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function isDate(value: string | null | undefined): value is string {
+  if (!value || !DATE_PATTERN.test(value)) return false;
+  const time = Date.parse(`${value}T00:00:00Z`);
+  // Date.parse rolls 30 February over into March, so the date must read back unchanged.
+  return !Number.isNaN(time) && new Date(time).toISOString().startsWith(value);
+}
+
+/**
+ * The date range a report asks for: its From and To when they are valid dates,
+ * otherwise the current Karachi month up to today.
+ */
+export function resolveLabReportRange(
+  query: { from?: string | null; to?: string | null },
+  today: string,
+): { from: string; to: string } {
+  return {
+    from: isDate(query.from) ? query.from : `${today.slice(0, 7)}-01`,
+    to: isDate(query.to) ? query.to : today,
+  };
+}
+
+const plural = (count: number, one: string, many: string) =>
+  count === 1 ? one : many;
+
+/** The label on the totals row: how many orders the totals add up. */
+export function labReportTotalLabel(totals: RxLabTotals): string {
+  return `Total, ${totals.orders} ${plural(totals.orders, "order", "orders")}`;
+}
+
+/** The notes printed under the totals, one for each thing the totals leave out. */
+export function labReportNotes(totals: RxLabTotals): string[] {
+  const notes: string[] = [];
+  if (totals.ordersWithoutPurchase > 0) {
+    const count = totals.ordersWithoutPurchase;
+    notes.push(
+      `${count} ${plural(count, "order", "orders")} marked "no cost" left out of the purchase total: a lens has no purchase price yet.`,
+    );
+  }
+  if (totals.voided > 0) {
+    const count = totals.voided;
+    notes.push(
+      `${count} voided ${plural(count, "order is", "orders are")} listed but left out of the totals.`,
+    );
+  }
+  return notes;
+}
