@@ -4,10 +4,14 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/server/shop/dal";
-import { purchaseSchema } from "@/lib/validations/shop/purchase";
+import {
+  purchaseSchema,
+  type PurchasePayload,
+} from "@/lib/validations/shop/purchase";
 import {
   recordPurchase,
   setPurchaseLineCost,
+  updatePurchase,
 } from "@/services/shop/purchase.service";
 
 export interface PurchaseFormState {
@@ -25,12 +29,12 @@ function readLines(formData: FormData): unknown {
   }
 }
 
-export async function savePurchase(
-  _previous: PurchaseFormState,
+/** Check the posted purchase; a mistake comes back as the form's message. */
+function readPurchaseForm(
   formData: FormData,
-): Promise<PurchaseFormState> {
-  await requireUser();
-
+):
+  | { ok: true; data: PurchasePayload }
+  | { ok: false; state: PurchaseFormState } {
   const parsed = purchaseSchema.safeParse({
     supplierId: formData.get("supplierId"),
     invoiceNo: formData.get("invoiceNo") ?? "",
@@ -39,29 +43,42 @@ export async function savePurchase(
     lines: readLines(formData),
   });
 
-  if (!parsed.success) {
-    const flat = z.flattenError(parsed.error);
-    // Line errors arrive nested; surface the first one as the form message.
-    const lineIssue = parsed.error.issues.find((i) => i.path[0] === "lines");
-    const lineNo = lineIssue?.path[1];
-    return {
+  if (parsed.success) return { ok: true, data: parsed.data };
+
+  const flat = z.flattenError(parsed.error);
+  // Line errors arrive nested; surface the first one as the form message.
+  const lineIssue = parsed.error.issues.find((i) => i.path[0] === "lines");
+  const lineNo = lineIssue?.path[1];
+  return {
+    ok: false,
+    state: {
       error: !lineIssue
         ? "Check the highlighted fields."
         : typeof lineNo === "number"
           ? `Line ${lineNo + 1}: ${lineIssue.message}`
           : lineIssue.message,
       fieldErrors: flat.fieldErrors as Record<string, string[]>,
-    };
-  }
+    },
+  };
+}
+
+export async function savePurchase(
+  _previous: PurchaseFormState,
+  formData: FormData,
+): Promise<PurchaseFormState> {
+  await requireUser();
+
+  const form = readPurchaseForm(formData);
+  if (!form.ok) return form.state;
 
   let id: string;
   try {
     id = await recordPurchase({
-      supplierId: parsed.data.supplierId,
-      invoiceNo: parsed.data.invoiceNo,
-      invoiceDate: parsed.data.invoiceDate,
-      lines: parsed.data.lines,
-      notes: parsed.data.notes || null,
+      supplierId: form.data.supplierId,
+      invoiceNo: form.data.invoiceNo,
+      invoiceDate: form.data.invoiceDate,
+      lines: form.data.lines,
+      notes: form.data.notes || null,
     });
   } catch (error) {
     return {
@@ -69,6 +86,46 @@ export async function savePurchase(
     };
   }
 
+  revalidatePath("/shop/purchases");
+  revalidatePath("/shop/stock");
+  revalidatePath("/shop");
+  redirect(`/shop/purchases/${id}`);
+}
+
+/**
+ * Save the changes to a purchase: its header, its lines, and the stock they
+ * moved. The database refuses a change that would take stock below what is on
+ * the shelf, and then nothing is saved.
+ */
+export async function updatePurchaseAction(
+  _previous: PurchaseFormState,
+  formData: FormData,
+): Promise<PurchaseFormState> {
+  await requireUser();
+
+  const purchaseId = z.uuid().safeParse(formData.get("purchaseId"));
+  if (!purchaseId.success) return { error: "Choose the purchase to change." };
+
+  const form = readPurchaseForm(formData);
+  if (!form.ok) return form.state;
+
+  let id: string;
+  try {
+    id = await updatePurchase({
+      purchaseId: purchaseId.data,
+      supplierId: form.data.supplierId,
+      invoiceNo: form.data.invoiceNo,
+      invoiceDate: form.data.invoiceDate,
+      lines: form.data.lines,
+      notes: form.data.notes || null,
+    });
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not save it.",
+    };
+  }
+
+  revalidatePath(`/shop/purchases/${id}`);
   revalidatePath("/shop/purchases");
   revalidatePath("/shop/stock");
   revalidatePath("/shop");

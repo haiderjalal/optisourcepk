@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Pencil } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
+import { ButtonLink } from "@/components/ui/button";
 import { getPurchase } from "@/services/shop/purchase.service";
 import { PurchaseCostCell } from "@/features/shop/purchases/PurchaseCostCell";
 import { describeBin, formatAmount, formatDate } from "@/lib/format";
@@ -27,6 +28,16 @@ export default async function PurchasePage({
         <ArrowLeft className="size-4" aria-hidden />
         Purchases
       </Link>
+
+      <div className="mb-4 flex justify-end">
+        <ButtonLink
+          href={`/shop/purchases/${purchase.id}/edit`}
+          variant="outline"
+        >
+          <Pencil className="size-4" aria-hidden />
+          Edit purchase
+        </ButtonLink>
+      </div>
 
       <div className="mb-6">
         <p className="eyebrow text-accent-600">Purchase invoice</p>
@@ -125,8 +136,9 @@ export default async function PurchasePage({
       </div>
 
       <p className="text-navy-400 mt-3 text-xs">
-        Purchases are kept as entered. To correct stock, use a stock adjustment
-        on the product page.
+        Editing a purchase moves its stock to match. Stock from it that has
+        already been sold cannot be taken back. Costs can also be corrected line
+        by line above.
       </p>
     </div>
   );

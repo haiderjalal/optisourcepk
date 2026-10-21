@@ -9,7 +9,29 @@ import { Field } from "@/components/ui/field";
 import { formatAmount, todayInKarachi } from "@/lib/format";
 import { sphPlaceholder } from "@/lib/power";
 import type { Product, PurchaseLineInput, Supplier } from "@/types/database";
-import { savePurchase, type PurchaseFormState } from "./actions";
+import {
+  savePurchase,
+  updatePurchaseAction,
+  type PurchaseFormState,
+} from "./actions";
+
+/** A saved purchase, as the edit page hands it to the form. */
+export interface PurchaseSeed {
+  id: string;
+  supplierId: string;
+  invoiceNo: string;
+  invoiceDate: string;
+  notes: string;
+  lines: {
+    productId: string;
+    eye: "R" | "L" | "";
+    sph: number | null;
+    cyl: number | null;
+    add: number | null;
+    qty: number;
+    unitCost: number;
+  }[];
+}
 
 /**
  * Enter a supplier's invoice line by line, as it is printed.
@@ -59,12 +81,29 @@ function toInput(line: LineDraft): PurchaseLineInput {
   };
 }
 
-function SubmitButton() {
+function seedLine(line: PurchaseSeed["lines"][number]): LineDraft {
+  return {
+    key: nextKey(),
+    productId: line.productId,
+    eye: line.eye,
+    sph: line.sph === null ? "" : String(line.sph),
+    cyl: line.cyl === null ? "" : String(line.cyl),
+    add: line.add === null ? "" : String(line.add),
+    qty: String(line.qty),
+    unitCost: String(line.unitCost),
+  };
+}
+
+function SubmitButton({ editing }: { editing: boolean }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" size="lg" disabled={pending}>
       <Save className="size-4" aria-hidden />
-      {pending ? "Saving…" : "Save purchase and receive stock"}
+      {pending
+        ? "Saving…"
+        : editing
+          ? "Save changes"
+          : "Save purchase and receive stock"}
     </Button>
   );
 }
@@ -75,23 +114,31 @@ const cell =
 export function PurchaseForm({
   suppliers,
   products,
+  purchase,
 }: {
   suppliers: Supplier[];
   products: Product[];
+  /** Given when editing a saved purchase; the form starts from it. */
+  purchase?: PurchaseSeed;
 }) {
+  const editing = purchase !== undefined;
   const [state, formAction] = useActionState<PurchaseFormState, FormData>(
-    savePurchase,
+    editing ? updatePurchaseAction : savePurchase,
     {},
   );
   const errors = state.fieldErrors;
 
-  const [lines, setLines] = useState<LineDraft[]>([emptyLine()]);
+  const [lines, setLines] = useState<LineDraft[]>(() =>
+    purchase ? purchase.lines.map(seedLine) : [emptyLine()],
+  );
   // Controlled so a failed save does not wipe the header: React resets
   // uncontrolled fields once a form action finishes.
-  const [supplierId, setSupplierId] = useState("");
-  const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(todayInKarachi);
-  const [notes, setNotes] = useState("");
+  const [supplierId, setSupplierId] = useState(purchase?.supplierId ?? "");
+  const [invoiceNo, setInvoiceNo] = useState(purchase?.invoiceNo ?? "");
+  const [invoiceDate, setInvoiceDate] = useState(
+    () => purchase?.invoiceDate ?? todayInKarachi(),
+  );
+  const [notes, setNotes] = useState(purchase?.notes ?? "");
 
   const productById = useMemo(
     () => new Map(products.map((p) => [p.id, p])),
@@ -138,6 +185,9 @@ export function PurchaseForm({
 
   return (
     <form action={formAction} className="space-y-6" noValidate>
+      {purchase && (
+        <input type="hidden" name="purchaseId" value={purchase.id} />
+      )}
       <input
         type="hidden"
         name="lines"
@@ -147,9 +197,9 @@ export function PurchaseForm({
       <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
         <h2 className="text-base font-semibold">Supplier invoice</h2>
         <p className="text-navy-500 mt-1 max-w-prose text-sm">
-          Copy the header from the supplier&apos;s invoice. Entering the same
-          supplier and invoice number again adds lines to the invoice already on
-          file.
+          {editing
+            ? "Changing a quantity, product or power moves the stock to match. Stock from this purchase that has already been sold cannot be taken back."
+            : "Copy the header from the supplier's invoice. Entering the same supplier and invoice number again adds lines to the invoice already on file."}
         </p>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -456,9 +506,9 @@ export function PurchaseForm({
       )}
 
       <div className="flex flex-wrap items-center gap-3">
-        <SubmitButton />
+        <SubmitButton editing={editing} />
         <Link
-          href="/shop/purchases"
+          href={purchase ? `/shop/purchases/${purchase.id}` : "/shop/purchases"}
           className="text-navy-500 hover:text-navy-700 text-sm font-medium"
         >
           Cancel

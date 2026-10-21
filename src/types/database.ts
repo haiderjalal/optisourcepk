@@ -390,6 +390,8 @@ type LedgerEntryRow = {
   entry_type: LedgerEntryType;
   amount: number;
   order_id: string | null;
+  /** A sales return's entry; such entries are changed through the return. */
+  return_id: string | null;
   payment_method: PaymentMethod | null;
   reference: string | null;
   memo: string | null;
@@ -643,6 +645,16 @@ export interface Database {
         Args: { p_entry_id: string };
         Returns: string;
       };
+      update_ledger_entry: {
+        Args: {
+          p_entry_id: string;
+          p_amount: number;
+          p_method?: string | null;
+          p_reference?: string | null;
+          p_memo?: string | null;
+        };
+        Returns: LedgerEntryRow;
+      };
       issue_invoice: {
         Args: {
           p_order_id: string;
@@ -688,6 +700,17 @@ export interface Database {
       };
       record_purchase: {
         Args: {
+          p_supplier_id: string;
+          p_invoice_no: string;
+          p_invoice_date: string | null;
+          p_lines: PurchaseLineInput[];
+          p_notes?: string | null;
+        };
+        Returns: string;
+      };
+      update_purchase: {
+        Args: {
+          p_purchase_id: string;
           p_supplier_id: string;
           p_invoice_no: string;
           p_invoice_date: string | null;

@@ -97,6 +97,9 @@ export default async function PaymentsPage({
                   <th scope="col" className="px-4 py-3 text-right font-medium">
                     Amount (Rs)
                   </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    <span className="sr-only">Edit</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -123,6 +126,16 @@ export default async function PaymentsPage({
                     >
                       {entry.amount > 0 ? "+" : "−"}
                       {formatAmount(Math.abs(entry.amount))}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {entry.order_id === null && entry.return_id === null && (
+                        <Link
+                          href={`/shop/payments/${entry.id}/edit`}
+                          className="text-accent-700 text-xs font-medium hover:underline"
+                        >
+                          Edit
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 ))}
