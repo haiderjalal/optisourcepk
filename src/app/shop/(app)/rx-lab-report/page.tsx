@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/server/shop/dal";
 import { listRxLabRows } from "@/services/shop/rx-lab-report.service";
-import { rxLabTotals } from "@/features/shop/rx/labReport";
+import {
+  labReportNotes,
+  labReportTotalLabel,
+  resolveLabReportRange,
+  rxLabTotals,
+} from "@/features/shop/rx/labReport";
+import { RxLabReportActions } from "@/features/shop/rx/RxLabReportActions";
 import { inputClass } from "@/components/ui/field";
 import {
   formatAmount,
@@ -13,29 +19,20 @@ import {
 
 export const metadata: Metadata = { title: "RX lab report" };
 
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-function isDate(value: string | undefined): value is string {
-  return (
-    value !== undefined &&
-    DATE_PATTERN.test(value) &&
-    !Number.isNaN(Date.parse(`${value}T00:00:00Z`))
-  );
-}
-
 export default async function RxLabReportPage({
   searchParams,
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireUser();
-  const query = await searchParams;
-  const today = todayInKarachi();
-  const from = isDate(query.from) ? query.from : `${today.slice(0, 7)}-01`;
-  const to = isDate(query.to) ? query.to : today;
+  const { from, to } = resolveLabReportRange(
+    await searchParams,
+    todayInKarachi(),
+  );
 
   const rows = await listRxLabRows({ from, to });
   const totals = rxLabTotals(rows);
+  const notes = labReportNotes(totals);
 
   return (
     <div className="space-y-6">
@@ -55,32 +52,36 @@ export default async function RxLabReportPage({
         </p>
       </header>
 
-      <form method="get" className="flex flex-wrap items-end gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-navy-500 text-xs">From</span>
-          <input
-            type="date"
-            name="from"
-            defaultValue={from}
-            className={inputClass}
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="text-navy-500 text-xs">To</span>
-          <input
-            type="date"
-            name="to"
-            defaultValue={to}
-            className={inputClass}
-          />
-        </label>
-        <button
-          type="submit"
-          className="bg-navy-500 rounded-xl px-4 py-2 text-sm font-medium text-white"
-        >
-          Show
-        </button>
-      </form>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <form method="get" className="flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-navy-500 text-xs">From</span>
+            <input
+              type="date"
+              name="from"
+              defaultValue={from}
+              className={inputClass}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-navy-500 text-xs">To</span>
+            <input
+              type="date"
+              name="to"
+              defaultValue={to}
+              className={inputClass}
+            />
+          </label>
+          <button
+            type="submit"
+            className="bg-navy-500 rounded-xl px-4 py-2 text-sm font-medium text-white"
+          >
+            Show
+          </button>
+        </form>
+
+        {rows.length > 0 && <RxLabReportActions from={from} to={to} />}
+      </div>
 
       {rows.length === 0 ? (
         <p className="text-navy-500 text-sm">
@@ -179,8 +180,7 @@ export default async function RxLabReportPage({
                 ))}
                 <tr className="border-t border-mist-200 font-semibold">
                   <td className="px-4 py-2.5" colSpan={5}>
-                    Total, {totals.orders}{" "}
-                    {totals.orders === 1 ? "order" : "orders"}
+                    {labReportTotalLabel(totals)}
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {totals.lenses}
@@ -195,23 +195,11 @@ export default async function RxLabReportPage({
               </tbody>
             </table>
           </div>
-          {(totals.ordersWithoutPurchase > 0 || totals.voided > 0) && (
+          {notes.length > 0 && (
             <div className="text-navy-500 space-y-1 border-t border-mist-200 px-4 py-3 text-xs">
-              {totals.ordersWithoutPurchase > 0 && (
-                <p>
-                  {totals.ordersWithoutPurchase}{" "}
-                  {totals.ordersWithoutPurchase === 1 ? "order" : "orders"}{" "}
-                  marked &quot;no cost&quot; left out of the purchase total: a
-                  lens has no purchase price yet.
-                </p>
-              )}
-              {totals.voided > 0 && (
-                <p>
-                  {totals.voided} voided{" "}
-                  {totals.voided === 1 ? "order is" : "orders are"} listed but
-                  left out of the totals.
-                </p>
-              )}
+              {notes.map((note) => (
+                <p key={note}>{note}</p>
+              ))}
             </div>
           )}
         </section>
