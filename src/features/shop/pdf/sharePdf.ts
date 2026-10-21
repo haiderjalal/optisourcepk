@@ -95,6 +95,32 @@ export function downloadFile(file: File): void {
 }
 
 /**
+ * Print the PDF from a hidden frame, so the operator stays on this page. The
+ * browser's PDF viewer in the frame owns the print dialog. A browser that
+ * refuses to print a framed PDF opens it in the tab instead.
+ */
+export function printPdfFile(file: File, frameId: string): void {
+  const url = URL.createObjectURL(file);
+  document.getElementById(frameId)?.remove();
+
+  const frame = document.createElement("iframe");
+  frame.id = frameId;
+  frame.style.cssText =
+    "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  frame.src = url;
+  frame.onload = () => {
+    try {
+      frame.contentWindow?.focus();
+      frame.contentWindow?.print();
+    } catch {
+      // Some mobile browsers refuse to print a framed PDF.
+      window.location.assign(url);
+    }
+  };
+  document.body.appendChild(frame);
+}
+
+/**
  * Share the PDF through the browser's share sheet where the browser can share
  * files; otherwise download it.
  *
