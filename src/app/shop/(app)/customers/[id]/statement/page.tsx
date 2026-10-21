@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, Wallet } from "lucide-react";
+import { ArrowLeft, Download, Pencil, Wallet } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getCustomer } from "@/services/shop/customer.service";
 import { getBalance, getStatement } from "@/services/shop/ledger.service";
@@ -151,10 +151,20 @@ export default async function StatementPage({
                 </td>
                 <td className="px-2 py-2.5 text-right">
                   {line.removable && line.entry_id && (
-                    <LedgerEntryRemoveButton
-                      entryId={line.entry_id}
-                      label={line.description}
-                    />
+                    <div className="flex items-start justify-end gap-1">
+                      <Link
+                        href={`/shop/payments/${line.entry_id}/edit`}
+                        title="Edit this entry"
+                        aria-label={`Edit ${line.description}`}
+                        className="text-navy-400 hover:text-accent-700 rounded p-1 hover:bg-mist-100"
+                      >
+                        <Pencil className="size-4" aria-hidden />
+                      </Link>
+                      <LedgerEntryRemoveButton
+                        entryId={line.entry_id}
+                        label={line.description}
+                      />
+                    </div>
                   )}
                 </td>
               </tr>

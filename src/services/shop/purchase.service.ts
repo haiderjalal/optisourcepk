@@ -103,6 +103,40 @@ export async function recordPurchase(input: {
 }
 
 /**
+ * Change a saved purchase: its header and its lines, and the stock they moved.
+ * One database call, so the edit either lands whole or not at all (migration
+ * 0046). Refused when stock from it has already been sold.
+ */
+export async function updatePurchase(input: {
+  purchaseId: string;
+  supplierId: string;
+  invoiceNo: string;
+  invoiceDate: string | null;
+  lines: PurchaseLineInput[];
+  notes: string | null;
+}): Promise<string> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase.rpc("update_purchase", {
+    p_purchase_id: input.purchaseId,
+    p_supplier_id: input.supplierId,
+    p_invoice_no: input.invoiceNo,
+    p_invoice_date: input.invoiceDate,
+    p_lines: input.lines,
+    p_notes: input.notes,
+  });
+
+  if (error)
+    throw new Error(describePostgresError(error, "update the purchase"));
+
+  logger.info("Purchase updated", {
+    purchaseInvoiceId: data,
+    lines: input.lines.length,
+  });
+  return data;
+}
+
+/**
  * Correct the cost of one purchase line. Only the price changes: the stock
  * this line received stays as it is, and the database allows no other column
  * to be edited after saving.

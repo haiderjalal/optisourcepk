@@ -168,6 +168,54 @@ export async function removeLedgerEntry(entryId: string): Promise<void> {
   logger.info("Ledger entry moved to Recently deleted", { entryId });
 }
 
+/** One ledger entry, for the page that corrects it. */
+export async function getLedgerEntry(id: string): Promise<LedgerEntry | null> {
+  const { supabase } = await requireUser();
+
+  const { data, error } = await supabase
+    .from("ledger_entries")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw new Error(describePostgresError(error, "load the entry"));
+  return data;
+}
+
+export interface LedgerEntryCorrection {
+  entryId: string;
+  /** The magnitude: its sign is kept by the database. */
+  amount: number;
+  /** Required for a payment; ignored for an adjustment. */
+  method: string | null;
+  reference: string | null;
+  memo: string | null;
+}
+
+/**
+ * Correct a payment or adjustment entered by hand. Invoices issued after it
+ * move by the change in its amount, as they do when it is removed (migration
+ * 0047).
+ */
+export async function updateLedgerEntry(
+  input: LedgerEntryCorrection,
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase.rpc("update_ledger_entry", {
+    p_entry_id: input.entryId,
+    p_amount: input.amount,
+    p_method: input.method,
+    p_reference: input.reference,
+    p_memo: input.memo,
+  });
+
+  if (error) {
+    throw new Error(describePostgresError(error, "save the entry"));
+  }
+  logger.info("Ledger entry corrected", { entryId: input.entryId });
+}
+
 /** Lifetime RX and stock sales/purchases, kept as four separate figures. */
 export async function getBusinessTotals(): Promise<BusinessTotals> {
   const { supabase } = await requireUser();
