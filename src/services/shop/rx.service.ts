@@ -11,6 +11,7 @@ import type {
 } from "@/types/database";
 import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
+import { PAGE_SIZE } from "./paging";
 
 /**
  * RX jobs: lenses made to a prescription and ordered from a lab.
@@ -54,6 +55,9 @@ export interface RxSearch {
   labOrder: string;
   status: RxStatus | "all";
 }
+
+/** Orders whose lines are read in one request when filling in a job's partner lens. */
+const SIBLING_GROUP = 100;
 
 /**
  * RX jobs matching a search, newest first — one row per job, the R and L of
@@ -164,7 +168,9 @@ export async function listRxJobs(
   // reading carries on until there is a full page of real jobs. Skipping them
   // after a single limited read is what left "Show 5 more" showing nothing.
   const wantedLines = limit * 2; // two eyes make one row, near enough
-  const batch = Math.max(wantedLines, 20);
+  // The server returns at most PAGE_SIZE rows a request. A larger page comes
+  // back short and reads as the end of the lines, which cut the list short.
+  const batch = Math.min(Math.max(wantedLines, 200), PAGE_SIZE);
   const combined = new Set<string>();
   const known = new Set<string>();
   const matched: OrderLine[] = [];
@@ -198,17 +204,22 @@ export async function listRxJobs(
 
   // A search can hit one eye only; read the rest of those orders' RX lines so
   // each lens is shown with its partner.
-  const { data: siblings, error: siblingError } = await supabase
-    .from("order_lines")
-    .select("*")
-    .not("rx_status", "is", null)
-    .in("order_id", [...new Set(matched.map((l) => l.order_id))]);
-  if (siblingError) {
-    throw new Error(describePostgresError(siblingError, "load RX jobs"));
+  // Read in groups of orders: each request stays under the server's row cap,
+  // so no partner lens is dropped from a long list.
+  const matchedOrderIds = [...new Set(matched.map((l) => l.order_id))];
+  const siblings: OrderLine[] = [];
+  for (let i = 0; i < matchedOrderIds.length; i += SIBLING_GROUP) {
+    const { data, error } = await supabase
+      .from("order_lines")
+      .select("*")
+      .not("rx_status", "is", null)
+      .in("order_id", matchedOrderIds.slice(i, i + SIBLING_GROUP));
+    if (error) throw new Error(describePostgresError(error, "load RX jobs"));
+    siblings.push(...(data ?? []));
   }
 
   const matchedIds = new Set(matched.map((l) => l.id));
-  const extra = (siblings ?? []).filter((l) => !matchedIds.has(l.id));
+  const extra = siblings.filter((l) => !matchedIds.has(l.id));
   const lines = [...matched, ...extra];
 
   const supplierIds = [
