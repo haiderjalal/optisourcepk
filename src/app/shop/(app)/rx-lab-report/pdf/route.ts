@@ -1,11 +1,9 @@
 import { logger } from "@/lib/logger";
 import { todayInKarachi } from "@/lib/format";
+import { resolveDateRange } from "@/lib/date-range";
 import { requireUser } from "@/server/shop/dal";
 import { listRxLabRows } from "@/services/shop/rx-lab-report.service";
-import {
-  resolveLabReportRange,
-  rxLabTotals,
-} from "@/features/shop/rx/labReport";
+import { rxLabTotals } from "@/features/shop/rx/labReport";
 import { buildRxLabPdfModel } from "@/features/shop/rx/pdf/model";
 import { renderRxLabReportPdf } from "@/features/shop/rx/pdf/render";
 import {
@@ -25,7 +23,7 @@ export async function GET(request: Request): Promise<Response> {
   await requireUser();
 
   const url = new URL(request.url);
-  const range = resolveLabReportRange(
+  const range = resolveDateRange(
     {
       from: url.searchParams.get("from"),
       to: url.searchParams.get("to"),

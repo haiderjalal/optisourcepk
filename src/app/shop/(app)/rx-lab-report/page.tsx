@@ -5,9 +5,9 @@ import { listRxLabRows } from "@/services/shop/rx-lab-report.service";
 import {
   labReportNotes,
   labReportTotalLabel,
-  resolveLabReportRange,
   rxLabTotals,
 } from "@/features/shop/rx/labReport";
+import { resolveDateRange } from "@/lib/date-range";
 import { RxLabReportActions } from "@/features/shop/rx/RxLabReportActions";
 import { inputClass } from "@/components/ui/field";
 import {
@@ -25,10 +25,7 @@ export default async function RxLabReportPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireUser();
-  const { from, to } = resolveLabReportRange(
-    await searchParams,
-    todayInKarachi(),
-  );
+  const { from, to } = resolveDateRange(await searchParams, todayInKarachi());
 
   const rows = await listRxLabRows({ from, to });
   const totals = rxLabTotals(rows);
