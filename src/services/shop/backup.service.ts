@@ -19,14 +19,28 @@ const TABLES: { name: TableName; orderBy: string }[] = [
   { name: "suppliers", orderBy: "id" },
   { name: "products", orderBy: "id" },
   { name: "stock_bins", orderBy: "id" },
+  { name: "daily_stock_entries", orderBy: "id" },
   { name: "orders", orderBy: "id" },
   { name: "order_lines", orderBy: "id" },
+  { name: "daily_stock_postings", orderBy: "id" },
   { name: "purchase_invoices", orderBy: "id" },
   { name: "purchase_invoice_lines", orderBy: "id" },
   { name: "stock_movements", orderBy: "id" },
   { name: "ledger_entries", orderBy: "id" },
   { name: "expenses", orderBy: "id" },
+  { name: "sales_returns", orderBy: "id" },
+  { name: "sales_return_lines", orderBy: "id" },
+  { name: "trash", orderBy: "id" },
 ];
+
+/**
+ * Fails to compile if a table in the database types is not listed above, so a
+ * new table cannot be left out of the backup without anyone noticing.
+ */
+type UnbackedTable = Exclude<TableName, (typeof TABLES)[number]["name"]>;
+export const EVERY_TABLE_IS_BACKED_UP: [UnbackedTable] extends [never]
+  ? true
+  : UnbackedTable = true;
 
 export interface Backup {
   exportedAt: string;

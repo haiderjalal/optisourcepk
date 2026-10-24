@@ -137,6 +137,15 @@ type DailyStockEntryRow = {
   updated_at: string;
 };
 
+/** A daily-register draw by one order: how many units came from which register entry. */
+type DailyStockPostingRow = {
+  id: string;
+  order_id: string;
+  entry_id: string;
+  qty: number;
+  created_at: string;
+};
+
 type SalesReturnRow = {
   id: string;
   return_no: number;
@@ -531,6 +540,7 @@ export interface Database {
       stock_bins: Table<StockBinRow>;
       stock_movements: Table<StockMovementRow>;
       daily_stock_entries: Table<DailyStockEntryRow>;
+      daily_stock_postings: Table<DailyStockPostingRow>;
       orders: Table<OrderRow>;
       order_lines: Table<OrderLineRow>;
       ledger_entries: Table<LedgerEntryRow>;
