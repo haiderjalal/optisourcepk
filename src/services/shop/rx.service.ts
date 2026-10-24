@@ -11,6 +11,7 @@ import type {
 } from "@/types/database";
 import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
+import { chunk } from "@/lib/utils";
 import { PAGE_SIZE } from "./paging";
 
 /**
@@ -204,16 +205,20 @@ export async function listRxJobs(
 
   // A search can hit one eye only; read the rest of those orders' RX lines so
   // each lens is shown with its partner.
-  // Read in groups of orders: each request stays under the server's row cap,
-  // so no partner lens is dropped from a long list.
+  // Read in groups of orders, all at once: each request stays under the
+  // server's row cap, so no partner lens is dropped from a long list.
   const matchedOrderIds = [...new Set(matched.map((l) => l.order_id))];
+  const siblingReads = await Promise.all(
+    chunk(matchedOrderIds, SIBLING_GROUP).map((ids) =>
+      supabase
+        .from("order_lines")
+        .select("*")
+        .not("rx_status", "is", null)
+        .in("order_id", ids),
+    ),
+  );
   const siblings: OrderLine[] = [];
-  for (let i = 0; i < matchedOrderIds.length; i += SIBLING_GROUP) {
-    const { data, error } = await supabase
-      .from("order_lines")
-      .select("*")
-      .not("rx_status", "is", null)
-      .in("order_id", matchedOrderIds.slice(i, i + SIBLING_GROUP));
+  for (const { data, error } of siblingReads) {
     if (error) throw new Error(describePostgresError(error, "load RX jobs"));
     siblings.push(...(data ?? []));
   }
@@ -244,35 +249,37 @@ export async function listRxJobs(
     throw new Error(describePostgresError(suppliers.error, "load RX jobs"));
   }
 
-  const { data: customers, error: customerError } = await supabase
-    .from("customers")
-    .select("id, shop_name, area")
-    .in("id", [
-      ...new Set((orders.data ?? []).map((o) => o.bill_to_customer_id)),
-    ]);
-  if (customerError) {
-    throw new Error(describePostgresError(customerError, "load RX jobs"));
-  }
-
   const orderById = new Map((orders.data ?? []).map((o) => [o.id, o]));
 
-  // A billed RX order shows the combined invoice it went on.
+  // A billed RX order shows the combined invoice it went on. The shops and the
+  // combined invoices both come from the orders read above, so they are read
+  // together rather than one after the other.
   const billedIds = [
     ...new Set(
       (orders.data ?? []).map((o) => o.billed_in).filter((id) => id !== null),
     ),
   ];
-  const billedNo = new Map<string, number | null>();
-  if (billedIds.length > 0) {
-    const { data: billed, error: billedError } = await supabase
-      .from("orders")
-      .select("id, invoice_no")
-      .in("id", billedIds);
-    if (billedError) {
-      throw new Error(describePostgresError(billedError, "load RX jobs"));
-    }
-    for (const b of billed ?? []) billedNo.set(b.id, b.invoice_no);
+  const [customerRead, billedRead] = await Promise.all([
+    supabase
+      .from("customers")
+      .select("id, shop_name, area")
+      .in("id", [
+        ...new Set((orders.data ?? []).map((o) => o.bill_to_customer_id)),
+      ]),
+    billedIds.length > 0
+      ? supabase.from("orders").select("id, invoice_no").in("id", billedIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  const { data: customers, error: customerError } = customerRead;
+  if (customerError) {
+    throw new Error(describePostgresError(customerError, "load RX jobs"));
   }
+  if (billedRead.error) {
+    throw new Error(describePostgresError(billedRead.error, "load RX jobs"));
+  }
+  const billedNo = new Map<string, number | null>(
+    (billedRead.data ?? []).map((b) => [b.id, b.invoice_no]),
+  );
   const customerById = new Map((customers ?? []).map((c) => [c.id, c]));
   const supplierById = new Map(
     (suppliers.data ?? []).map((s) => [s.id, s.name]),

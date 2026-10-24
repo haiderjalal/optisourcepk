@@ -94,10 +94,10 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 /**
- * Capture what arrived.
+ * Capture what arrived, as identifiers only.
  *
- * Logged as structured JSON for now so nothing is lost before the events
- * table exists. Message ids are logged so duplicates can be spotted: Meta
+ * The sender's number and the message text are personal data, so they are not
+ * written to the log. Message ids are logged so duplicates can be spotted: Meta
  * retries on failure and does not guarantee exactly-once delivery.
  */
 function record(payload: unknown): void {
@@ -111,24 +111,19 @@ function record(payload: unknown): void {
   for (const entry of entries) {
     logger.info("WhatsApp message received", {
       messageId: entry.id,
-      from: entry.from,
-      groupId: entry.groupId,
       type: entry.type,
       timestamp: entry.timestamp,
-      // Order text is the whole point of this endpoint, so it is kept.
-      text: entry.text,
+      inGroup: entry.inGroup,
     });
   }
 }
 
 interface InboundMessage {
   id?: string;
-  from?: string;
-  /** Present when the message was sent in a group rather than a 1:1 chat. */
-  groupId?: string;
+  /** Sent in a group rather than a one-to-one chat. */
+  inGroup: boolean;
   type?: string;
   timestamp?: string;
-  text?: string;
 }
 
 /**
@@ -156,15 +151,12 @@ function readEntries(payload: unknown): InboundMessage[] {
 
       for (const message of messages) {
         const m = message as Record<string, unknown>;
-        const body = (m.text as { body?: string } | undefined)?.body;
 
         out.push({
           id: typeof m.id === "string" ? m.id : undefined,
-          from: typeof m.from === "string" ? m.from : undefined,
-          groupId: typeof m.group_id === "string" ? m.group_id : undefined,
+          inGroup: typeof m.group_id === "string",
           type: typeof m.type === "string" ? m.type : undefined,
           timestamp: typeof m.timestamp === "string" ? m.timestamp : undefined,
-          text: typeof body === "string" ? body : undefined,
         });
       }
     }

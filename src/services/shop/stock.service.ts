@@ -246,10 +246,17 @@ export async function listDailyStock(): Promise<DailyStockLine[]> {
   const productIds = [...new Set(productByBin.values())];
   if (productIds.length === 0) return [];
 
+  // The bins and the product names both depend only on the moved products, so
+  // they are read together rather than one after the other.
+  const productRead = supabase
+    .from("products")
+    .select("id, name, unit")
+    .in("id", productIds);
   let bins: { product_id: string; qty_on_hand: number }[];
+  let products: Awaited<typeof productRead>;
   try {
-    bins = (
-      await Promise.all(
+    [bins, products] = await Promise.all([
+      Promise.all(
         chunk(productIds, LOOKUP_BATCH).map((ids) =>
           selectAllPages<{ product_id: string; qty_on_hand: number }>(
             (from, to) =>
@@ -261,16 +268,13 @@ export async function listDailyStock(): Promise<DailyStockLine[]> {
                 .range(from, to),
           ),
         ),
-      )
-    ).flat();
+      ).then((parts) => parts.flat()),
+      productRead,
+    ]);
   } catch (error) {
     throw new Error(describePostgresError(error, "load daily stock totals"));
   }
 
-  const products = await supabase
-    .from("products")
-    .select("id, name, unit")
-    .in("id", productIds);
   if (products.error) {
     throw new Error(
       describePostgresError(products.error, "load daily stock totals"),
