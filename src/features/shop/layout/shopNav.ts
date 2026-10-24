@@ -8,6 +8,7 @@ import {
   Glasses,
   LayoutDashboard,
   Package,
+  PackageCheck,
   Receipt,
   Trash2,
   TrendingUp,
@@ -76,6 +77,7 @@ export const SHOP_NAV: ShopNavGroup[] = [
         label: "RX lab report",
         icon: FileSpreadsheet,
       },
+      { href: "/shop/stock-report", label: "Stock report", icon: PackageCheck },
     ],
   },
   {
