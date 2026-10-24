@@ -57,24 +57,23 @@ export default async function OrderPage({
 
   // Only worth checking while it can still be acted on.
   const canIssue = order.issued_at === null && order.voided_at === null;
-  // A draft shows the account as it stands now; an issued invoice shows the
-  // figures frozen when it went out.
-  const [availability, account] = canIssue
-    ? await Promise.all([
-        // An RX order is made by a lab; there is no stock to check.
-        order.is_rx ? [] : checkOrderStock(id),
-        getBalance(order.bill_to_customer_id),
-      ])
-    : [[], null];
 
-  // Independent reads, so they go together rather than one after another.
-  const [billedOn, sameDay, returns] = await Promise.all([
-    // An RX order billed on its shop's combined invoice is as final as issued.
-    order.billed_in ? getOrderReference(order.billed_in) : null,
-    // The patient's other RX orders from the same day go to the lab together.
-    order.is_rx ? listSamePatientSameDay(order) : [],
-    order.issued_at ? listReturns({ orderId: order.id, limit: 100 }) : [],
-  ]);
+  // Every read below depends only on the order, so they are made together in one
+  // round trip rather than in two waves.
+  const [availability, account, billedOn, sameDay, returns] = await Promise.all(
+    [
+      // An RX order is made by a lab; there is no stock to check.
+      canIssue && !order.is_rx ? checkOrderStock(id) : [],
+      // A draft shows the account as it stands now; an issued invoice shows the
+      // figures frozen when it went out.
+      canIssue ? getBalance(order.bill_to_customer_id) : null,
+      // An RX order billed on its shop's combined invoice is as final as issued.
+      order.billed_in ? getOrderReference(order.billed_in) : null,
+      // The patient's other RX orders from the same day go to the lab together.
+      order.is_rx ? listSamePatientSameDay(order) : [],
+      order.issued_at ? listReturns({ orderId: order.id, limit: 100 }) : [],
+    ],
+  );
   const billed = billedOn !== null;
 
   const issued = order.issued_at !== null;
