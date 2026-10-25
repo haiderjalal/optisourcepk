@@ -57,33 +57,6 @@ export interface RxLabTotals {
   voided: number;
 }
 
-const KARACHI_DAY = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Asia/Karachi",
-});
-
-/** The Karachi calendar date an instant falls on, as "YYYY-MM-DD". */
-export function karachiDate(at: string): string {
-  return KARACHI_DAY.format(new Date(at));
-}
-
-/**
- * The UTC instants at which a Karachi date range starts (the first day's midnight) and ends (the midnight after its
- * last day). Karachi is UTC+5 all year round.
- */
-export function karachiRangeBounds(range: { from: string; to: string }): {
-  start: string;
-  end: string;
-} {
-  const [fromYear, fromMonth, fromDay] = range.from.split("-").map(Number);
-  const [toYear, toMonth, toDay] = range.to.split("-").map(Number);
-  return {
-    start: new Date(
-      Date.UTC(fromYear, fromMonth - 1, fromDay, -5),
-    ).toISOString(),
-    end: new Date(Date.UTC(toYear, toMonth - 1, toDay + 1, -5)).toISOString(),
-  };
-}
-
 function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }

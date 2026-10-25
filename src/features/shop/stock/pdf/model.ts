@@ -45,6 +45,8 @@ export interface StockReportPdfInput {
   to: string;
 }
 
+const CHANNEL_LABEL = { normal: "Normal", daily: "Daily" } as const;
+
 export function buildStockReportPdfModel({
   report,
   from,
@@ -65,9 +67,9 @@ export function buildStockReportPdfModel({
           row.supplier,
           row.product,
           row.power,
-          row.eye ?? "",
           String(row.quantity),
-          formatAmount(row.unitCost),
+          formatAmount(row.purchasedPrice),
+          row.salePrice === null ? "—" : formatAmount(row.salePrice),
           formatAmount(row.amount),
         ],
         flagged: false,
@@ -78,8 +80,8 @@ export function buildStockReportPdfModel({
         "",
         "Total",
         "",
-        "",
         String(totals.purchasedQuantity),
+        "",
         "",
         formatAmount(totals.purchasedAmount),
       ],
@@ -112,25 +114,31 @@ export function buildStockReportPdfModel({
       ],
     },
     sales: {
-      title: "Daily sales from the register",
+      title: "Sales on invoices (normal and daily stock)",
       rows: report.sales.map((row) => ({
-        key: row.postingId,
+        key: row.lineId,
         cells: [
           formatDate(row.date),
           row.invoiceNo === null ? "—" : String(row.invoiceNo),
+          CHANNEL_LABEL[row.channel],
           row.shop,
           row.product,
           String(row.quantity),
-          row.amount === null ? "no price" : formatAmount(row.amount),
+          row.purchasedPrice === null ? "—" : formatAmount(row.purchasedPrice),
+          formatAmount(row.salePrice),
+          row.salePrice === 0 ? "no price" : formatAmount(row.amount),
         ],
-        flagged: row.amount === null,
+        flagged: row.salePrice === 0,
       })),
       total: [
         "",
         "",
         "",
+        "",
         "Total",
         String(totals.soldQuantity),
+        "",
+        "",
         formatAmount(totals.soldAmount),
       ],
     },
