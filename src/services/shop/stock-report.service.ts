@@ -1,20 +1,17 @@
 import "server-only";
 
 import { requireUser } from "@/server/shop/dal";
-import { chunk } from "@/lib/utils";
-import type { Eye } from "@/types/database";
+import { karachiDate, karachiRangeBounds } from "@/lib/date-range";
 import {
   powerText,
   type PurchaseReportRow,
   type RegisterReportRow,
   type SaleReportRow,
+  type StockChannel,
   type StockReport,
 } from "@/features/shop/stock/report";
 import { describePostgresError } from "./errors";
 import { embeddedPage, selectAllPages } from "./paging";
-
-/** Order lines are read for this many invoices at a time, so each request stays small. */
-const LINE_LOOKUP_BATCH = 100;
 
 interface PurchaseLineRow {
   id: string;
@@ -22,10 +19,10 @@ interface PurchaseLineRow {
   sph: number | null;
   cyl: number | null;
   add_power: number | null;
-  eye: Eye | null;
   quantity: number;
   unit_cost: number | string;
   line_total: number | string;
+  products: { list_price: number | string } | null;
 }
 
 interface PurchaseRow {
@@ -48,27 +45,20 @@ interface RegisterRow {
   note: string | null;
 }
 
-interface PostingRow {
+interface SaleLineRow {
   id: string;
-  qty: number;
-  order_id: string;
-  daily_stock_entries: {
-    product_id: string;
-    product_name: string;
-    unit: string;
-    entry_date: string;
-  } | null;
-  orders: { invoice_no: number | null; bill_to_shop: string | null } | null;
-}
-
-interface OrderLineRow {
-  order_id: string;
-  product_id: string;
+  product_name: string;
+  unit: string;
+  stock_source: StockChannel;
+  quantity: number;
+  unit_price: number | string;
+  unit_cost: number | string | null;
   line_total: number | string;
-}
-
-function round2(value: number): number {
-  return Math.round(value * 100) / 100;
+  orders: {
+    invoice_no: number | null;
+    bill_to_shop: string | null;
+    issued_at: string;
+  } | null;
 }
 
 /** Every purchase invoice dated in the range, flattened to one row per line. */
@@ -83,7 +73,7 @@ async function loadPurchases(range: {
       supabase
         .from("purchase_invoices")
         .select(
-          "id, invoice_no, invoice_date, suppliers(name), purchase_invoice_lines(id, product_name, sph, cyl, add_power, eye, quantity, unit_cost, line_total)",
+          "id, invoice_no, invoice_date, suppliers(name), purchase_invoice_lines(id, product_name, sph, cyl, add_power, quantity, unit_cost, line_total, products(list_price))",
         )
         .gte("invoice_date", range.from)
         .lte("invoice_date", range.to)
@@ -104,9 +94,10 @@ async function loadPurchases(range: {
         supplier: invoice.suppliers?.name ?? "—",
         product: line.product_name,
         power: powerText(line),
-        eye: line.eye,
         quantity: line.quantity,
-        unitCost: Number(line.unit_cost),
+        purchasedPrice: Number(line.unit_cost),
+        salePrice:
+          line.products === null ? null : Number(line.products.list_price),
         amount: Number(line.line_total),
       })),
     )
@@ -159,76 +150,53 @@ async function loadRegister(range: {
 }
 
 /**
- * The invoices that drew on the register in the range, one row per item each.
- * The amount is what the invoice charged for that item's lines, so the sale
- * total can be checked against the invoices.
+ * Every line sold on an issued, non-voided invoice in the range, from normal and
+ * daily stock alike, one row per line. RX lines are left out: they have their own
+ * report. Dated by the day the invoice was issued.
  */
 async function loadSales(range: {
   from: string;
   to: string;
 }): Promise<SaleReportRow[]> {
   const { supabase } = await requireUser();
+  const bounds = karachiRangeBounds(range);
 
-  const postings = await selectAllPages<PostingRow>((from, to) =>
-    embeddedPage<PostingRow>(
+  const lines = await selectAllPages<SaleLineRow>((from, to) =>
+    embeddedPage<SaleLineRow>(
       supabase
-        .from("daily_stock_postings")
+        .from("order_lines")
         .select(
-          "id, qty, order_id, daily_stock_entries!inner(product_id, product_name, unit, entry_date), orders!inner(invoice_no, bill_to_shop)",
+          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, line_total, orders!inner(invoice_no, bill_to_shop, issued_at, voided_at)",
         )
-        .gte("daily_stock_entries.entry_date", range.from)
-        .lte("daily_stock_entries.entry_date", range.to)
+        .is("rx_status", null)
+        .gte("orders.issued_at", bounds.start)
+        .lt("orders.issued_at", bounds.end)
         .is("orders.voided_at", null)
         .order("id")
         .range(from, to),
     ),
   ).catch((error: unknown) => {
-    throw new Error(describePostgresError(error, "load the daily sales"));
+    throw new Error(describePostgresError(error, "load the sales"));
   });
 
-  const orderIds = [...new Set(postings.map((posting) => posting.order_id))];
-  const lineReads = await Promise.all(
-    chunk(orderIds, LINE_LOOKUP_BATCH).map((ids) =>
-      selectAllPages<OrderLineRow>((from, to) =>
-        supabase
-          .from("order_lines")
-          .select("order_id, product_id, line_total")
-          .in("order_id", ids)
-          .order("id")
-          .range(from, to),
-      ),
-    ),
-  ).catch((error: unknown) => {
-    throw new Error(describePostgresError(error, "load the daily sales"));
-  });
-
-  const amountByOrderItem = new Map<string, number>();
-  for (const line of lineReads.flat()) {
-    const key = `${line.order_id}|${line.product_id}`;
-    amountByOrderItem.set(
-      key,
-      (amountByOrderItem.get(key) ?? 0) + Number(line.line_total),
-    );
-  }
-
-  return postings
-    .flatMap((posting) => {
-      const entry = posting.daily_stock_entries;
-      const order = posting.orders;
-      if (!entry || !order) return [];
-      const amount = amountByOrderItem.get(
-        `${posting.order_id}|${entry.product_id}`,
-      );
+  return lines
+    .flatMap((line) => {
+      const order = line.orders;
+      if (!order) return [];
       return [
         {
-          postingId: posting.id,
-          date: entry.entry_date,
+          lineId: line.id,
+          date: karachiDate(order.issued_at),
           invoiceNo: order.invoice_no,
+          channel: line.stock_source,
           shop: order.bill_to_shop ?? "—",
-          product: entry.product_name,
-          unit: entry.unit,
-          quantity: posting.qty,
-          amount: amount === undefined ? null : round2(amount),
+          product: line.product_name,
+          unit: line.unit,
+          quantity: line.quantity,
+          purchasedPrice:
+            line.unit_cost === null ? null : Number(line.unit_cost),
+          salePrice: Number(line.unit_price),
+          amount: Number(line.line_total),
         },
       ];
     })
@@ -240,7 +208,7 @@ async function loadSales(range: {
     );
 }
 
-/** Purchases, the daily register and the invoices that sold from it, for one date range. */
+/** Purchases, the daily register and the sales on issued invoices, for one date range. */
 export async function loadStockReport(range: {
   from: string;
   to: string;

@@ -1,9 +1,9 @@
 import { formatPower } from "@/lib/format";
-import type { Eye } from "@/types/database";
 
 /**
  * The stock report for one date range: what was bought from suppliers, what the
- * daily stock register recorded, and which invoices sold from that register.
+ * daily stock register recorded, and what was sold on issued invoices, from both
+ * normal and daily stock.
  *
  * Pure: the service loads the rows, and this file works out the totals and the
  * notes. Purchases go to permanent stock, not to the daily register, so a
@@ -20,9 +20,12 @@ export interface PurchaseReportRow {
   product: string;
   /** The power written out, e.g. "SPH -1.00  CYL -0.50  ADD +1.50". */
   power: string;
-  eye: Eye | null;
   quantity: number;
-  unitCost: number;
+  /** What was paid per unit on this invoice. */
+  purchasedPrice: number;
+  /** The product's list price today, per unit. Null when the product has none. */
+  salePrice: number | null;
+  /** The line total as bought. */
   amount: number;
 }
 
@@ -39,17 +42,25 @@ export interface RegisterReportRow {
   note: string | null;
 }
 
+/** Normal stock is kept on the shelf; daily stock is counted in the register. */
+export type StockChannel = "normal" | "daily";
+
 export interface SaleReportRow {
-  postingId: string;
-  /** Register day the sale drew on, "YYYY-MM-DD". */
+  lineId: string;
+  /** The day the invoice was issued, "YYYY-MM-DD". */
   date: string;
   invoiceNo: number | null;
+  channel: StockChannel;
   shop: string;
   product: string;
   unit: string;
   quantity: number;
-  /** The product's lines on the invoice, after discount. Null when unpriced. */
-  amount: number | null;
+  /** What the product cost us per unit, as stored on the line. Null when none is stored. */
+  purchasedPrice: number | null;
+  /** What the line sold for per unit, before discount. Zero when unpriced. */
+  salePrice: number;
+  /** The line total, after discount. */
+  amount: number;
 }
 
 export interface StockReport {
@@ -65,8 +76,8 @@ export interface StockReportTotals {
   sold: number;
   soldQuantity: number;
   soldAmount: number;
-  /** Sales with no price on any of their lines, left out of the sale total. */
-  salesWithoutAmount: number;
+  /** Sales with no price on their lines, left out of the sale total. */
+  unpricedSales: number;
 }
 
 function round2(value: number): number {
@@ -95,7 +106,7 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
     sold: 0,
     soldQuantity: 0,
     soldAmount: 0,
-    salesWithoutAmount: 0,
+    unpricedSales: 0,
   };
 
   for (const row of report.purchases) {
@@ -108,8 +119,8 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
   }
   for (const row of report.sales) {
     totals.soldQuantity += row.quantity;
-    if (row.amount === null) totals.salesWithoutAmount += 1;
-    else totals.soldAmount += row.amount;
+    totals.soldAmount += row.amount;
+    if (row.salePrice === 0) totals.unpricedSales += 1;
   }
 
   return {
@@ -123,9 +134,11 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
 export function stockReportNotes(totals: StockReportTotals): string[] {
   const notes = [
     "Purchases go to permanent stock, not to the daily register. A register receipt is typed in by hand, so it carries no supplier.",
+    "A purchase's sale price is the product's list price today, not the price it sold for.",
+    "The register's sold figure is daily stock only. Sales cover normal and daily stock on issued invoices.",
   ];
-  if (totals.salesWithoutAmount > 0) {
-    const count = totals.salesWithoutAmount;
+  if (totals.unpricedSales > 0) {
+    const count = totals.unpricedSales;
     notes.push(
       `${count} ${count === 1 ? "sale has" : "sales have"} no price on its lines, so ${count === 1 ? "it is" : "they are"} left out of the sale total.`,
     );

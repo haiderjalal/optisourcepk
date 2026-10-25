@@ -14,6 +14,8 @@ import { formatAmount, formatDate, todayInKarachi } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Stock report" };
 
+const CHANNEL_LABEL = { normal: "Normal", daily: "Daily" } as const;
+
 export default async function StockReportPage({
   searchParams,
 }: {
@@ -41,9 +43,9 @@ export default async function StockReportPage({
         </Link>
         <h1 className="mt-2 text-xl font-semibold">Stock report</h1>
         <p className="text-navy-500 mt-1 max-w-prose text-sm">
-          Everything bought from suppliers in the range, the daily stock
-          register day by day, and the invoices that sold from the register.
-          Amounts are in rupees (Rs).
+          What was bought from suppliers, the daily stock register day by day,
+          and what was sold on invoices from normal and daily stock. Amounts are
+          in rupees (Rs).
         </p>
       </header>
 
@@ -87,7 +89,7 @@ export default async function StockReportPage({
 
       {!hasRows && (
         <p className="text-navy-500 text-sm">
-          Nothing was bought, recorded or sold from the register in this range.
+          Nothing was bought, recorded or sold in this range.
         </p>
       )}
 
@@ -116,9 +118,6 @@ export default async function StockReportPage({
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Power
                   </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    Eye
-                  </th>
                   <th
                     scope="col"
                     className="px-3 py-2.5 text-right font-medium"
@@ -129,7 +128,13 @@ export default async function StockReportPage({
                     scope="col"
                     className="px-3 py-2.5 text-right font-medium"
                   >
-                    Unit cost
+                    Purchased price
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-medium"
+                  >
+                    Sale price
                   </th>
                   <th
                     scope="col"
@@ -153,12 +158,16 @@ export default async function StockReportPage({
                     <td className="px-3 py-2.5 font-mono text-xs whitespace-nowrap">
                       {row.power}
                     </td>
-                    <td className="px-3 py-2.5">{row.eye ?? ""}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
                       {row.quantity}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {formatAmount(row.unitCost)}
+                      {formatAmount(row.purchasedPrice)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {row.salePrice === null
+                        ? "—"
+                        : formatAmount(row.salePrice)}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {formatAmount(row.amount)}
@@ -166,13 +175,13 @@ export default async function StockReportPage({
                   </tr>
                 ))}
                 <tr className="border-t border-mist-200 font-semibold">
-                  <td className="px-4 py-2.5" colSpan={6}>
+                  <td className="px-4 py-2.5" colSpan={5}>
                     Total
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {totals.purchasedQuantity}
                   </td>
-                  <td />
+                  <td colSpan={2} />
                   <td className="px-4 py-2.5 text-right tabular-nums">
                     {formatAmount(totals.purchasedAmount)}
                   </td>
@@ -279,12 +288,12 @@ export default async function StockReportPage({
       {report.sales.length > 0 && (
         <section className="shadow-lift overflow-hidden rounded-2xl bg-white">
           <h2 className="border-b border-mist-200 px-4 py-3 text-sm font-semibold">
-            Daily sales from the register
+            Sales on invoices (normal and daily stock)
           </h2>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-sm">
+            <table className="w-full min-w-[1040px] text-sm">
               <caption className="sr-only">
-                Invoices that sold from the register in the range
+                Sales on issued invoices in the range
               </caption>
               <thead>
                 <tr className="text-navy-500 bg-mist-100 text-left text-xs">
@@ -293,6 +302,9 @@ export default async function StockReportPage({
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Invoice
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">
+                    Channel
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Shop
@@ -308,6 +320,18 @@ export default async function StockReportPage({
                   </th>
                   <th
                     scope="col"
+                    className="px-3 py-2.5 text-right font-medium"
+                  >
+                    Purchased price
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-3 py-2.5 text-right font-medium"
+                  >
+                    Sale price
+                  </th>
+                  <th
+                    scope="col"
                     className="px-4 py-2.5 text-right font-medium"
                   >
                     Amount
@@ -316,20 +340,31 @@ export default async function StockReportPage({
               </thead>
               <tbody>
                 {report.sales.map((row) => (
-                  <tr key={row.postingId} className="border-t border-mist-200">
+                  <tr key={row.lineId} className="border-t border-mist-200">
                     <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
                       {formatDate(row.date)}
                     </td>
                     <td className="px-3 py-2.5 whitespace-nowrap">
                       {row.invoiceNo === null ? "—" : row.invoiceNo}
                     </td>
+                    <td className="px-3 py-2.5">
+                      {CHANNEL_LABEL[row.channel]}
+                    </td>
                     <td className="px-3 py-2.5">{row.shop}</td>
                     <td className="px-3 py-2.5">{row.product}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
                       {row.quantity}
                     </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {row.purchasedPrice === null
+                        ? "—"
+                        : formatAmount(row.purchasedPrice)}
+                    </td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {formatAmount(row.salePrice)}
+                    </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
-                      {row.amount === null ? (
+                      {row.salePrice === 0 ? (
                         <span className="text-amber-700">no price</span>
                       ) : (
                         formatAmount(row.amount)
@@ -338,12 +373,13 @@ export default async function StockReportPage({
                   </tr>
                 ))}
                 <tr className="border-t border-mist-200 font-semibold">
-                  <td className="px-4 py-2.5" colSpan={4}>
+                  <td className="px-4 py-2.5" colSpan={5}>
                     Total
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {totals.soldQuantity}
                   </td>
+                  <td colSpan={2} />
                   <td className="px-4 py-2.5 text-right tabular-nums">
                     {formatAmount(totals.soldAmount)}
                   </td>
