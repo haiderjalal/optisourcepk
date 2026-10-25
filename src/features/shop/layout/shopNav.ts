@@ -6,6 +6,7 @@ import {
   FileSpreadsheet,
   FileText,
   Glasses,
+  HandCoins,
   LayoutDashboard,
   Package,
   PackageCheck,
@@ -55,6 +56,11 @@ export const SHOP_NAV: ShopNavGroup[] = [
     items: [
       { href: "/shop/customers", label: "Customers", icon: Users },
       { href: "/shop/payments", label: "Payments", icon: Wallet },
+      {
+        href: "/shop/pending-payments",
+        label: "Pending payments",
+        icon: HandCoins,
+      },
       { href: "/shop/expenses", label: "Expenses", icon: Receipt },
     ],
   },
