@@ -50,6 +50,7 @@ interface SaleLineRow {
   unit_cost: number | string | null;
   products: { purchase_price: number | string } | null;
   orders: {
+    id: string;
     invoice_no: number | null;
     bill_to_name: string | null;
     bill_to_shop: string | null;
@@ -87,6 +88,7 @@ async function loadPurchases(range: {
         lineId: line.id,
         date: invoice.invoice_date,
         invoiceNo: invoice.invoice_no,
+        purchaseId: invoice.id,
         product: line.product_name,
         quantity: line.quantity,
         supplier: invoice.suppliers?.name ?? "—",
@@ -179,7 +181,7 @@ async function loadSales(range: {
       supabase
         .from("order_lines")
         .select(
-          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price), orders!inner(invoice_no, bill_to_name, bill_to_shop, issued_at, voided_at)",
+          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price), orders!inner(id, invoice_no, bill_to_name, bill_to_shop, issued_at, voided_at)",
         )
         .is("rx_status", null)
         .eq("orders.is_rx", false)
@@ -204,6 +206,7 @@ async function loadSales(range: {
           lineId: line.id,
           date: karachiDate(order.issued_at),
           invoiceNo: order.invoice_no,
+          orderId: order.id,
           product: line.product_name,
           unit: line.unit,
           quantity: line.quantity,

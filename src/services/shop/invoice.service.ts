@@ -298,6 +298,38 @@ async function replaceLines(
   }
 }
 
+/** Invoice numbers per `in` filter: a long list overflows the request URL. */
+const INVOICE_LOOKUP_BATCH = 100;
+
+/** The order id behind each invoice number, so a list can link to the invoice. */
+export async function getOrderIdsByInvoiceNo(
+  invoiceNos: number[],
+): Promise<Map<number, string>> {
+  const unique = [...new Set(invoiceNos)];
+  if (unique.length === 0) return new Map();
+
+  const { supabase } = await requireUser();
+  const batches = await Promise.all(
+    chunk(unique, INVOICE_LOOKUP_BATCH).map((numbers) =>
+      supabase
+        .from("orders")
+        .select("id, invoice_no")
+        .in("invoice_no", numbers),
+    ),
+  );
+
+  const orderIds = new Map<number, string>();
+  for (const { data, error } of batches) {
+    if (error) {
+      throw new Error(describePostgresError(error, "load the invoices"));
+    }
+    for (const row of data ?? []) {
+      if (row.invoice_no !== null) orderIds.set(row.invoice_no, row.id);
+    }
+  }
+  return orderIds;
+}
+
 export async function getOrder(id: string): Promise<OrderWithLines | null> {
   const { supabase } = await requireUser();
 

@@ -151,7 +151,12 @@ export default async function StockReportPage({
                       {formatDate(row.date)}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums">
-                      {row.invoiceNo}
+                      <Link
+                        href={`/shop/purchases/${row.purchaseId}`}
+                        className="hover:text-accent-600 font-medium"
+                      >
+                        {row.invoiceNo}
+                      </Link>
                     </td>
                     <td className="px-3 py-2.5">{row.product}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
@@ -337,7 +342,16 @@ export default async function StockReportPage({
                       {formatDate(row.date)}
                     </td>
                     <td className="px-3 py-2.5 tabular-nums">
-                      {row.invoiceNo ?? "—"}
+                      {row.invoiceNo === null ? (
+                        "—"
+                      ) : (
+                        <Link
+                          href={`/shop/orders/${row.orderId}`}
+                          className="hover:text-accent-600 font-medium"
+                        >
+                          {row.invoiceNo}
+                        </Link>
+                      )}
                     </td>
                     <td className="px-3 py-2.5">{row.product}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
