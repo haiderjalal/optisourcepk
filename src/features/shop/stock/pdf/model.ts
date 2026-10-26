@@ -1,5 +1,9 @@
 import { PDF_COMPANY, type PdfCompany } from "@/features/shop/pdf/company";
 import {
+  purchasePriceTotal,
+  purchaseSaleTotal,
+  soldPurchaseTotal,
+  soldSaleTotal,
   stockReportNotes,
   stockReportTotals,
   type StockReport,
@@ -47,6 +51,11 @@ export interface StockReportPdfInput {
 
 const CHANNEL_LABEL = { normal: "Normal", daily: "Daily" } as const;
 
+/** A total for display, or a dash when the line has none. */
+function formatOrDash(value: number | null): string {
+  return value === null ? "—" : formatAmount(value);
+}
+
 export function buildStockReportPdfModel({
   report,
   from,
@@ -68,8 +77,8 @@ export function buildStockReportPdfModel({
           row.product,
           row.power,
           String(row.quantity),
-          formatAmount(row.purchasedPrice),
-          row.salePrice === null ? "—" : formatAmount(row.salePrice),
+          formatAmount(purchasePriceTotal(row)),
+          formatOrDash(purchaseSaleTotal(row)),
           formatAmount(row.amount),
         ],
         flagged: false,
@@ -124,8 +133,8 @@ export function buildStockReportPdfModel({
           row.shop,
           row.product,
           String(row.quantity),
-          row.purchasedPrice === null ? "—" : formatAmount(row.purchasedPrice),
-          formatAmount(row.salePrice),
+          formatOrDash(soldPurchaseTotal(row)),
+          formatAmount(soldSaleTotal(row)),
           row.salePrice === 0 ? "no price" : formatAmount(row.amount),
         ],
         flagged: row.salePrice === 0,

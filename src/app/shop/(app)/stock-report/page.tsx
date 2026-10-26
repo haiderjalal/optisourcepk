@@ -3,6 +3,10 @@ import Link from "next/link";
 import { requireUser } from "@/server/shop/dal";
 import { loadStockReport } from "@/services/shop/stock-report.service";
 import {
+  purchasePriceTotal,
+  purchaseSaleTotal,
+  soldPurchaseTotal,
+  soldSaleTotal,
   stockReportNotes,
   stockReportTotals,
 } from "@/features/shop/stock/report";
@@ -15,6 +19,11 @@ import { formatAmount, formatDate, todayInKarachi } from "@/lib/format";
 export const metadata: Metadata = { title: "Stock report" };
 
 const CHANNEL_LABEL = { normal: "Normal", daily: "Daily" } as const;
+
+/** A total for display, or a dash when the line has none. */
+function formatOrDash(value: number | null): string {
+  return value === null ? "—" : formatAmount(value);
+}
 
 export default async function StockReportPage({
   searchParams,
@@ -128,13 +137,13 @@ export default async function StockReportPage({
                     scope="col"
                     className="px-3 py-2.5 text-right font-medium"
                   >
-                    Purchased price
+                    Purchase total
                   </th>
                   <th
                     scope="col"
                     className="px-3 py-2.5 text-right font-medium"
                   >
-                    Sale price
+                    Sale total
                   </th>
                   <th
                     scope="col"
@@ -162,12 +171,10 @@ export default async function StockReportPage({
                       {row.quantity}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {formatAmount(row.purchasedPrice)}
+                      {formatAmount(purchasePriceTotal(row))}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {row.salePrice === null
-                        ? "—"
-                        : formatAmount(row.salePrice)}
+                      {formatOrDash(purchaseSaleTotal(row))}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {formatAmount(row.amount)}
@@ -327,13 +334,13 @@ export default async function StockReportPage({
                     scope="col"
                     className="px-3 py-2.5 text-right font-medium"
                   >
-                    Purchased price
+                    Purchase total
                   </th>
                   <th
                     scope="col"
                     className="px-3 py-2.5 text-right font-medium"
                   >
-                    Sale price
+                    Sale total
                   </th>
                   <th
                     scope="col"
@@ -361,12 +368,10 @@ export default async function StockReportPage({
                       {row.quantity}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {row.purchasedPrice === null
-                        ? "—"
-                        : formatAmount(row.purchasedPrice)}
+                      {formatOrDash(soldPurchaseTotal(row))}
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {formatAmount(row.salePrice)}
+                      {formatAmount(soldSaleTotal(row))}
                     </td>
                     <td className="px-4 py-2.5 text-right tabular-nums">
                       {row.salePrice === 0 ? (

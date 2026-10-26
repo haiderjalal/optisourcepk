@@ -96,6 +96,36 @@ function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/** A purchase line's total at the price paid: quantity times the purchased price. */
+export function purchasePriceTotal(
+  row: Pick<PurchaseReportRow, "quantity" | "purchasedPrice">,
+): number {
+  return round2(row.quantity * row.purchasedPrice);
+}
+
+/** A purchase line's total at the list price. Null when the product has none. */
+export function purchaseSaleTotal(
+  row: Pick<PurchaseReportRow, "quantity" | "salePrice">,
+): number | null {
+  return row.salePrice === null ? null : round2(row.quantity * row.salePrice);
+}
+
+/** A sale line's total at the price paid. Null when no cost is stored on the line. */
+export function soldPurchaseTotal(
+  row: Pick<SaleReportRow, "quantity" | "purchasedPrice">,
+): number | null {
+  return row.purchasedPrice === null
+    ? null
+    : round2(row.quantity * row.purchasedPrice);
+}
+
+/** A sale line's total at the sale price, before discount. */
+export function soldSaleTotal(
+  row: Pick<SaleReportRow, "quantity" | "salePrice">,
+): number {
+  return round2(row.quantity * row.salePrice);
+}
+
 /** "SPH -1.00  CYL -0.50  ADD +1.50", with the parts that are not given left out. */
 export function powerText(line: {
   sph: number | null;
