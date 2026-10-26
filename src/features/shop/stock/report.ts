@@ -51,8 +51,10 @@ export interface SaleReportRow {
   /** The shop the invoice was made out to. */
   shop: string;
   channel: StockChannel;
-  /** What the product cost us per unit, as stored on the line. Null when none is stored. */
+  /** What the product cost us per unit. Null when neither the line nor the product has one. */
   purchasedPrice: number | null;
+  /** True when purchasedPrice is the product's purchase price today, because the line kept none. */
+  costFromProduct: boolean;
   /** What the line sold for per unit, before discount. Zero when unpriced. */
   salePrice: number;
 }
@@ -80,6 +82,8 @@ export interface StockReportTotals {
   soldAtSalePrice: number;
   /** Sales with no price on their lines, left out of the sale total. */
   unpricedSales: number;
+  /** Sales costed at the product's purchase price today, not at the price on their line. */
+  salesCostFromProduct: number;
 }
 
 function round2(value: number): number {
@@ -128,6 +132,7 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
     soldAtCost: 0,
     soldAtSalePrice: 0,
     unpricedSales: 0,
+    salesCostFromProduct: 0,
   };
 
   for (const row of report.purchases) {
@@ -146,6 +151,7 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
     const cost = soldPurchaseTotal(row);
     if (cost !== null) totals.soldAtCost += cost;
     if (row.salePrice === 0) totals.unpricedSales += 1;
+    if (row.costFromProduct) totals.salesCostFromProduct += 1;
   }
 
   return {
@@ -175,6 +181,12 @@ export function stockReportNotes(totals: StockReportTotals): string[] {
     const count = totals.unpricedSales;
     notes.push(
       `${count} ${count === 1 ? "sale has" : "sales have"} no price on its lines, so ${count === 1 ? "it is" : "they are"} left out of the sale total.`,
+    );
+  }
+  if (totals.salesCostFromProduct > 0) {
+    const count = totals.salesCostFromProduct;
+    notes.push(
+      `${count} ${count === 1 ? "sale uses" : "sales use"} the product's purchase price today, because ${count === 1 ? "its invoice keeps" : "their invoices keep"} no cost of ${count === 1 ? "its" : "their"} own.`,
     );
   }
   return notes;
