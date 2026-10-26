@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/server/shop/dal";
+import { requireReportsUnlocked } from "@/server/shop/reportLock";
 import { listMonthlySales } from "@/services/shop/sales-report.service";
 import {
   CHANNELS,
@@ -30,6 +31,7 @@ function linesWithoutCostOf(row: MonthRow): number {
 
 export default async function SalesPage() {
   await requireUser();
+  await requireReportsUnlocked("/shop/sales");
   const months = await listMonthlySales(12);
 
   return (

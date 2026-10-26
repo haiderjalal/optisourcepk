@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/server/shop/dal";
+import { requireReportsUnlocked } from "@/server/shop/reportLock";
 import { listMonthProducts } from "@/services/shop/sales-report.service";
 import { CHANNEL_LABEL } from "@/features/shop/sales/monthly";
 import { formatAmount } from "@/lib/format";
@@ -25,6 +26,7 @@ export default async function MonthProductsPage({
   if (!MONTH_PATTERN.test(month)) notFound();
 
   await requireUser();
+  await requireReportsUnlocked(`/shop/sales/${month}`);
   const products = await listMonthProducts(month);
   const totalSales = products.reduce((total, row) => total + row.sales, 0);
 
