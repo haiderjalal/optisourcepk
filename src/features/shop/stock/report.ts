@@ -1,5 +1,3 @@
-import { formatPower } from "@/lib/format";
-
 /**
  * The stock report for one date range: what was bought from suppliers, what the
  * daily stock register recorded, and what was sold on issued invoices, from both
@@ -15,18 +13,14 @@ export interface PurchaseReportRow {
   lineId: string;
   /** Invoice date, "YYYY-MM-DD". */
   date: string;
-  invoiceNo: string;
-  supplier: string;
   product: string;
-  /** The power written out, e.g. "SPH -1.00  CYL -0.50  ADD +1.50". */
-  power: string;
   quantity: number;
+  /** The supplier the stock was bought from. */
+  supplier: string;
   /** What was paid per unit on this invoice. */
   purchasedPrice: number;
   /** The product's list price today, per unit. Null when the product has none. */
   salePrice: number | null;
-  /** The line total as bought. */
-  amount: number;
 }
 
 export interface RegisterReportRow {
@@ -49,18 +43,16 @@ export interface SaleReportRow {
   lineId: string;
   /** The day the invoice was issued, "YYYY-MM-DD". */
   date: string;
-  invoiceNo: number | null;
-  channel: StockChannel;
-  shop: string;
   product: string;
   unit: string;
   quantity: number;
+  /** The shop the invoice was made out to. */
+  shop: string;
+  channel: StockChannel;
   /** What the product cost us per unit, as stored on the line. Null when none is stored. */
   purchasedPrice: number | null;
   /** What the line sold for per unit, before discount. Zero when unpriced. */
   salePrice: number;
-  /** The line total, after discount. */
-  amount: number;
 }
 
 export interface StockReport {
@@ -71,8 +63,6 @@ export interface StockReport {
 
 export interface StockReportTotals {
   purchasedQuantity: number;
-  /** The purchase lines' totals as bought. */
-  purchasedAmount: number;
   /** Everything bought, valued at the price paid per unit. */
   purchasedAtCost: number;
   /** Everything bought, valued at the list price per unit. */
@@ -82,8 +72,6 @@ export interface StockReportTotals {
   received: number;
   sold: number;
   soldQuantity: number;
-  /** The sales' line totals, after discount. */
-  soldAmount: number;
   /** Everything sold, valued at the price paid per unit where one is stored. */
   soldAtCost: number;
   /** Everything sold, valued at the sale price per unit, before discount. */
@@ -110,16 +98,13 @@ export function purchaseSaleTotal(
   return row.salePrice === null ? null : round2(row.quantity * row.salePrice);
 }
 
-/**
- * A sale line's total at the price paid. Daily stock is shown at its sale price
- * only, so a daily line has no purchase total. A normal line has one when a cost
- * is stored on it.
- */
+/** A sale line's total at the price paid. Null when no cost is stored on the line. */
 export function soldPurchaseTotal(
-  row: Pick<SaleReportRow, "channel" | "quantity" | "purchasedPrice">,
+  row: Pick<SaleReportRow, "quantity" | "purchasedPrice">,
 ): number | null {
-  if (row.channel === "daily" || row.purchasedPrice === null) return null;
-  return round2(row.quantity * row.purchasedPrice);
+  return row.purchasedPrice === null
+    ? null
+    : round2(row.quantity * row.purchasedPrice);
 }
 
 /** A sale line's total at the sale price, before discount. */
@@ -129,31 +114,15 @@ export function soldSaleTotal(
   return round2(row.quantity * row.salePrice);
 }
 
-/** "SPH -1.00  CYL -0.50  ADD +1.50", with the parts that are not given left out. */
-export function powerText(line: {
-  sph: number | null;
-  cyl: number | null;
-  add_power: number | null;
-}): string {
-  const parts = [
-    line.sph === null ? null : `SPH ${formatPower(line.sph)}`,
-    line.cyl === null ? null : `CYL ${formatPower(line.cyl)}`,
-    line.add_power === null ? null : `ADD ${formatPower(line.add_power)}`,
-  ];
-  return parts.filter((part): part is string => part !== null).join("  ");
-}
-
 export function stockReportTotals(report: StockReport): StockReportTotals {
   const totals: StockReportTotals = {
     purchasedQuantity: 0,
-    purchasedAmount: 0,
     purchasedAtCost: 0,
     purchasedAtSalePrice: 0,
     purchasesWithoutListPrice: 0,
     received: 0,
     sold: 0,
     soldQuantity: 0,
-    soldAmount: 0,
     soldAtCost: 0,
     soldAtSalePrice: 0,
     unpricedSales: 0,
@@ -161,7 +130,6 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
 
   for (const row of report.purchases) {
     totals.purchasedQuantity += row.quantity;
-    totals.purchasedAmount += row.amount;
     totals.purchasedAtCost += row.purchasedPrice * row.quantity;
     if (row.salePrice === null) totals.purchasesWithoutListPrice += 1;
     else totals.purchasedAtSalePrice += row.salePrice * row.quantity;
@@ -172,7 +140,6 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
   }
   for (const row of report.sales) {
     totals.soldQuantity += row.quantity;
-    totals.soldAmount += row.amount;
     totals.soldAtSalePrice += row.salePrice * row.quantity;
     const cost = soldPurchaseTotal(row);
     if (cost !== null) totals.soldAtCost += cost;
@@ -181,10 +148,8 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
 
   return {
     ...totals,
-    purchasedAmount: round2(totals.purchasedAmount),
     purchasedAtCost: round2(totals.purchasedAtCost),
     purchasedAtSalePrice: round2(totals.purchasedAtSalePrice),
-    soldAmount: round2(totals.soldAmount),
     soldAtCost: round2(totals.soldAtCost),
     soldAtSalePrice: round2(totals.soldAtSalePrice),
   };
@@ -193,10 +158,10 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
 /** The notes printed under the report: what it does not show, and why. */
 export function stockReportNotes(totals: StockReportTotals): string[] {
   const notes = [
+    "Purchase price and sale price are the totals for the quantity on each line.",
     "Purchases go to permanent stock, not to the daily register. A register receipt is typed in by hand, so it carries no supplier.",
     "A purchase's sale price is the product's list price today, not the price it sold for.",
     "The register's sold figure is daily stock only. Sales cover normal and daily stock on issued invoices.",
-    "Daily stock sales show their sale price only, so their purchase total is left out.",
   ];
   if (totals.purchasesWithoutListPrice > 0) {
     const count = totals.purchasesWithoutListPrice;
