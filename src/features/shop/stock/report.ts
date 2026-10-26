@@ -15,6 +15,8 @@ export interface PurchaseReportRow {
   date: string;
   /** The supplier's invoice number, as printed on their invoice. */
   invoiceNo: string;
+  /** The purchase invoice this line belongs to. */
+  purchaseId: string;
   product: string;
   quantity: number;
   /** The supplier the stock was bought from. */
@@ -47,6 +49,8 @@ export interface SaleReportRow {
   date: string;
   /** Our invoice number. Null for an invoice that has none. */
   invoiceNo: number | null;
+  /** The order behind the invoice, to link to it. */
+  orderId: string;
   product: string;
   unit: string;
   quantity: number;

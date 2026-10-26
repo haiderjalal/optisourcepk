@@ -5,6 +5,7 @@ import { ArrowLeft, Download, Pencil, Wallet } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getCustomer } from "@/services/shop/customer.service";
 import { getBalance, getStatement } from "@/services/shop/ledger.service";
+import { getOrderIdsByInvoiceNo } from "@/services/shop/invoice.service";
 import { LedgerEntryRemoveButton } from "@/features/shop/ledger/LedgerEntryRemoveButton";
 import { ButtonLink } from "@/components/ui/button";
 import { formatAmount, formatDate } from "@/lib/format";
@@ -24,6 +25,18 @@ export default async function StatementPage({
     getStatement(id),
     getBalance(id),
   ]);
+  const invoiceOrderIds = await getOrderIdsByInvoiceNo(
+    lines.flatMap((line) =>
+      line.invoice_no === null ? [] : [line.invoice_no],
+    ),
+  );
+  const statementLines = lines.map((line) => ({
+    ...line,
+    orderId:
+      line.invoice_no === null
+        ? undefined
+        : invoiceOrderIds.get(line.invoice_no),
+  }));
   const owed = balance?.balance ?? customer.opening_balance;
 
   return (
@@ -104,7 +117,7 @@ export default async function StatementPage({
             </tr>
           </thead>
           <tbody>
-            {lines.map((line, index) => (
+            {statementLines.map((line, index) => (
               <tr
                 key={line.entry_id ?? `opening-${index}`}
                 className="border-t border-mist-200"
@@ -115,9 +128,18 @@ export default async function StatementPage({
                 <td className="px-4 py-2.5">
                   {line.invoice_no ? (
                     <div>
-                      <span className="font-medium">
-                        Invoice {line.invoice_no}
-                      </span>
+                      {line.orderId ? (
+                        <Link
+                          href={`/shop/orders/${line.orderId}`}
+                          className="hover:text-accent-600 font-medium"
+                        >
+                          Invoice {line.invoice_no}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">
+                          Invoice {line.invoice_no}
+                        </span>
+                      )}
                       {line.sale_type && (
                         <span className="text-navy-600 ml-2 rounded-full bg-mist-100 px-2 py-0.5 text-[10px] font-semibold uppercase">
                           {line.sale_type}
