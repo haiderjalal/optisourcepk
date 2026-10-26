@@ -110,13 +110,16 @@ export function purchaseSaleTotal(
   return row.salePrice === null ? null : round2(row.quantity * row.salePrice);
 }
 
-/** A sale line's total at the price paid. Null when no cost is stored on the line. */
+/**
+ * A sale line's total at the price paid. Daily stock is shown at its sale price
+ * only, so a daily line has no purchase total. A normal line has one when a cost
+ * is stored on it.
+ */
 export function soldPurchaseTotal(
-  row: Pick<SaleReportRow, "quantity" | "purchasedPrice">,
+  row: Pick<SaleReportRow, "channel" | "quantity" | "purchasedPrice">,
 ): number | null {
-  return row.purchasedPrice === null
-    ? null
-    : round2(row.quantity * row.purchasedPrice);
+  if (row.channel === "daily" || row.purchasedPrice === null) return null;
+  return round2(row.quantity * row.purchasedPrice);
 }
 
 /** A sale line's total at the sale price, before discount. */
@@ -171,9 +174,8 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
     totals.soldQuantity += row.quantity;
     totals.soldAmount += row.amount;
     totals.soldAtSalePrice += row.salePrice * row.quantity;
-    if (row.purchasedPrice !== null) {
-      totals.soldAtCost += row.purchasedPrice * row.quantity;
-    }
+    const cost = soldPurchaseTotal(row);
+    if (cost !== null) totals.soldAtCost += cost;
     if (row.salePrice === 0) totals.unpricedSales += 1;
   }
 
@@ -194,6 +196,7 @@ export function stockReportNotes(totals: StockReportTotals): string[] {
     "Purchases go to permanent stock, not to the daily register. A register receipt is typed in by hand, so it carries no supplier.",
     "A purchase's sale price is the product's list price today, not the price it sold for.",
     "The register's sold figure is daily stock only. Sales cover normal and daily stock on issued invoices.",
+    "Daily stock sales show their sale price only, so their purchase total is left out.",
   ];
   if (totals.purchasesWithoutListPrice > 0) {
     const count = totals.purchasesWithoutListPrice;
