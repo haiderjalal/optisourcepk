@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/server/shop/dal";
+import { requireReportsUnlocked } from "@/server/shop/reportLock";
 import { listLedgerEntries } from "@/services/shop/ledger-report.service";
 import { LEDGER_TYPE_LABEL, ledgerTotals } from "@/features/shop/ledger/summary";
 import { inputClass } from "@/components/ui/field";
@@ -25,6 +26,7 @@ export default async function LedgerPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireUser();
+  await requireReportsUnlocked("/shop/ledger");
   const query = await searchParams;
   const today = todayInKarachi();
   const from = isDate(query.from) ? query.from : `${today.slice(0, 7)}-01`;

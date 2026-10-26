@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/server/shop/dal";
+import { requireReportsUnlocked } from "@/server/shop/reportLock";
 import { listRxLabRows } from "@/services/shop/rx-lab-report.service";
 import {
   labReportNotes,
@@ -25,6 +26,7 @@ export default async function RxLabReportPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireUser();
+  await requireReportsUnlocked("/shop/rx-lab-report");
   const { from, to } = resolveDateRange(await searchParams, todayInKarachi());
 
   const rows = await listRxLabRows({ from, to });

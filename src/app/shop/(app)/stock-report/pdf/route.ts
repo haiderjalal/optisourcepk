@@ -2,6 +2,10 @@ import { logger } from "@/lib/logger";
 import { resolveDateRange } from "@/lib/date-range";
 import { todayInKarachi } from "@/lib/format";
 import { requireUser } from "@/server/shop/dal";
+import {
+  reportsLockedResponse,
+  reportsUnlocked,
+} from "@/server/shop/reportLock";
 import { loadStockReport } from "@/services/shop/stock-report.service";
 import { buildStockReportPdfModel } from "@/features/shop/stock/pdf/model";
 import { renderStockReportPdf } from "@/features/shop/stock/pdf/renderReport";
@@ -20,6 +24,7 @@ import {
  */
 export async function GET(request: Request): Promise<Response> {
   await requireUser();
+  if (!(await reportsUnlocked())) return reportsLockedResponse();
 
   const url = new URL(request.url);
   const range = resolveDateRange(

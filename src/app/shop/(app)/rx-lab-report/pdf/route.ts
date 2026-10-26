@@ -2,6 +2,10 @@ import { logger } from "@/lib/logger";
 import { todayInKarachi } from "@/lib/format";
 import { resolveDateRange } from "@/lib/date-range";
 import { requireUser } from "@/server/shop/dal";
+import {
+  reportsLockedResponse,
+  reportsUnlocked,
+} from "@/server/shop/reportLock";
 import { listRxLabRows } from "@/services/shop/rx-lab-report.service";
 import { rxLabTotals } from "@/features/shop/rx/labReport";
 import { buildRxLabPdfModel } from "@/features/shop/rx/pdf/model";
@@ -21,6 +25,7 @@ import {
  */
 export async function GET(request: Request): Promise<Response> {
   await requireUser();
+  if (!(await reportsUnlocked())) return reportsLockedResponse();
 
   const url = new URL(request.url);
   const range = resolveDateRange(
