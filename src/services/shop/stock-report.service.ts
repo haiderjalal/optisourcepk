@@ -47,6 +47,7 @@ interface SaleLineRow {
   quantity: number;
   unit_price: number | string;
   unit_cost: number | string | null;
+  products: { purchase_price: number | string } | null;
   orders: {
     bill_to_name: string | null;
     bill_to_shop: string | null;
@@ -140,6 +141,24 @@ async function loadRegister(range: {
 }
 
 /**
+ * What a sold line cost us per unit. Daily-stock lines store it; normal invoices
+ * do not, so they fall back to the product's purchase price today, as the order
+ * form does. A product with no purchase price gives no cost.
+ */
+function soldUnitCost(line: SaleLineRow): {
+  price: number | null;
+  fromProduct: boolean;
+} {
+  if (line.unit_cost !== null) {
+    return { price: Number(line.unit_cost), fromProduct: false };
+  }
+  const productCost = Number(line.products?.purchase_price ?? 0);
+  return productCost > 0
+    ? { price: productCost, fromProduct: true }
+    : { price: null, fromProduct: false };
+}
+
+/**
  * Every line sold on an issued, non-voided invoice in the range, from normal and
  * daily stock alike, one row per line. RX work is left out, both the RX lines and
  * the RX orders and combined RX invoices they sit on: those have their own report.
@@ -157,7 +176,7 @@ async function loadSales(range: {
       supabase
         .from("order_lines")
         .select(
-          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, orders!inner(bill_to_name, bill_to_shop, issued_at, voided_at)",
+          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price), orders!inner(bill_to_name, bill_to_shop, issued_at, voided_at)",
         )
         .is("rx_status", null)
         .eq("orders.is_rx", false)
@@ -176,6 +195,7 @@ async function loadSales(range: {
     .flatMap((line) => {
       const order = line.orders;
       if (!order) return [];
+      const cost = soldUnitCost(line);
       return [
         {
           lineId: line.id,
@@ -186,8 +206,8 @@ async function loadSales(range: {
           purchaser: order.bill_to_name ?? "—",
           shop: order.bill_to_shop ?? "—",
           channel: line.stock_source,
-          purchasedPrice:
-            line.unit_cost === null ? null : Number(line.unit_cost),
+          purchasedPrice: cost.price,
+          costFromProduct: cost.fromProduct,
           salePrice: Number(line.unit_price),
         },
       ];
