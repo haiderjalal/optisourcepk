@@ -3,7 +3,6 @@ import "server-only";
 import { requireUser } from "@/server/shop/dal";
 import { karachiDate, karachiRangeBounds } from "@/lib/date-range";
 import {
-  powerText,
   type PurchaseReportRow,
   type RegisterReportRow,
   type SaleReportRow,
@@ -16,18 +15,13 @@ import { embeddedPage, selectAllPages } from "./paging";
 interface PurchaseLineRow {
   id: string;
   product_name: string;
-  sph: number | null;
-  cyl: number | null;
-  add_power: number | null;
   quantity: number;
   unit_cost: number | string;
-  line_total: number | string;
   products: { list_price: number | string } | null;
 }
 
 interface PurchaseRow {
   id: string;
-  invoice_no: string;
   invoice_date: string;
   suppliers: { name: string } | null;
   purchase_invoice_lines: PurchaseLineRow[];
@@ -53,9 +47,7 @@ interface SaleLineRow {
   quantity: number;
   unit_price: number | string;
   unit_cost: number | string | null;
-  line_total: number | string;
   orders: {
-    invoice_no: number | null;
     bill_to_shop: string | null;
     issued_at: string;
   } | null;
@@ -73,7 +65,7 @@ async function loadPurchases(range: {
       supabase
         .from("purchase_invoices")
         .select(
-          "id, invoice_no, invoice_date, suppliers(name), purchase_invoice_lines(id, product_name, sph, cyl, add_power, quantity, unit_cost, line_total, products(list_price))",
+          "id, invoice_date, suppliers(name), purchase_invoice_lines(id, product_name, quantity, unit_cost, products(list_price))",
         )
         .gte("invoice_date", range.from)
         .lte("invoice_date", range.to)
@@ -90,21 +82,18 @@ async function loadPurchases(range: {
       invoice.purchase_invoice_lines.map((line) => ({
         lineId: line.id,
         date: invoice.invoice_date,
-        invoiceNo: invoice.invoice_no,
-        supplier: invoice.suppliers?.name ?? "—",
         product: line.product_name,
-        power: powerText(line),
         quantity: line.quantity,
+        supplier: invoice.suppliers?.name ?? "—",
         purchasedPrice: Number(line.unit_cost),
         salePrice:
           line.products === null ? null : Number(line.products.list_price),
-        amount: Number(line.line_total),
       })),
     )
     .sort(
       (a, b) =>
         a.date.localeCompare(b.date) ||
-        a.invoiceNo.localeCompare(b.invoiceNo) ||
+        a.supplier.localeCompare(b.supplier) ||
         a.product.localeCompare(b.product),
     );
 }
@@ -166,7 +155,7 @@ async function loadSales(range: {
       supabase
         .from("order_lines")
         .select(
-          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, line_total, orders!inner(invoice_no, bill_to_shop, issued_at, voided_at)",
+          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, orders!inner(bill_to_shop, issued_at, voided_at)",
         )
         .is("rx_status", null)
         .gte("orders.issued_at", bounds.start)
@@ -187,23 +176,21 @@ async function loadSales(range: {
         {
           lineId: line.id,
           date: karachiDate(order.issued_at),
-          invoiceNo: order.invoice_no,
-          channel: line.stock_source,
-          shop: order.bill_to_shop ?? "—",
           product: line.product_name,
           unit: line.unit,
           quantity: line.quantity,
+          shop: order.bill_to_shop ?? "—",
+          channel: line.stock_source,
           purchasedPrice:
             line.unit_cost === null ? null : Number(line.unit_cost),
           salePrice: Number(line.unit_price),
-          amount: Number(line.line_total),
         },
       ];
     })
     .sort(
       (a, b) =>
         a.date.localeCompare(b.date) ||
-        (a.invoiceNo ?? 0) - (b.invoiceNo ?? 0) ||
+        a.shop.localeCompare(b.shop) ||
         a.product.localeCompare(b.product),
     );
 }

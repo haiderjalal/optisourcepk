@@ -22,7 +22,7 @@ export interface StockPdfRow {
   key: string;
   /** One value per column of its section, in order. */
   cells: string[];
-  /** The amount is missing (no price), so it is flagged. */
+  /** The sale price is missing (no price), so it is flagged. */
   flagged: boolean;
 }
 
@@ -67,32 +67,26 @@ export function buildStockReportPdfModel({
     company: PDF_COMPANY,
     period: `${formatDate(from)} to ${formatDate(to)}`,
     purchases: {
-      title: "Purchases from suppliers",
+      title: "Purchases",
       rows: report.purchases.map((row) => ({
         key: row.lineId,
         cells: [
           formatDate(row.date),
-          row.invoiceNo,
-          row.supplier,
           row.product,
-          row.power,
           String(row.quantity),
+          row.supplier,
           formatAmount(purchasePriceTotal(row)),
           formatOrDash(purchaseSaleTotal(row)),
-          formatAmount(row.amount),
         ],
         flagged: false,
       })),
       total: [
         "",
-        "",
-        "",
         "Total",
-        "",
         String(totals.purchasedQuantity),
+        "",
         formatAmount(totals.purchasedAtCost),
         formatAmount(totals.purchasedAtSalePrice),
-        formatAmount(totals.purchasedAmount),
       ],
     },
     register: {
@@ -123,32 +117,28 @@ export function buildStockReportPdfModel({
       ],
     },
     sales: {
-      title: "Sales on invoices (normal and daily stock)",
+      title: "Sales (normal and daily stock)",
       rows: report.sales.map((row) => ({
         key: row.lineId,
         cells: [
           formatDate(row.date),
-          row.invoiceNo === null ? "—" : String(row.invoiceNo),
-          CHANNEL_LABEL[row.channel],
-          row.shop,
           row.product,
           String(row.quantity),
+          row.shop,
+          CHANNEL_LABEL[row.channel],
           formatOrDash(soldPurchaseTotal(row)),
-          formatAmount(soldSaleTotal(row)),
-          row.salePrice === 0 ? "no price" : formatAmount(row.amount),
+          row.salePrice === 0 ? "no price" : formatAmount(soldSaleTotal(row)),
         ],
         flagged: row.salePrice === 0,
       })),
       total: [
         "",
-        "",
-        "",
-        "",
         "Total",
         String(totals.soldQuantity),
+        "",
+        "",
         formatAmount(totals.soldAtCost),
         formatAmount(totals.soldAtSalePrice),
-        formatAmount(totals.soldAmount),
       ],
     },
     notes: stockReportNotes(totals),

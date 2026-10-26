@@ -31,15 +31,12 @@ interface Column {
 }
 
 const PURCHASE_COLUMNS: Column[] = [
-  { label: "Date", width: "10%", align: "left" },
-  { label: "Invoice", width: "9%", align: "left" },
-  { label: "Supplier", width: "14%", align: "left" },
-  { label: "Product", width: "15%", align: "left" },
-  { label: "Power", width: "19%", align: "left" },
-  { label: "Qty", width: "6%", align: "right" },
-  { label: "Purchase total", width: "9%", align: "right" },
-  { label: "Sale total", width: "9%", align: "right" },
-  { label: "Amount", width: "9%", align: "right" },
+  { label: "Date", width: "14%", align: "left" },
+  { label: "Product", width: "32%", align: "left" },
+  { label: "Qty", width: "8%", align: "right" },
+  { label: "Purchaser (supplier)", width: "22%", align: "left" },
+  { label: "Purchase price", width: "12%", align: "right" },
+  { label: "Sale price", width: "12%", align: "right" },
 ];
 
 const REGISTER_COLUMNS: Column[] = [
@@ -54,15 +51,13 @@ const REGISTER_COLUMNS: Column[] = [
 ];
 
 const SALES_COLUMNS: Column[] = [
-  { label: "Date", width: "10%", align: "left" },
-  { label: "Invoice", width: "8%", align: "left" },
-  { label: "Channel", width: "7%", align: "left" },
-  { label: "Shop", width: "19%", align: "left" },
-  { label: "Item", width: "21%", align: "left" },
-  { label: "Qty", width: "6%", align: "right" },
-  { label: "Purchase total", width: "9%", align: "right" },
-  { label: "Sale total", width: "9%", align: "right" },
-  { label: "Amount", width: "11%", align: "right" },
+  { label: "Date", width: "12%", align: "left" },
+  { label: "Product", width: "26%", align: "left" },
+  { label: "Qty", width: "7%", align: "right" },
+  { label: "Shop name", width: "23%", align: "left" },
+  { label: "Channel", width: "10%", align: "left" },
+  { label: "Purchase price", width: "11%", align: "right" },
+  { label: "Sale price", width: "11%", align: "right" },
 ];
 
 const styles = StyleSheet.create({
