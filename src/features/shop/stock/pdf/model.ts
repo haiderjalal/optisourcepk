@@ -72,6 +72,7 @@ export function buildStockReportPdfModel({
         key: row.lineId,
         cells: [
           formatDate(row.date),
+          row.invoiceNo,
           row.product,
           String(row.quantity),
           row.supplier,
@@ -81,6 +82,7 @@ export function buildStockReportPdfModel({
         flagged: false,
       })),
       total: [
+        "",
         "",
         "Total",
         String(totals.purchasedQuantity),
@@ -122,6 +124,7 @@ export function buildStockReportPdfModel({
         key: row.lineId,
         cells: [
           formatDate(row.date),
+          row.invoiceNo === null ? "—" : String(row.invoiceNo),
           row.product,
           String(row.quantity),
           row.purchaser,
@@ -133,6 +136,7 @@ export function buildStockReportPdfModel({
         flagged: row.salePrice === 0,
       })),
       total: [
+        "",
         "",
         "Total",
         String(totals.soldQuantity),

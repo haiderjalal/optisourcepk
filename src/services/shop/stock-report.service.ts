@@ -22,6 +22,7 @@ interface PurchaseLineRow {
 
 interface PurchaseRow {
   id: string;
+  invoice_no: string;
   invoice_date: string;
   suppliers: { name: string } | null;
   purchase_invoice_lines: PurchaseLineRow[];
@@ -49,6 +50,7 @@ interface SaleLineRow {
   unit_cost: number | string | null;
   products: { purchase_price: number | string } | null;
   orders: {
+    invoice_no: number | null;
     bill_to_name: string | null;
     bill_to_shop: string | null;
     issued_at: string;
@@ -67,7 +69,7 @@ async function loadPurchases(range: {
       supabase
         .from("purchase_invoices")
         .select(
-          "id, invoice_date, suppliers(name), purchase_invoice_lines(id, product_name, quantity, unit_cost, products(list_price))",
+          "id, invoice_no, invoice_date, suppliers(name), purchase_invoice_lines(id, product_name, quantity, unit_cost, products(list_price))",
         )
         .gte("invoice_date", range.from)
         .lte("invoice_date", range.to)
@@ -84,6 +86,7 @@ async function loadPurchases(range: {
       invoice.purchase_invoice_lines.map((line) => ({
         lineId: line.id,
         date: invoice.invoice_date,
+        invoiceNo: invoice.invoice_no,
         product: line.product_name,
         quantity: line.quantity,
         supplier: invoice.suppliers?.name ?? "—",
@@ -176,7 +179,7 @@ async function loadSales(range: {
       supabase
         .from("order_lines")
         .select(
-          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price), orders!inner(bill_to_name, bill_to_shop, issued_at, voided_at)",
+          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price), orders!inner(invoice_no, bill_to_name, bill_to_shop, issued_at, voided_at)",
         )
         .is("rx_status", null)
         .eq("orders.is_rx", false)
@@ -200,6 +203,7 @@ async function loadSales(range: {
         {
           lineId: line.id,
           date: karachiDate(order.issued_at),
+          invoiceNo: order.invoice_no,
           product: line.product_name,
           unit: line.unit,
           quantity: line.quantity,
@@ -215,7 +219,7 @@ async function loadSales(range: {
     .sort(
       (a, b) =>
         a.date.localeCompare(b.date) ||
-        a.shop.localeCompare(b.shop) ||
+        (a.invoiceNo ?? 0) - (b.invoiceNo ?? 0) ||
         a.product.localeCompare(b.product),
     );
 }
