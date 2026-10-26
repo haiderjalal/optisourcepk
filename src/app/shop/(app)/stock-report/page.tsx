@@ -181,7 +181,12 @@ export default async function StockReportPage({
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {totals.purchasedQuantity}
                   </td>
-                  <td colSpan={2} />
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatAmount(totals.purchasedAtCost)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatAmount(totals.purchasedAtSalePrice)}
+                  </td>
                   <td className="px-4 py-2.5 text-right tabular-nums">
                     {formatAmount(totals.purchasedAmount)}
                   </td>
@@ -379,7 +384,12 @@ export default async function StockReportPage({
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {totals.soldQuantity}
                   </td>
-                  <td colSpan={2} />
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatAmount(totals.soldAtCost)}
+                  </td>
+                  <td className="px-3 py-2.5 text-right tabular-nums">
+                    {formatAmount(totals.soldAtSalePrice)}
+                  </td>
                   <td className="px-4 py-2.5 text-right tabular-nums">
                     {formatAmount(totals.soldAmount)}
                   </td>
