@@ -31,12 +31,13 @@ interface Column {
 }
 
 const PURCHASE_COLUMNS: Column[] = [
-  { label: "Date", width: "14%", align: "left" },
-  { label: "Product", width: "32%", align: "left" },
-  { label: "Qty", width: "8%", align: "right" },
-  { label: "Purchaser (supplier)", width: "22%", align: "left" },
-  { label: "Purchase price", width: "12%", align: "right" },
-  { label: "Sale price", width: "12%", align: "right" },
+  { label: "Date", width: "11%", align: "left" },
+  { label: "Supplier invoice", width: "11%", align: "left" },
+  { label: "Product", width: "26%", align: "left" },
+  { label: "Qty", width: "6%", align: "right" },
+  { label: "Purchaser (supplier)", width: "18%", align: "left" },
+  { label: "Purchase price", width: "14%", align: "right" },
+  { label: "Sale price", width: "14%", align: "right" },
 ];
 
 const REGISTER_COLUMNS: Column[] = [
@@ -51,12 +52,13 @@ const REGISTER_COLUMNS: Column[] = [
 ];
 
 const SALES_COLUMNS: Column[] = [
-  { label: "Date", width: "10%", align: "left" },
-  { label: "Product", width: "22%", align: "left" },
-  { label: "Qty", width: "6%", align: "right" },
-  { label: "Purchaser name", width: "16%", align: "left" },
-  { label: "Shop name", width: "16%", align: "left" },
-  { label: "Channel", width: "8%", align: "left" },
+  { label: "Date", width: "9%", align: "left" },
+  { label: "Invoice no", width: "8%", align: "left" },
+  { label: "Product", width: "19%", align: "left" },
+  { label: "Qty", width: "5%", align: "right" },
+  { label: "Purchaser name", width: "15%", align: "left" },
+  { label: "Shop name", width: "15%", align: "left" },
+  { label: "Channel", width: "7%", align: "left" },
   { label: "Purchase price", width: "11%", align: "right" },
   { label: "Sale price", width: "11%", align: "right" },
 ];

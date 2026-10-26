@@ -13,6 +13,8 @@ export interface PurchaseReportRow {
   lineId: string;
   /** Invoice date, "YYYY-MM-DD". */
   date: string;
+  /** The supplier's invoice number, as printed on their invoice. */
+  invoiceNo: string;
   product: string;
   quantity: number;
   /** The supplier the stock was bought from. */
@@ -43,6 +45,8 @@ export interface SaleReportRow {
   lineId: string;
   /** The day the invoice was issued, "YYYY-MM-DD". */
   date: string;
+  /** Our invoice number. Null for an invoice that has none. */
+  invoiceNo: number | null;
   product: string;
   unit: string;
   quantity: number;

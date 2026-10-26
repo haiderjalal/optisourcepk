@@ -108,12 +108,15 @@ export default async function StockReportPage({
             Purchases from suppliers
           </h2>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-sm">
+            <table className="w-full min-w-[840px] text-sm">
               <caption className="sr-only">Purchases in the range</caption>
               <thead>
                 <tr className="text-navy-500 bg-mist-100 text-left text-xs">
                   <th scope="col" className="px-4 py-2.5 font-medium">
                     Date
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">
+                    Supplier invoice no
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Product
@@ -147,6 +150,9 @@ export default async function StockReportPage({
                     <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
                       {formatDate(row.date)}
                     </td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {row.invoiceNo}
+                    </td>
                     <td className="px-3 py-2.5">{row.product}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
                       {row.quantity}
@@ -161,7 +167,7 @@ export default async function StockReportPage({
                   </tr>
                 ))}
                 <tr className="border-t border-mist-200 font-semibold">
-                  <td className="px-4 py-2.5" colSpan={2}>
+                  <td className="px-4 py-2.5" colSpan={3}>
                     Total
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
@@ -280,7 +286,7 @@ export default async function StockReportPage({
             Sales (normal and daily stock)
           </h2>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[960px] text-sm">
+            <table className="w-full min-w-[1040px] text-sm">
               <caption className="sr-only">
                 Sales on issued invoices in the range
               </caption>
@@ -288,6 +294,9 @@ export default async function StockReportPage({
                 <tr className="text-navy-500 bg-mist-100 text-left text-xs">
                   <th scope="col" className="px-4 py-2.5 font-medium">
                     Date
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">
+                    Invoice no
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Product
@@ -327,6 +336,9 @@ export default async function StockReportPage({
                     <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
                       {formatDate(row.date)}
                     </td>
+                    <td className="px-3 py-2.5 tabular-nums">
+                      {row.invoiceNo ?? "—"}
+                    </td>
                     <td className="px-3 py-2.5">{row.product}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
                       {row.quantity}
@@ -349,7 +361,7 @@ export default async function StockReportPage({
                   </tr>
                 ))}
                 <tr className="border-t border-mist-200 font-semibold">
-                  <td className="px-4 py-2.5" colSpan={2}>
+                  <td className="px-4 py-2.5" colSpan={3}>
                     Total
                   </td>
                   <td className="px-3 py-2.5 text-right tabular-nums">
