@@ -181,7 +181,9 @@ export default async function InvoicesPage({
                         <FileText className="size-3.5" aria-hidden />
                         PDF
                       </Link>
-                      {!invoice.voided_at && (
+                      {/* A combined RX invoice is voided, not reopened: reopening
+                          it strips the RX status from its lenses. */}
+                      {!invoice.voided_at && !invoice.combines_rx && (
                         <ConfirmButton
                           action={reopenInvoiceAction}
                           id={invoice.id}

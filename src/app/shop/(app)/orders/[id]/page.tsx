@@ -191,7 +191,9 @@ export default async function OrderPage({
                 canShare={!voided}
                 hasBalance={order.previous_balance !== null}
               />
-              {!voided && !hasReturns && (
+              {/* A combined RX invoice is voided, not reopened: reopening it
+                  strips the RX status from its lenses. */}
+              {!voided && !order.combines_rx && !hasReturns && (
                 <ConfirmButton
                   action={reopenInvoiceAction}
                   id={order.id}
