@@ -280,7 +280,7 @@ export default async function StockReportPage({
             Sales (normal and daily stock)
           </h2>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px] text-sm">
+            <table className="w-full min-w-[960px] text-sm">
               <caption className="sr-only">
                 Sales on issued invoices in the range
               </caption>
@@ -297,6 +297,9 @@ export default async function StockReportPage({
                     className="px-3 py-2.5 text-right font-medium"
                   >
                     Qty
+                  </th>
+                  <th scope="col" className="px-3 py-2.5 font-medium">
+                    Purchaser name
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Shop name
@@ -328,6 +331,7 @@ export default async function StockReportPage({
                     <td className="px-3 py-2.5 text-right tabular-nums">
                       {row.quantity}
                     </td>
+                    <td className="px-3 py-2.5">{row.purchaser}</td>
                     <td className="px-3 py-2.5">{row.shop}</td>
                     <td className="px-3 py-2.5">
                       {CHANNEL_LABEL[row.channel]}
@@ -351,6 +355,7 @@ export default async function StockReportPage({
                   <td className="px-3 py-2.5 text-right tabular-nums">
                     {totals.soldQuantity}
                   </td>
+                  <td />
                   <td />
                   <td />
                   <td className="px-3 py-2.5 text-right tabular-nums">
