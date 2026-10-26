@@ -71,11 +71,23 @@ export interface StockReport {
 
 export interface StockReportTotals {
   purchasedQuantity: number;
+  /** The purchase lines' totals as bought. */
   purchasedAmount: number;
+  /** Everything bought, valued at the price paid per unit. */
+  purchasedAtCost: number;
+  /** Everything bought, valued at the list price per unit. */
+  purchasedAtSalePrice: number;
+  /** Purchase lines with no list price, left out of purchasedAtSalePrice. */
+  purchasesWithoutListPrice: number;
   received: number;
   sold: number;
   soldQuantity: number;
+  /** The sales' line totals, after discount. */
   soldAmount: number;
+  /** Everything sold, valued at the price paid per unit where one is stored. */
+  soldAtCost: number;
+  /** Everything sold, valued at the sale price per unit, before discount. */
+  soldAtSalePrice: number;
   /** Sales with no price on their lines, left out of the sale total. */
   unpricedSales: number;
 }
@@ -102,16 +114,24 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
   const totals: StockReportTotals = {
     purchasedQuantity: 0,
     purchasedAmount: 0,
+    purchasedAtCost: 0,
+    purchasedAtSalePrice: 0,
+    purchasesWithoutListPrice: 0,
     received: 0,
     sold: 0,
     soldQuantity: 0,
     soldAmount: 0,
+    soldAtCost: 0,
+    soldAtSalePrice: 0,
     unpricedSales: 0,
   };
 
   for (const row of report.purchases) {
     totals.purchasedQuantity += row.quantity;
     totals.purchasedAmount += row.amount;
+    totals.purchasedAtCost += row.purchasedPrice * row.quantity;
+    if (row.salePrice === null) totals.purchasesWithoutListPrice += 1;
+    else totals.purchasedAtSalePrice += row.salePrice * row.quantity;
   }
   for (const row of report.register) {
     totals.received += row.received;
@@ -120,13 +140,21 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
   for (const row of report.sales) {
     totals.soldQuantity += row.quantity;
     totals.soldAmount += row.amount;
+    totals.soldAtSalePrice += row.salePrice * row.quantity;
+    if (row.purchasedPrice !== null) {
+      totals.soldAtCost += row.purchasedPrice * row.quantity;
+    }
     if (row.salePrice === 0) totals.unpricedSales += 1;
   }
 
   return {
     ...totals,
     purchasedAmount: round2(totals.purchasedAmount),
+    purchasedAtCost: round2(totals.purchasedAtCost),
+    purchasedAtSalePrice: round2(totals.purchasedAtSalePrice),
     soldAmount: round2(totals.soldAmount),
+    soldAtCost: round2(totals.soldAtCost),
+    soldAtSalePrice: round2(totals.soldAtSalePrice),
   };
 }
 
@@ -137,6 +165,12 @@ export function stockReportNotes(totals: StockReportTotals): string[] {
     "A purchase's sale price is the product's list price today, not the price it sold for.",
     "The register's sold figure is daily stock only. Sales cover normal and daily stock on issued invoices.",
   ];
+  if (totals.purchasesWithoutListPrice > 0) {
+    const count = totals.purchasesWithoutListPrice;
+    notes.push(
+      `${count} ${count === 1 ? "purchase line has" : "purchase lines have"} no list price, so ${count === 1 ? "it is" : "they are"} left out of the purchase sale price total.`,
+    );
+  }
   if (totals.unpricedSales > 0) {
     const count = totals.unpricedSales;
     notes.push(
