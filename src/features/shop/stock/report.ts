@@ -46,6 +46,8 @@ export interface SaleReportRow {
   product: string;
   unit: string;
   quantity: number;
+  /** The person the invoice was made out to, as named on the customer's bill. */
+  purchaser: string;
   /** The shop the invoice was made out to. */
   shop: string;
   channel: StockChannel;

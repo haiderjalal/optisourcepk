@@ -48,6 +48,7 @@ interface SaleLineRow {
   unit_price: number | string;
   unit_cost: number | string | null;
   orders: {
+    bill_to_name: string | null;
     bill_to_shop: string | null;
     issued_at: string;
   } | null;
@@ -140,8 +141,9 @@ async function loadRegister(range: {
 
 /**
  * Every line sold on an issued, non-voided invoice in the range, from normal and
- * daily stock alike, one row per line. RX lines are left out: they have their own
- * report. Dated by the day the invoice was issued.
+ * daily stock alike, one row per line. RX work is left out, both the RX lines and
+ * the RX orders and combined RX invoices they sit on: those have their own report.
+ * Dated by the day the invoice was issued.
  */
 async function loadSales(range: {
   from: string;
@@ -155,9 +157,11 @@ async function loadSales(range: {
       supabase
         .from("order_lines")
         .select(
-          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, orders!inner(bill_to_shop, issued_at, voided_at)",
+          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, orders!inner(bill_to_name, bill_to_shop, issued_at, voided_at)",
         )
         .is("rx_status", null)
+        .eq("orders.is_rx", false)
+        .eq("orders.combines_rx", false)
         .gte("orders.issued_at", bounds.start)
         .lt("orders.issued_at", bounds.end)
         .is("orders.voided_at", null)
@@ -179,6 +183,7 @@ async function loadSales(range: {
           product: line.product_name,
           unit: line.unit,
           quantity: line.quantity,
+          purchaser: order.bill_to_name ?? "—",
           shop: order.bill_to_shop ?? "—",
           channel: line.stock_source,
           purchasedPrice:

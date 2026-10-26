@@ -51,11 +51,12 @@ const REGISTER_COLUMNS: Column[] = [
 ];
 
 const SALES_COLUMNS: Column[] = [
-  { label: "Date", width: "12%", align: "left" },
-  { label: "Product", width: "26%", align: "left" },
-  { label: "Qty", width: "7%", align: "right" },
-  { label: "Shop name", width: "23%", align: "left" },
-  { label: "Channel", width: "10%", align: "left" },
+  { label: "Date", width: "10%", align: "left" },
+  { label: "Product", width: "22%", align: "left" },
+  { label: "Qty", width: "6%", align: "right" },
+  { label: "Purchaser name", width: "16%", align: "left" },
+  { label: "Shop name", width: "16%", align: "left" },
+  { label: "Channel", width: "8%", align: "left" },
   { label: "Purchase price", width: "11%", align: "right" },
   { label: "Sale price", width: "11%", align: "right" },
 ];
