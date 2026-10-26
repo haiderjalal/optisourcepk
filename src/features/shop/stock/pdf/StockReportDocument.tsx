@@ -37,8 +37,8 @@ const PURCHASE_COLUMNS: Column[] = [
   { label: "Product", width: "15%", align: "left" },
   { label: "Power", width: "19%", align: "left" },
   { label: "Qty", width: "6%", align: "right" },
-  { label: "Purchased price", width: "9%", align: "right" },
-  { label: "Sale price", width: "9%", align: "right" },
+  { label: "Purchase total", width: "9%", align: "right" },
+  { label: "Sale total", width: "9%", align: "right" },
   { label: "Amount", width: "9%", align: "right" },
 ];
 
@@ -60,8 +60,8 @@ const SALES_COLUMNS: Column[] = [
   { label: "Shop", width: "19%", align: "left" },
   { label: "Item", width: "21%", align: "left" },
   { label: "Qty", width: "6%", align: "right" },
-  { label: "Purchased price", width: "9%", align: "right" },
-  { label: "Sale price", width: "9%", align: "right" },
+  { label: "Purchase total", width: "9%", align: "right" },
+  { label: "Sale total", width: "9%", align: "right" },
   { label: "Amount", width: "11%", align: "right" },
 ];
 
