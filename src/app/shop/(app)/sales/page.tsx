@@ -31,7 +31,7 @@ function linesWithoutCostOf(row: MonthRow): number {
 
 export default async function SalesPage() {
   await requireUser();
-  await requireReportsUnlocked("/shop/sales");
+  await requireReportsUnlocked("sales", "/shop/sales");
   const months = await listMonthlySales(12);
 
   return (

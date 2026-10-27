@@ -26,7 +26,7 @@ export default async function LedgerPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireUser();
-  await requireReportsUnlocked("/shop/ledger");
+  await requireReportsUnlocked("ledger", "/shop/ledger");
   const query = await searchParams;
   const today = todayInKarachi();
   const from = isDate(query.from) ? query.from : `${today.slice(0, 7)}-01`;
