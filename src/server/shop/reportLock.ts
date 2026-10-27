@@ -3,15 +3,17 @@ import "server-only";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import type { ReportKey } from "@/lib/validations/shop/reportUnlock";
 
 /**
  * The passcode that locks the reports: Monthly sales, Ledger, RX lab report and
  * Stock report, and their PDFs.
  *
  * The passcode is read from REPORTS_PASSCODE on the server and never reaches the
- * browser. A correct entry sets a cookie signed with the passcode itself, so
- * changing the passcode locks every browser again. With REPORTS_PASSCODE unset,
- * the reports stay locked.
+ * browser. Only one report is open at a time: opening a report unlocks it and
+ * locks the one before, so switching report tabs asks for the passcode again.
+ * The unlock lasts 8 hours at most, and changing the passcode locks every browser.
+ * With REPORTS_PASSCODE unset, the reports stay locked.
  *
  * A four-digit passcode is a light gate on top of the owner's login, not a
  * defence against someone who is determined to guess it.
@@ -41,44 +43,56 @@ export function passcodeMatches(entered: string): boolean {
   return timingSafeEqual(digest(entered), digest(expected));
 }
 
-function sign(passcode: string, expiresAt: number): string {
-  return createHmac("sha256", passcode).update(String(expiresAt)).digest("hex");
+/** The signature covers the report too, so an unlock for one report cannot be reused for another. */
+function sign(passcode: string, report: ReportKey, expiresAt: number): string {
+  return createHmac("sha256", passcode)
+    .update(`${report}.${expiresAt}`)
+    .digest("hex");
 }
 
-/** Opens the reports for this browser. Call only after `passcodeMatches` succeeds. */
-export async function unlockReports(): Promise<void> {
+/** Opens one report for this browser, in place of any other. Call only after `passcodeMatches` succeeds. */
+export async function unlockReports(report: ReportKey): Promise<void> {
   const passcode = configuredPasscode();
   if (!passcode) throw new Error("REPORTS_PASSCODE is not set.");
 
   const expiresAt = Date.now() + UNLOCK_HOURS * 60 * 60 * 1000;
   const store = await cookies();
-  store.set(COOKIE_NAME, `${expiresAt}.${sign(passcode, expiresAt)}`, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/shop",
-    expires: new Date(expiresAt),
-  });
+  store.set(
+    COOKIE_NAME,
+    `${report}.${expiresAt}.${sign(passcode, report, expiresAt)}`,
+    {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/shop",
+      expires: new Date(expiresAt),
+    },
+  );
 }
 
 /**
- * Whether this browser unlocked the reports recently, under the passcode that is
- * set now. Changing the passcode invalidates every unlock.
+ * Whether `report` is the one open in this browser, unlocked recently under the
+ * passcode that is set now.
  */
-export async function reportsUnlocked(): Promise<boolean> {
+export async function reportsUnlocked(report: ReportKey): Promise<boolean> {
   const passcode = configuredPasscode();
   if (!passcode) return false;
 
   const value = (await cookies()).get(COOKIE_NAME)?.value;
   if (!value) return false;
 
-  const [expiry, signature] = value.split(".");
+  const [open, expiry, signature] = value.split(".");
   const expiresAt = Number(expiry);
-  if (!Number.isFinite(expiresAt) || expiresAt <= Date.now() || !signature) {
+  if (
+    open !== report ||
+    !Number.isFinite(expiresAt) ||
+    expiresAt <= Date.now() ||
+    !signature
+  ) {
     return false;
   }
 
-  const expected = sign(passcode, expiresAt);
+  const expected = sign(passcode, report, expiresAt);
   return (
     signature.length === expected.length &&
     timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
@@ -86,15 +100,19 @@ export async function reportsUnlocked(): Promise<boolean> {
 }
 
 /** Sends a locked browser to the passcode page, which then returns it to `next`. */
-export async function requireReportsUnlocked(next: string): Promise<void> {
-  if (await reportsUnlocked()) return;
-  redirect(`${REPORTS_UNLOCK_PATH}?next=${encodeURIComponent(next)}`);
+export async function requireReportsUnlocked(
+  report: ReportKey,
+  next: string,
+): Promise<void> {
+  if (await reportsUnlocked(report)) return;
+  const query = new URLSearchParams({ report, next });
+  redirect(`${REPORTS_UNLOCK_PATH}?${query.toString()}`);
 }
 
-/** What a PDF route returns to a browser that has not unlocked the reports. */
+/** What a PDF route returns to a browser that has not unlocked the report. */
 export function reportsLockedResponse(): Response {
   return new Response(
-    "The reports are locked. Unlock them in the back office first.",
+    "The report is locked. Unlock it in the back office first.",
     { status: 403 },
   );
 }

@@ -26,7 +26,7 @@ export default async function MonthProductsPage({
   if (!MONTH_PATTERN.test(month)) notFound();
 
   await requireUser();
-  await requireReportsUnlocked(`/shop/sales/${month}`);
+  await requireReportsUnlocked("sales", `/shop/sales/${month}`);
   const products = await listMonthProducts(month);
   const totalSales = products.reduce((total, row) => total + row.sales, 0);
 

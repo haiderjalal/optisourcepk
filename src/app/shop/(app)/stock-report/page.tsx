@@ -32,7 +32,7 @@ export default async function StockReportPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireUser();
-  await requireReportsUnlocked("/shop/stock-report");
+  await requireReportsUnlocked("stock-report", "/shop/stock-report");
   const { from, to } = resolveDateRange(await searchParams, todayInKarachi());
 
   const report = await loadStockReport({ from, to });

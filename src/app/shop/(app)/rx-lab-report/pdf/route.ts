@@ -25,7 +25,7 @@ import {
  */
 export async function GET(request: Request): Promise<Response> {
   await requireUser();
-  if (!(await reportsUnlocked())) return reportsLockedResponse();
+  if (!(await reportsUnlocked("rx-lab-report"))) return reportsLockedResponse();
 
   const url = new URL(request.url);
   const range = resolveDateRange(

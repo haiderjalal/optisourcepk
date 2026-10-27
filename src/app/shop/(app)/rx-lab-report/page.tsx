@@ -26,7 +26,7 @@ export default async function RxLabReportPage({
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
   await requireUser();
-  await requireReportsUnlocked("/shop/rx-lab-report");
+  await requireReportsUnlocked("rx-lab-report", "/shop/rx-lab-report");
   const { from, to } = resolveDateRange(await searchParams, todayInKarachi());
 
   const rows = await listRxLabRows({ from, to });

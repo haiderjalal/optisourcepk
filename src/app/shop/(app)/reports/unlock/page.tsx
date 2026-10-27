@@ -7,6 +7,7 @@ import { inputClass } from "@/components/ui/field";
 export const metadata: Metadata = { title: "Reports locked" };
 
 const ERROR_MESSAGES: Record<string, string> = {
+  report: "Open a report from the menu to unlock it.",
   wrong: "That passcode is not right. Try again.",
   unset:
     "The reports cannot be opened yet. Ask the owner to set the reports passcode.",
@@ -15,10 +16,10 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function ReportsUnlockPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string; error?: string }>;
+  searchParams: Promise<{ report?: string; next?: string; error?: string }>;
 }) {
   await requireUser();
-  const { next, error } = await searchParams;
+  const { report, next, error } = await searchParams;
   const message = error ? ERROR_MESSAGES[error] : undefined;
 
   return (
@@ -26,13 +27,14 @@ export default async function ReportsUnlockPage({
       <ShopPageHeader
         eyebrow="Reports"
         title="Reports are locked"
-        description="Enter the passcode to open monthly sales, the ledger, the RX lab report and the stock report."
+        description="Enter the passcode to open this report. Opening another report locks this one again."
       />
 
       <form
         action={unlockReportsAction}
         className="shadow-lift mt-6 space-y-4 rounded-2xl bg-white p-6"
       >
+        <input type="hidden" name="report" value={report ?? ""} />
         <input type="hidden" name="next" value={next ?? ""} />
 
         <label className="flex flex-col gap-1 text-sm">
