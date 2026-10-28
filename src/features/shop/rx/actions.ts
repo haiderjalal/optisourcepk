@@ -12,6 +12,7 @@ import {
   setRxHold,
   setRxStage,
   updateRxLabOrderNo,
+  voidAndRebillRxInvoice,
 } from "@/services/shop/rx.service";
 import { deleteOrder } from "@/services/shop/invoice.service";
 
@@ -246,6 +247,24 @@ export async function issueRxInvoiceAction(
   revalidatePath("/shop/rx");
   revalidatePath("/shop/invoices");
   redirect(`/shop/orders/${invoiceId}`);
+}
+
+/** Void a combined RX invoice and bill its RX orders again as one new invoice. */
+export async function voidAndRebillRxAction(formData: FormData): Promise<void> {
+  await requireUser();
+
+  const invoiceId = z.uuid().safeParse(formData.get("orderId"));
+  if (!invoiceId.success) return;
+
+  const newInvoiceId = await voidAndRebillRxInvoice(
+    invoiceId.data,
+    "Billed again as a new RX invoice",
+  );
+
+  revalidatePath("/shop/invoices");
+  revalidatePath("/shop/rx");
+  revalidatePath(`/shop/orders/${invoiceId.data}`);
+  redirect(`/shop/orders/${newInvoiceId}`);
 }
 
 /** Delete an RX order that has not been invoiced yet. */

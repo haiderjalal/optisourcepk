@@ -25,6 +25,7 @@ import {
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxHoldControl } from "@/features/shop/rx/RxHoldControl";
 import { RxCostForm } from "@/features/shop/rx/RxCostForm";
+import { voidAndRebillRxAction } from "@/features/shop/rx/actions";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
 import { listSamePatientSameDay } from "@/services/shop/rx.service";
@@ -205,7 +206,15 @@ export default async function OrderPage({
                 />
               )}
               {!voided && order.combines_rx && (
-                <span className="text-navy-500 text-xs">Void to correct</span>
+                <ConfirmButton
+                  action={voidAndRebillRxAction}
+                  id={order.id}
+                  name={`invoice ${order.invoice_no}`}
+                  idField="orderId"
+                  kind="rebill"
+                  question="Void this invoice and bill its RX orders again? It gets a new number."
+                  confirmLabel="Void and re-bill"
+                />
               )}
               {!hasReturns && (
                 <ConfirmButton
