@@ -204,6 +204,9 @@ export default async function OrderPage({
                   confirmLabel="Edit"
                 />
               )}
+              {!voided && order.combines_rx && (
+                <span className="text-navy-500 text-xs">Void to correct</span>
+              )}
               {!hasReturns && (
                 <ConfirmButton
                   action={deleteInvoiceAction}
