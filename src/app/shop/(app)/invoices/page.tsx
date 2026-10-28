@@ -194,6 +194,11 @@ export default async function InvoicesPage({
                           confirmLabel="Yes"
                         />
                       )}
+                      {!invoice.voided_at && invoice.combines_rx && (
+                        <span className="text-navy-400 text-xs">
+                          Void to correct
+                        </span>
+                      )}
                       <ConfirmButton
                         action={deleteInvoiceAction}
                         id={invoice.id}
