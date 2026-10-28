@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Archive, Pencil, Trash2 } from "lucide-react";
+import { Archive, Pencil, RotateCcw, Trash2 } from "lucide-react";
 
 /**
  * A destructive row action that confirms in place.
@@ -12,8 +12,18 @@ import { Archive, Pencil, Trash2 } from "lucide-react";
  * second click is deliberate and lands somewhere different from the first.
  */
 
-const ICONS = { archive: Archive, delete: Trash2, edit: Pencil } as const;
-const VERBS = { archive: "Archive", delete: "Delete", edit: "Edit" } as const;
+const ICONS = {
+  archive: Archive,
+  delete: Trash2,
+  edit: Pencil,
+  rebill: RotateCcw,
+} as const;
+const VERBS = {
+  archive: "Archive",
+  delete: "Delete",
+  edit: "Edit",
+  rebill: "Void and re-bill",
+} as const;
 
 function Submit({ label }: { label: string }) {
   const { pending } = useFormStatus();

@@ -14,6 +14,7 @@ import {
 import { ShopDocumentsList } from "@/features/shop/invoice/ShopDocumentsList";
 import { ShopPageHeader } from "@/features/shop/layout/ShopPageHeader";
 import { ConfirmButton } from "@/components/ui/confirm-button";
+import { voidAndRebillRxAction } from "@/features/shop/rx/actions";
 import { formatAmount, formatDate } from "@/lib/format";
 import { ShowMore } from "@/components/ui/show-more";
 import { listLimit } from "@/lib/list-pagination";
@@ -195,9 +196,15 @@ export default async function InvoicesPage({
                         />
                       )}
                       {!invoice.voided_at && invoice.combines_rx && (
-                        <span className="text-navy-400 text-xs">
-                          Void to correct
-                        </span>
+                        <ConfirmButton
+                          action={voidAndRebillRxAction}
+                          id={invoice.id}
+                          name={`invoice ${invoice.invoice_no}`}
+                          idField="orderId"
+                          kind="rebill"
+                          question="Void this invoice and bill its RX orders again? It gets a new number."
+                          confirmLabel="Void and re-bill"
+                        />
                       )}
                       <ConfirmButton
                         action={deleteInvoiceAction}
