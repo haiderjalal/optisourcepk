@@ -3,7 +3,10 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { listCustomers } from "@/services/shop/customer.service";
-import { listRxProducts } from "@/services/shop/product.service";
+import {
+  listRxProducts,
+  listSellableProducts,
+} from "@/services/shop/product.service";
 import { listSuppliers } from "@/services/shop/supplier.service";
 import { RxOrderForm } from "@/features/shop/rx/RxOrderForm";
 import { ButtonLink } from "@/components/ui/button";
@@ -14,9 +17,10 @@ export const metadata: Metadata = { title: "New RX order" };
 export default async function NewRxOrderPage() {
   await requireUser();
 
-  const [customers, products, suppliers] = await Promise.all([
+  const [customers, products, stockProducts, suppliers] = await Promise.all([
     listCustomers(),
     listRxProducts(),
+    listSellableProducts(),
     listSuppliers(),
   ]);
 
@@ -54,6 +58,7 @@ export default async function NewRxOrderPage() {
         <RxOrderForm
           customers={customers}
           products={products}
+          stockProducts={stockProducts}
           suppliers={suppliers}
         />
       )}
