@@ -25,7 +25,10 @@ import {
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxHoldControl } from "@/features/shop/rx/RxHoldControl";
 import { RxCostForm } from "@/features/shop/rx/RxCostForm";
-import { voidAndRebillRxAction } from "@/features/shop/rx/actions";
+import {
+  voidAndRebillRxAction,
+  voidRxInvoiceForEditAction,
+} from "@/features/shop/rx/actions";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
 import { listSamePatientSameDay } from "@/services/shop/rx.service";
@@ -575,6 +578,17 @@ export default async function OrderPage({
           </Link>
           , together with the shop&rsquo;s other RX orders that day.
         </p>
+      )}
+      {order.is_rx && billedOn && !voided && (
+        <ConfirmButton
+          action={voidRxInvoiceForEditAction}
+          id={billedOn.id}
+          name={`invoice ${billedOn.invoice_no}`}
+          idField="orderId"
+          kind="edit"
+          question="Void the invoice so its RX jobs can be edited? Every RX job on it goes back to the list, to be billed again."
+          confirmLabel="Void and edit"
+        />
       )}
 
       {!issued && !voided && !billed && (

@@ -733,6 +733,33 @@ export async function voidAndRebillRxInvoice(
   return issueRxInvoice(invoice.bill_to_customer_id);
 }
 
+/**
+ * Void a combined RX invoice so its RX jobs return to the RX list and can be
+ * edited. The jobs are billed again with Generate invoice, not here.
+ */
+export async function voidRxInvoiceForEdit(invoiceId: string): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data: invoice, error } = await supabase
+    .from("orders")
+    .select("combines_rx, issued_at, voided_at")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (error) throw new Error(describePostgresError(error, "load the invoice"));
+  if (
+    !invoice ||
+    !invoice.combines_rx ||
+    invoice.issued_at === null ||
+    invoice.voided_at !== null
+  ) {
+    throw new Error(
+      "Only an issued, combined RX invoice can be voided for editing.",
+    );
+  }
+
+  await voidInvoice(invoiceId, "Voided so its RX jobs can be edited");
+}
+
 /** RX sales, cost and profit for the latest months, newest first. */
 export async function listRxMonthly(limit = 12): Promise<RxMonth[]> {
   const { supabase } = await requireUser();

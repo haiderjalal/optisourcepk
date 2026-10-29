@@ -13,6 +13,7 @@ import {
   setRxStage,
   updateRxLabOrderNo,
   voidAndRebillRxInvoice,
+  voidRxInvoiceForEdit,
 } from "@/services/shop/rx.service";
 import { deleteOrder } from "@/services/shop/invoice.service";
 
@@ -265,6 +266,22 @@ export async function voidAndRebillRxAction(formData: FormData): Promise<void> {
   revalidatePath("/shop/rx");
   revalidatePath(`/shop/orders/${invoiceId.data}`);
   redirect(`/shop/orders/${newInvoiceId}`);
+}
+
+/** Void a combined RX invoice so its RX jobs can be edited and billed again. */
+export async function voidRxInvoiceForEditAction(
+  formData: FormData,
+): Promise<void> {
+  await requireUser();
+
+  const invoiceId = z.uuid().safeParse(formData.get("orderId"));
+  if (!invoiceId.success) return;
+
+  await voidRxInvoiceForEdit(invoiceId.data);
+
+  revalidatePath("/shop/rx");
+  revalidatePath("/shop/invoices");
+  revalidatePath(`/shop/orders/${invoiceId.data}`);
 }
 
 /** Delete an RX order that has not been invoiced yet. */
