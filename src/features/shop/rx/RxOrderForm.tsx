@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { AlertCircle, Save } from "lucide-react";
+import { AlertCircle, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { formatAmount } from "@/lib/format";
@@ -101,6 +101,72 @@ function eyeFrom(line: OrderLine | undefined): EyeDraft {
 const typed = (eye: EyeDraft) =>
   eye.sph !== "" || eye.cyl !== "" || eye.ax !== "" || eye.add !== "";
 
+/** A stock item billed with the lenses: a shelf product, not sent to the lab. */
+interface StockRowDraft {
+  key: string;
+  productId: string;
+  eye: "" | "R" | "L";
+  sph: string;
+  cyl: string;
+  ax: string;
+  add: string;
+  quantity: string;
+  rate: string;
+}
+
+const field =
+  "border-mist-300 focus:border-accent-600 w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none transition-colors";
+
+function blankStockRow(): StockRowDraft {
+  return {
+    key: crypto.randomUUID(),
+    productId: "",
+    eye: "",
+    sph: "",
+    cyl: "",
+    ax: "",
+    add: "",
+    quantity: "1",
+    rate: "",
+  };
+}
+
+/** The stock items already on an order being edited: its lines with no lab status. */
+function stockRowsFrom(lines: OrderLine[]): StockRowDraft[] {
+  const text = (v: number | null) => (v === null ? "" : String(v));
+  return lines
+    .filter((line) => line.rx_status === null)
+    .map((line) => ({
+      key: line.id,
+      productId: line.product_id ?? "",
+      eye: line.eye === "R" || line.eye === "L" ? line.eye : "",
+      sph: text(line.sph),
+      cyl: text(line.cyl),
+      ax: text(line.ax),
+      add: text(line.add_power),
+      quantity: String(line.quantity),
+      rate: String(line.unit_price),
+    }));
+}
+
+/** Why a stock item cannot be saved yet, or null when it can. */
+function stockRowProblem(
+  row: StockRowDraft,
+  product: Product | undefined,
+): string | null {
+  if (!product) {
+    return "Pick a product for each stock item, or remove the empty one.";
+  }
+  const quantity = Number(row.quantity);
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    return `Enter a whole-number quantity for ${product.name}.`;
+  }
+  if (product.tracks_power && row.sph === "") {
+    return `Enter the sphere for ${product.name}.`;
+  }
+  return null;
+}
+
 function SubmitButton({
   isUpdate,
   ready,
@@ -120,12 +186,15 @@ function SubmitButton({
 export function RxOrderForm({
   customers,
   products,
+  stockProducts,
   suppliers,
   order,
   lines = [],
 }: {
   customers: Customer[];
   products: Product[];
+  /** Shelf products that can go on the order as stock items. */
+  stockProducts: Product[];
   suppliers: Supplier[];
   order?: Order;
   lines?: OrderLine[];
@@ -135,14 +204,19 @@ export function RxOrderForm({
     {},
   );
 
-  const first = lines[0];
+  // The lens lines carry a lab status; any other line on the order is a stock item.
+  const rxLines = lines.filter((line) => line.rx_status !== null);
+  const first = rxLines[0];
   const [customerId, setCustomerId] = useState(
     order?.bill_to_customer_id ?? "",
   );
   const [eyes, setEyes] = useState<Record<EyeKey, EyeDraft>>({
-    R: eyeFrom(lines.find((l) => l.eye === "R")),
-    L: eyeFrom(lines.find((l) => l.eye === "L")),
+    R: eyeFrom(rxLines.find((l) => l.eye === "R")),
+    L: eyeFrom(rxLines.find((l) => l.eye === "L")),
   });
+  const [stockRows, setStockRows] = useState<StockRowDraft[]>(() =>
+    stockRowsFrom(lines),
+  );
   const [product, setProduct] = useState(first?.product_name ?? "");
   const [rate, setRate] = useState(first ? String(first.unit_price) : "");
   const [cost, setCost] = useState(
@@ -180,8 +254,8 @@ export function RxOrderForm({
   const lensCount = ordered.length * quantityValue;
   const total = Math.round(perLens * lensCount * 100) / 100;
 
-  // What the server validates: one line per eye ordered.
-  const payload = ordered.map((eye) => ({
+  // What the server validates: one line per eye ordered, then the stock items.
+  const rxPayload = ordered.map((eye) => ({
     productId: "",
     productName: product,
     orderRef: "",
@@ -203,11 +277,57 @@ export function RxOrderForm({
     supplierId,
   }));
 
+  const stockById = useMemo(
+    () => new Map(stockProducts.map((p) => [p.id, p])),
+    [stockProducts],
+  );
+  const stockProblem =
+    stockRows
+      .map((row) => stockRowProblem(row, stockById.get(row.productId)))
+      .find((problem) => problem !== null) ?? null;
+  // Stock items are billed on the same invoice, at their own quantity and rate.
+  const stockPayload = stockRows.map((row) => ({
+    productId: row.productId,
+    productName: "",
+    orderRef: "",
+    stockSource: "normal" as const,
+    eye: row.eye,
+    sph: row.sph,
+    cyl: row.cyl,
+    ax: row.ax,
+    addPower: row.add,
+    rxDia: "",
+    rxBase: "",
+    rxFittingHeight: "",
+    rxPrism: "",
+    rxIpd: "",
+    unitPrice: row.rate || "0",
+    discountPct,
+    quantity: row.quantity,
+    unitCost: "",
+    supplierId: "",
+  }));
+  const payload = [...rxPayload, ...stockPayload];
+
   function setEye(eye: EyeKey, patch: Partial<EyeDraft>) {
     setEyes((current) => ({
       ...current,
       [eye]: { ...current[eye], ...patch },
     }));
+  }
+
+  function addStockRow() {
+    setStockRows((rows) => [...rows, blankStockRow()]);
+  }
+
+  function updateStockRow(key: string, patch: Partial<StockRowDraft>) {
+    setStockRows((rows) =>
+      rows.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+    );
+  }
+
+  function removeStockRow(key: string) {
+    setStockRows((rows) => rows.filter((row) => row.key !== key));
   }
 
   return (
@@ -577,6 +697,140 @@ export function RxOrderForm({
       </section>
 
       <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
+        <h2 className="text-base font-semibold">
+          Stock items for this patient
+        </h2>
+        <p className="text-navy-500 mt-1 text-xs">
+          Optional. Shelf items billed on the same invoice as the lenses. They
+          are not sent to the lab.
+        </p>
+
+        <div className="mt-4 space-y-3">
+          {stockRows.map((row) => {
+            const product = stockById.get(row.productId);
+            return (
+              <div key={row.key} className="flex flex-wrap items-end gap-2">
+                <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs">
+                  <span className="text-navy-500">Product</span>
+                  <select
+                    className={field}
+                    value={row.productId}
+                    onChange={(e) => {
+                      const picked = stockById.get(e.target.value);
+                      updateStockRow(row.key, {
+                        productId: e.target.value,
+                        rate: picked ? String(picked.list_price) : "",
+                      });
+                    }}
+                  >
+                    <option value="">Choose a product…</option>
+                    {stockProducts.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {product?.tracks_power && (
+                  <>
+                    <label className="flex w-20 flex-col gap-1 text-xs">
+                      <span className="text-navy-500">Eye</span>
+                      <select
+                        className={field}
+                        value={row.eye}
+                        onChange={(e) =>
+                          updateStockRow(row.key, {
+                            eye: e.target.value as StockRowDraft["eye"],
+                          })
+                        }
+                      >
+                        <option value="">—</option>
+                        <option value="R">R</option>
+                        <option value="L">L</option>
+                      </select>
+                    </label>
+                    {(
+                      [
+                        ["sph", "Sphere"],
+                        ["cyl", "Cyl"],
+                        ["ax", "Axis"],
+                        ["add", "Add"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label
+                        key={key}
+                        className="flex w-20 flex-col gap-1 text-xs"
+                      >
+                        <span className="text-navy-500">{label}</span>
+                        <input
+                          className={cell}
+                          type="number"
+                          step={key === "ax" ? "1" : "0.25"}
+                          inputMode="decimal"
+                          value={row[key]}
+                          onChange={(e) =>
+                            updateStockRow(row.key, { [key]: e.target.value })
+                          }
+                        />
+                      </label>
+                    ))}
+                  </>
+                )}
+
+                <label className="flex w-20 flex-col gap-1 text-xs">
+                  <span className="text-navy-500">Qty</span>
+                  <input
+                    className={cell}
+                    type="number"
+                    step="1"
+                    min={1}
+                    inputMode="numeric"
+                    value={row.quantity}
+                    onChange={(e) =>
+                      updateStockRow(row.key, { quantity: e.target.value })
+                    }
+                  />
+                </label>
+                <label className="flex w-28 flex-col gap-1 text-xs">
+                  <span className="text-navy-500">Rate</span>
+                  <input
+                    className={cell}
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    inputMode="decimal"
+                    value={row.rate}
+                    onChange={(e) =>
+                      updateStockRow(row.key, { rate: e.target.value })
+                    }
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => removeStockRow(row.key)}
+                  aria-label="Remove stock item"
+                  className="text-navy-300 rounded-md p-2 transition-colors hover:bg-amber-50 hover:text-amber-700"
+                >
+                  <Trash2 className="size-4" aria-hidden />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={addStockRow}
+          className="text-accent-700 hover:text-accent-800 mt-3 inline-flex items-center gap-1 text-sm font-medium"
+        >
+          <Plus className="size-4" aria-hidden />
+          Add stock item
+        </button>
+      </section>
+
+      <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
         <Field
           name="notes"
           label="Notes"
@@ -634,7 +888,7 @@ export function RxOrderForm({
       <div className="flex flex-wrap items-center gap-3">
         <SubmitButton
           isUpdate={Boolean(order)}
-          ready={ordered.length > 0 && quantityValid}
+          ready={ordered.length > 0 && quantityValid && stockProblem === null}
         />
         <Link
           href={order ? `/shop/orders/${order.id}` : "/shop/rx"}
@@ -647,7 +901,11 @@ export function RxOrderForm({
             ? "Enter the power for at least one eye to book it."
             : !quantityValid
               ? "Enter a whole-number quantity of at least 1."
-              : "Gets the next RX number when booked. No stock is checked or deducted."}
+              : stockProblem !== null
+                ? stockProblem
+                : stockRows.length > 0
+                  ? "Gets the next RX number when booked. Stock items come off the shelf when the invoice is issued."
+                  : "Gets the next RX number when booked. No stock is checked or deducted."}
         </span>
       </div>
     </form>

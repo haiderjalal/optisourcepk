@@ -35,6 +35,8 @@ export default async function EditOrderPage({
     order.is_rx ? listRxProducts() : listSellableProducts(),
     listSuppliers(),
   ]);
+  // An RX order can also hold shelf items for the same patient.
+  const stockProducts = order.is_rx ? await listSellableProducts() : [];
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -52,6 +54,7 @@ export default async function EditOrderPage({
         <RxOrderForm
           customers={customers}
           products={products}
+          stockProducts={stockProducts}
           suppliers={suppliers}
           order={order}
           lines={order.lines}

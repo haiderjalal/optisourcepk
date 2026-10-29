@@ -197,7 +197,7 @@ async function replaceLines(
   ];
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, unit, category, tracks_power")
+    .select("id, name, unit, category, tracks_power, is_rx")
     .in("id", productIds);
 
   if (productError) {
@@ -219,8 +219,9 @@ async function replaceLines(
     }
     // A lens always has an SPH, and every lens bin is held at one, so a blank
     // SPH is plano (0.00) — otherwise the line matches no stock.
-    // Every line of an RX order is a lab job, and only those.
-    const rx = payload.isRx;
+    // On an RX order, an RX product is a lab job; any other product is stock
+    // for the same patient, and is kept as a normal stock line.
+    const rx = payload.isRx && product.is_rx;
     const sph = line.sph ?? (product.tracks_power || rx ? 0 : null);
     // Zero cylinder or addition means none: stored as NULL so it prints
     // blank, and so it matches a stock bin received the same way.
@@ -253,7 +254,7 @@ async function replaceLines(
       // Only written when given, so a stock order with no patient still saves
       // on a database that has not had this column yet.
       ...(line.patientName ? { patient_name: line.patientName } : {}),
-      stock_source: rx ? "normal" : line.stockSource,
+      stock_source: payload.isRx ? "normal" : line.stockSource,
       product_id: product.id,
       product_name: product.name,
       unit: product.unit,

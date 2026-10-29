@@ -165,9 +165,9 @@ function soldUnitCost(line: SaleLineRow): {
 
 /**
  * Every line sold on an issued, non-voided invoice in the range, from normal and
- * daily stock alike, one row per line. RX work is left out, both the RX lines and
- * the RX orders and combined RX invoices they sit on: those have their own report.
- * Dated by the day the invoice was issued.
+ * daily stock alike, one row per line. RX lenses are left out: they have their own
+ * report. A stock item billed with lenses on a combined RX invoice is kept, since
+ * it is a normal sale. Dated by the day the invoice was issued.
  */
 async function loadSales(range: {
   from: string;
@@ -184,8 +184,6 @@ async function loadSales(range: {
           "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price), orders!inner(id, invoice_no, bill_to_name, bill_to_shop, issued_at, voided_at)",
         )
         .is("rx_status", null)
-        .eq("orders.is_rx", false)
-        .eq("orders.combines_rx", false)
         .gte("orders.issued_at", bounds.start)
         .lt("orders.issued_at", bounds.end)
         .is("orders.voided_at", null)
