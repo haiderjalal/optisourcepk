@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/server/shop/dal";
 import {
+  orderLineSchema,
   orderSchema,
   issueInvoiceSchema,
   pairPatientSchema,
@@ -21,6 +22,7 @@ import {
   reopenInvoice,
   issueOrdersInvoice,
   setPairPatient,
+  replaceRxInvoiceStockLines,
 } from "@/services/shop/invoice.service";
 import { recordPayment } from "@/services/shop/ledger.service";
 
@@ -165,6 +167,43 @@ export async function saveOrder(
     revalidatePath("/shop/stock/daily");
   }
   redirect(`/shop/orders/${orderId}`);
+}
+
+/**
+ * Save the stock items on a reopened combined RX invoice. Its lens lines are kept,
+ * so the RX status and the lab prices stay on them.
+ */
+export async function saveRxInvoiceStockAction(
+  _previous: OrderFormState,
+  formData: FormData,
+): Promise<OrderFormState> {
+  await requireUser();
+
+  const id = z.uuid().safeParse(formData.get("id"));
+  if (!id.success) return { error: "That invoice could not be found." };
+
+  let raw: unknown = [];
+  try {
+    raw = JSON.parse(String(formData.get("lines") ?? "[]"));
+  } catch {
+    raw = [];
+  }
+  const parsed = z.array(orderLineSchema).safeParse(raw);
+  if (!parsed.success) {
+    return {
+      error: parsed.error.issues[0]?.message ?? "Check the stock items.",
+    };
+  }
+
+  try {
+    await replaceRxInvoiceStockLines(id.data, parsed.data);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Save failed." };
+  }
+
+  revalidatePath(`/shop/orders/${id.data}`);
+  revalidatePath("/shop/invoices");
+  redirect(`/shop/orders/${id.data}`);
 }
 
 export interface IssueState {

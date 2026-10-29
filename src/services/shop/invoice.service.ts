@@ -99,6 +99,22 @@ export async function updateOrder(
 ): Promise<Order> {
   const { supabase } = await requireUser();
 
+  // A combined RX invoice's lens lines would be rewritten as normal lines here,
+  // losing their lab status. Its stock items are changed on its own form.
+  const { data: existing, error: existingError } = await supabase
+    .from("orders")
+    .select("combines_rx")
+    .eq("id", id)
+    .maybeSingle();
+  if (existingError) {
+    throw new Error(describePostgresError(existingError, "load the order"));
+  }
+  if (existing?.combines_rx) {
+    throw new Error(
+      "A combined RX invoice is changed from its own page, not from this form.",
+    );
+  }
+
   const { data: order, error } = await supabase
     .from("orders")
     .update({
@@ -297,6 +313,115 @@ async function replaceLines(
   if (insertError) {
     throw new Error(describePostgresError(insertError, "save the lines"));
   }
+}
+
+/**
+ * Replace the stock items on a reopened combined RX invoice. Its lens lines are
+ * left as they are: they keep their lab status and are billed with the invoice.
+ */
+export async function replaceRxInvoiceStockLines(
+  invoiceId: string,
+  lines: OrderPayload["lines"],
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { data: invoice, error: invoiceError } = await supabase
+    .from("orders")
+    .select("combines_rx, issued_at, voided_at")
+    .eq("id", invoiceId)
+    .maybeSingle();
+  if (invoiceError) {
+    throw new Error(describePostgresError(invoiceError, "load the invoice"));
+  }
+  if (
+    !invoice ||
+    !invoice.combines_rx ||
+    invoice.issued_at !== null ||
+    invoice.voided_at !== null
+  ) {
+    throw new Error(
+      "Only a reopened, combined RX invoice can have its stock items changed here.",
+    );
+  }
+
+  const productIds = [
+    ...new Set(
+      lines
+        .map((line) => line.productId)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const { data: products, error: productError } = await supabase
+    .from("products")
+    .select("id, name, unit, tracks_power, is_rx")
+    .in("id", productIds);
+  if (productError) {
+    throw new Error(describePostgresError(productError, "read the products"));
+  }
+  const byId = new Map((products ?? []).map((p) => [p.id, p]));
+
+  const { error: clearError } = await supabase
+    .from("order_lines")
+    .delete()
+    .eq("order_id", invoiceId)
+    .is("rx_status", null);
+  if (clearError) {
+    throw new Error(
+      describePostgresError(clearError, "update the stock items"),
+    );
+  }
+
+  const { data: last, error: lastError } = await supabase
+    .from("order_lines")
+    .select("line_no")
+    .eq("order_id", invoiceId)
+    .order("line_no", { ascending: false })
+    .limit(1);
+  if (lastError) {
+    throw new Error(describePostgresError(lastError, "update the stock items"));
+  }
+  let lineNo = last?.[0]?.line_no ?? 0;
+
+  const rows = lines.map((line) => {
+    const product = line.productId ? byId.get(line.productId) : undefined;
+    if (!product || product.is_rx) {
+      throw new Error("A stock item must be a shelf product, not an RX lens.");
+    }
+    // Same rules as a normal line: a blank SPH on a lens is plano, and zero
+    // cylinder or addition is stored as none.
+    const cyl = line.cyl === 0 ? null : line.cyl;
+    const addPower = line.addPower === 0 ? null : line.addPower;
+    lineNo += 1;
+    return {
+      order_id: invoiceId,
+      line_no: lineNo,
+      product_id: product.id,
+      product_name: product.name,
+      unit: product.unit,
+      eye: line.eye ? line.eye : null,
+      sph: line.sph ?? (product.tracks_power ? 0 : null),
+      cyl,
+      ax: cyl === null ? null : line.ax,
+      add_power: addPower,
+      unit_price: line.unitPrice,
+      discount_pct: line.discountPct,
+      quantity: line.quantity,
+      stock_source: "normal" as const,
+    };
+  });
+  if (rows.length === 0) return;
+
+  const { error: insertError } = await supabase
+    .from("order_lines")
+    .insert(rows);
+  if (insertError) {
+    throw new Error(describePostgresError(insertError, "save the stock items"));
+  }
+
+  logger.info("RX invoice stock items replaced", {
+    invoiceId,
+    items: rows.length,
+  });
 }
 
 /** Invoice numbers per `in` filter: a long list overflows the request URL. */

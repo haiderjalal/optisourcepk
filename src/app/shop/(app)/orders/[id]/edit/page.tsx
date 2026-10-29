@@ -12,6 +12,7 @@ import {
 import { listSuppliers } from "@/services/shop/supplier.service";
 import { OrderBuilder } from "@/features/shop/orders/OrderBuilder";
 import { RxOrderForm } from "@/features/shop/rx/RxOrderForm";
+import { RxInvoiceStockForm } from "@/features/shop/rx/RxInvoiceStockForm";
 import { formatRxNo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Edit order" };
@@ -35,8 +36,14 @@ export default async function EditOrderPage({
     order.is_rx ? listRxProducts() : listSellableProducts(),
     listSuppliers(),
   ]);
-  // An RX order can also hold shelf items for the same patient.
-  const stockProducts = order.is_rx ? await listSellableProducts() : [];
+  // An RX order, or the invoice it was billed on, can hold shelf items too.
+  const stockProducts =
+    order.is_rx || order.combines_rx ? await listSellableProducts() : [];
+  const label = order.is_rx
+    ? formatRxNo(order.rx_no)
+    : order.combines_rx
+      ? `invoice ${order.invoice_no ?? order.reserved_invoice_no}`
+      : `order ${order.order_no}`;
 
   return (
     <div className="mx-auto max-w-6xl">
@@ -45,12 +52,20 @@ export default async function EditOrderPage({
         className="text-navy-500 hover:text-navy-700 mb-5 inline-flex items-center gap-2 text-sm font-medium"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        {order.is_rx ? formatRxNo(order.rx_no) : `Order ${order.order_no}`}
+        {order.is_rx
+          ? formatRxNo(order.rx_no)
+          : order.combines_rx
+            ? `Invoice ${order.invoice_no ?? order.reserved_invoice_no}`
+            : `Order ${order.order_no}`}
       </Link>
-      <h1 className="mb-6 text-2xl font-bold">
-        Edit {order.is_rx ? formatRxNo(order.rx_no) : `order ${order.order_no}`}
-      </h1>
-      {order.is_rx ? (
+      <h1 className="mb-6 text-2xl font-bold">Edit {label}</h1>
+      {order.combines_rx ? (
+        <RxInvoiceStockForm
+          invoice={order}
+          lines={order.lines}
+          stockProducts={stockProducts}
+        />
+      ) : order.is_rx ? (
         <RxOrderForm
           customers={customers}
           products={products}

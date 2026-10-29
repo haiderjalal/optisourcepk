@@ -3,7 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import { useFormStatus } from "react-dom";
 import Link from "next/link";
-import { AlertCircle, Plus, Save, Trash2 } from "lucide-react";
+import { AlertCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { formatAmount } from "@/lib/format";
@@ -15,6 +15,14 @@ import type {
   Supplier,
 } from "@/types/database";
 import { saveOrder, type OrderFormState } from "../orders/actions";
+import {
+  StockItemRows,
+  cell,
+  firstStockProblem,
+  stockItemLines,
+  stockRowsFrom,
+  type StockRowDraft,
+} from "./StockItemRows";
 
 /**
  * The RX job card: one patient, one pair of lenses, as on the paper form.
@@ -79,9 +87,6 @@ const FRAME_TYPES = [
   { value: "rimless", label: "Rimless" },
 ] as const;
 
-const cell =
-  "border-mist-300 focus:border-accent-600 w-full rounded-md border bg-white px-2 py-1.5 text-center font-mono text-sm outline-none transition-colors";
-
 function eyeFrom(line: OrderLine | undefined): EyeDraft {
   if (!line) return EMPTY_EYE;
   const text = (v: number | null) => (v === null ? "" : String(v));
@@ -100,72 +105,6 @@ function eyeFrom(line: OrderLine | undefined): EyeDraft {
 
 const typed = (eye: EyeDraft) =>
   eye.sph !== "" || eye.cyl !== "" || eye.ax !== "" || eye.add !== "";
-
-/** A stock item billed with the lenses: a shelf product, not sent to the lab. */
-interface StockRowDraft {
-  key: string;
-  productId: string;
-  eye: "" | "R" | "L";
-  sph: string;
-  cyl: string;
-  ax: string;
-  add: string;
-  quantity: string;
-  rate: string;
-}
-
-const field =
-  "border-mist-300 focus:border-accent-600 w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none transition-colors";
-
-function blankStockRow(): StockRowDraft {
-  return {
-    key: crypto.randomUUID(),
-    productId: "",
-    eye: "",
-    sph: "",
-    cyl: "",
-    ax: "",
-    add: "",
-    quantity: "1",
-    rate: "",
-  };
-}
-
-/** The stock items already on an order being edited: its lines with no lab status. */
-function stockRowsFrom(lines: OrderLine[]): StockRowDraft[] {
-  const text = (v: number | null) => (v === null ? "" : String(v));
-  return lines
-    .filter((line) => line.rx_status === null)
-    .map((line) => ({
-      key: line.id,
-      productId: line.product_id ?? "",
-      eye: line.eye === "R" || line.eye === "L" ? line.eye : "",
-      sph: text(line.sph),
-      cyl: text(line.cyl),
-      ax: text(line.ax),
-      add: text(line.add_power),
-      quantity: String(line.quantity),
-      rate: String(line.unit_price),
-    }));
-}
-
-/** Why a stock item cannot be saved yet, or null when it can. */
-function stockRowProblem(
-  row: StockRowDraft,
-  product: Product | undefined,
-): string | null {
-  if (!product) {
-    return "Pick a product for each stock item, or remove the empty one.";
-  }
-  const quantity = Number(row.quantity);
-  if (!Number.isInteger(quantity) || quantity < 1) {
-    return `Enter a whole-number quantity for ${product.name}.`;
-  }
-  if (product.tracks_power && row.sph === "") {
-    return `Enter the sphere for ${product.name}.`;
-  }
-  return null;
-}
 
 function SubmitButton({
   isUpdate,
@@ -277,57 +216,15 @@ export function RxOrderForm({
     supplierId,
   }));
 
-  const stockById = useMemo(
-    () => new Map(stockProducts.map((p) => [p.id, p])),
-    [stockProducts],
-  );
-  const stockProblem =
-    stockRows
-      .map((row) => stockRowProblem(row, stockById.get(row.productId)))
-      .find((problem) => problem !== null) ?? null;
+  const stockProblem = firstStockProblem(stockRows, stockProducts);
   // Stock items are billed on the same invoice, at their own quantity and rate.
-  const stockPayload = stockRows.map((row) => ({
-    productId: row.productId,
-    productName: "",
-    orderRef: "",
-    stockSource: "normal" as const,
-    eye: row.eye,
-    sph: row.sph,
-    cyl: row.cyl,
-    ax: row.ax,
-    addPower: row.add,
-    rxDia: "",
-    rxBase: "",
-    rxFittingHeight: "",
-    rxPrism: "",
-    rxIpd: "",
-    unitPrice: row.rate || "0",
-    discountPct,
-    quantity: row.quantity,
-    unitCost: "",
-    supplierId: "",
-  }));
-  const payload = [...rxPayload, ...stockPayload];
+  const payload = [...rxPayload, ...stockItemLines(stockRows, discountPct)];
 
   function setEye(eye: EyeKey, patch: Partial<EyeDraft>) {
     setEyes((current) => ({
       ...current,
       [eye]: { ...current[eye], ...patch },
     }));
-  }
-
-  function addStockRow() {
-    setStockRows((rows) => [...rows, blankStockRow()]);
-  }
-
-  function updateStockRow(key: string, patch: Partial<StockRowDraft>) {
-    setStockRows((rows) =>
-      rows.map((row) => (row.key === key ? { ...row, ...patch } : row)),
-    );
-  }
-
-  function removeStockRow(key: string) {
-    setStockRows((rows) => rows.filter((row) => row.key !== key));
   }
 
   return (
@@ -705,129 +602,12 @@ export function RxOrderForm({
           are not sent to the lab.
         </p>
 
-        <div className="mt-4 space-y-3">
-          {stockRows.map((row) => {
-            const product = stockById.get(row.productId);
-            return (
-              <div key={row.key} className="flex flex-wrap items-end gap-2">
-                <label className="flex min-w-48 flex-1 flex-col gap-1 text-xs">
-                  <span className="text-navy-500">Product</span>
-                  <select
-                    className={field}
-                    value={row.productId}
-                    onChange={(e) => {
-                      const picked = stockById.get(e.target.value);
-                      updateStockRow(row.key, {
-                        productId: e.target.value,
-                        rate: picked ? String(picked.list_price) : "",
-                      });
-                    }}
-                  >
-                    <option value="">Choose a product…</option>
-                    {stockProducts.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-
-                {product?.tracks_power && (
-                  <>
-                    <label className="flex w-20 flex-col gap-1 text-xs">
-                      <span className="text-navy-500">Eye</span>
-                      <select
-                        className={field}
-                        value={row.eye}
-                        onChange={(e) =>
-                          updateStockRow(row.key, {
-                            eye: e.target.value as StockRowDraft["eye"],
-                          })
-                        }
-                      >
-                        <option value="">—</option>
-                        <option value="R">R</option>
-                        <option value="L">L</option>
-                      </select>
-                    </label>
-                    {(
-                      [
-                        ["sph", "Sphere"],
-                        ["cyl", "Cyl"],
-                        ["ax", "Axis"],
-                        ["add", "Add"],
-                      ] as const
-                    ).map(([key, label]) => (
-                      <label
-                        key={key}
-                        className="flex w-20 flex-col gap-1 text-xs"
-                      >
-                        <span className="text-navy-500">{label}</span>
-                        <input
-                          className={cell}
-                          type="number"
-                          step={key === "ax" ? "1" : "0.25"}
-                          inputMode="decimal"
-                          value={row[key]}
-                          onChange={(e) =>
-                            updateStockRow(row.key, { [key]: e.target.value })
-                          }
-                        />
-                      </label>
-                    ))}
-                  </>
-                )}
-
-                <label className="flex w-20 flex-col gap-1 text-xs">
-                  <span className="text-navy-500">Qty</span>
-                  <input
-                    className={cell}
-                    type="number"
-                    step="1"
-                    min={1}
-                    inputMode="numeric"
-                    value={row.quantity}
-                    onChange={(e) =>
-                      updateStockRow(row.key, { quantity: e.target.value })
-                    }
-                  />
-                </label>
-                <label className="flex w-28 flex-col gap-1 text-xs">
-                  <span className="text-navy-500">Rate</span>
-                  <input
-                    className={cell}
-                    type="number"
-                    step="0.01"
-                    min={0}
-                    inputMode="decimal"
-                    value={row.rate}
-                    onChange={(e) =>
-                      updateStockRow(row.key, { rate: e.target.value })
-                    }
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={() => removeStockRow(row.key)}
-                  aria-label="Remove stock item"
-                  className="text-navy-300 rounded-md p-2 transition-colors hover:bg-amber-50 hover:text-amber-700"
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        <button
-          type="button"
-          onClick={addStockRow}
-          className="text-accent-700 hover:text-accent-800 mt-3 inline-flex items-center gap-1 text-sm font-medium"
-        >
-          <Plus className="size-4" aria-hidden />
-          Add stock item
-        </button>
+        <StockItemRows
+          rows={stockRows}
+          onChange={setStockRows}
+          stockProducts={stockProducts}
+          fallbackDiscount={discountPct}
+        />
       </section>
 
       <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">

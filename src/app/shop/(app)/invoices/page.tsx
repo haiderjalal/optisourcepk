@@ -14,7 +14,6 @@ import {
 import { ShopDocumentsList } from "@/features/shop/invoice/ShopDocumentsList";
 import { ShopPageHeader } from "@/features/shop/layout/ShopPageHeader";
 import { ConfirmButton } from "@/components/ui/confirm-button";
-import { voidAndRebillRxAction } from "@/features/shop/rx/actions";
 import { formatAmount, formatDate } from "@/lib/format";
 import { ShowMore } from "@/components/ui/show-more";
 import { listLimit } from "@/lib/list-pagination";
@@ -182,9 +181,7 @@ export default async function InvoicesPage({
                         <FileText className="size-3.5" aria-hidden />
                         PDF
                       </Link>
-                      {/* A combined RX invoice is voided, not reopened: reopening
-                          it strips the RX status from its lenses. */}
-                      {!invoice.voided_at && !invoice.combines_rx && (
+                      {!invoice.voided_at && (
                         <ConfirmButton
                           action={reopenInvoiceAction}
                           id={invoice.id}
@@ -193,17 +190,6 @@ export default async function InvoicesPage({
                           kind="edit"
                           question="Edit this invoice? It keeps its number."
                           confirmLabel="Yes"
-                        />
-                      )}
-                      {!invoice.voided_at && invoice.combines_rx && (
-                        <ConfirmButton
-                          action={voidAndRebillRxAction}
-                          id={invoice.id}
-                          name={`invoice ${invoice.invoice_no}`}
-                          idField="orderId"
-                          kind="rebill"
-                          question="Void this invoice and bill its RX orders again? It gets a new number."
-                          confirmLabel="Void and re-bill"
                         />
                       )}
                       <ConfirmButton

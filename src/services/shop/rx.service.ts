@@ -13,8 +13,6 @@ import { pairEyes } from "@/features/shop/rx/pairs";
 import { describePostgresError } from "./errors";
 import { chunk } from "@/lib/utils";
 import { PAGE_SIZE } from "./paging";
-import { voidInvoice } from "./invoice.service";
-import { formatRxNo } from "@/lib/format";
 
 /**
  * RX jobs: lenses made to a prescription and ordered from a lab.
@@ -639,125 +637,6 @@ export async function issueRxInvoice(customerId: string): Promise<string> {
     invoiceNo: data.invoice_no,
   });
   return data.id;
-}
-
-/**
- * Void a combined RX invoice and bill its RX orders again as one new invoice, so
- * a wrong bill is corrected without reopening it. The new invoice bills every
- * ready RX order of its shop, so the checks refuse while any other is ready.
- * Nothing is voided until every check passes.
- */
-export async function voidAndRebillRxInvoice(
-  invoiceId: string,
-  reason: string,
-): Promise<string> {
-  const { supabase } = await requireUser();
-
-  const { data: invoice, error: invoiceError } = await supabase
-    .from("orders")
-    .select("id, combines_rx, issued_at, voided_at, bill_to_customer_id")
-    .eq("id", invoiceId)
-    .maybeSingle();
-  if (invoiceError) {
-    throw new Error(describePostgresError(invoiceError, "load the invoice"));
-  }
-  if (
-    !invoice ||
-    !invoice.combines_rx ||
-    invoice.issued_at === null ||
-    invoice.voided_at !== null
-  ) {
-    throw new Error(
-      "Only an issued, combined RX invoice can be voided and billed again.",
-    );
-  }
-
-  const { data: billed, error: billedError } = await supabase
-    .from("orders")
-    .select("id, rx_no, rx_stage")
-    .eq("billed_in", invoiceId);
-  if (billedError) {
-    throw new Error(describePostgresError(billedError, "load the RX orders"));
-  }
-  if (!billed || billed.length === 0) {
-    throw new Error("No RX orders are billed on this invoice.");
-  }
-
-  const notBack = billed.find((order) => order.rx_stage !== "back");
-  if (notBack) {
-    throw new Error(
-      `${formatRxNo(notBack.rx_no)} is not back from the lab yet.`,
-    );
-  }
-
-  const { data: unpricedLines, error: priceError } = await supabase
-    .from("order_lines")
-    .select("order_id")
-    .in(
-      "order_id",
-      billed.map((order) => order.id),
-    )
-    .lte("unit_price", 0);
-  if (priceError) {
-    throw new Error(describePostgresError(priceError, "check the prices"));
-  }
-  const unpricedId = unpricedLines?.[0]?.order_id;
-  if (unpricedId) {
-    const unpriced = billed.find((order) => order.id === unpricedId);
-    throw new Error(
-      `${formatRxNo(unpriced?.rx_no ?? null)} has no sale price yet.`,
-    );
-  }
-
-  const { count, error: readyError } = await supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .eq("bill_to_customer_id", invoice.bill_to_customer_id)
-    .eq("is_rx", true)
-    .eq("rx_stage", "back")
-    .is("issued_at", null)
-    .is("voided_at", null)
-    .is("billed_in", null);
-  if (readyError) {
-    throw new Error(
-      describePostgresError(readyError, "check the ready RX orders"),
-    );
-  }
-  if ((count ?? 0) > 0) {
-    throw new Error(
-      "This shop has other RX orders ready to invoice. Generate their invoice from the RX orders page first, then void and bill again.",
-    );
-  }
-
-  await voidInvoice(invoiceId, reason);
-  return issueRxInvoice(invoice.bill_to_customer_id);
-}
-
-/**
- * Void a combined RX invoice so its RX jobs return to the RX list and can be
- * edited. The jobs are billed again with Generate invoice, not here.
- */
-export async function voidRxInvoiceForEdit(invoiceId: string): Promise<void> {
-  const { supabase } = await requireUser();
-
-  const { data: invoice, error } = await supabase
-    .from("orders")
-    .select("combines_rx, issued_at, voided_at")
-    .eq("id", invoiceId)
-    .maybeSingle();
-  if (error) throw new Error(describePostgresError(error, "load the invoice"));
-  if (
-    !invoice ||
-    !invoice.combines_rx ||
-    invoice.issued_at === null ||
-    invoice.voided_at !== null
-  ) {
-    throw new Error(
-      "Only an issued, combined RX invoice can be voided for editing.",
-    );
-  }
-
-  await voidInvoice(invoiceId, "Voided so its RX jobs can be edited");
 }
 
 /** RX sales, cost and profit for the latest months, newest first. */
