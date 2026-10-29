@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import { Archive, Pencil, RotateCcw, Trash2 } from "lucide-react";
+import { Archive, Pencil, Trash2 } from "lucide-react";
 
 /**
  * A destructive row action that confirms in place.
@@ -16,13 +16,11 @@ const ICONS = {
   archive: Archive,
   delete: Trash2,
   edit: Pencil,
-  rebill: RotateCcw,
 } as const;
 const VERBS = {
   archive: "Archive",
   delete: "Delete",
   edit: "Edit",
-  rebill: "Void and re-bill",
 } as const;
 
 function Submit({ label }: { label: string }) {

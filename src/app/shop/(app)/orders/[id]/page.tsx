@@ -25,10 +25,6 @@ import {
 import { RxStageControl } from "@/features/shop/rx/RxStageControl";
 import { RxHoldControl } from "@/features/shop/rx/RxHoldControl";
 import { RxCostForm } from "@/features/shop/rx/RxCostForm";
-import {
-  voidAndRebillRxAction,
-  voidRxInvoiceForEditAction,
-} from "@/features/shop/rx/actions";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
 import { listSamePatientSameDay } from "@/services/shop/rx.service";
@@ -195,9 +191,7 @@ export default async function OrderPage({
                 canShare={!voided}
                 hasBalance={order.previous_balance !== null}
               />
-              {/* A combined RX invoice is voided, not reopened: reopening it
-                  strips the RX status from its lenses. */}
-              {!voided && !order.combines_rx && !hasReturns && (
+              {!voided && !hasReturns && (
                 <ConfirmButton
                   action={reopenInvoiceAction}
                   id={order.id}
@@ -206,17 +200,6 @@ export default async function OrderPage({
                   kind="edit"
                   question="Edit this invoice? It keeps its number."
                   confirmLabel="Edit"
-                />
-              )}
-              {!voided && order.combines_rx && (
-                <ConfirmButton
-                  action={voidAndRebillRxAction}
-                  id={order.id}
-                  name={`invoice ${order.invoice_no}`}
-                  idField="orderId"
-                  kind="rebill"
-                  question="Void this invoice and bill its RX orders again? It gets a new number."
-                  confirmLabel="Void and re-bill"
                 />
               )}
               {!hasReturns && (
@@ -581,13 +564,13 @@ export default async function OrderPage({
       )}
       {order.is_rx && billedOn && !voided && (
         <ConfirmButton
-          action={voidRxInvoiceForEditAction}
+          action={reopenInvoiceAction}
           id={billedOn.id}
           name={`invoice ${billedOn.invoice_no}`}
           idField="orderId"
           kind="edit"
-          question="Void the invoice so its RX jobs can be edited? Every RX job on it goes back to the list, to be billed again."
-          confirmLabel="Void and edit"
+          question="Edit this invoice to add stock items or freight? It keeps its number."
+          confirmLabel="Edit invoice"
         />
       )}
 
@@ -609,7 +592,7 @@ export default async function OrderPage({
           ) : (
             <IssuePanel order={order} subtotal={subtotal} />
           )}
-          <DeleteDraftPanel order={order} />
+          {!order.combines_rx && <DeleteDraftPanel order={order} />}
         </div>
       )}
 

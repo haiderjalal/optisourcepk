@@ -15,10 +15,8 @@ import { RxRemoveFromInvoice } from "@/features/shop/rx/RxRemoveFromInvoice";
 import { RxPriceForm } from "@/features/shop/rx/RxPriceForm";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { ReadyToInvoice } from "@/features/shop/rx/ReadyToInvoice";
-import {
-  deleteRxOrderAction,
-  voidRxInvoiceForEditAction,
-} from "@/features/shop/rx/actions";
+import { reopenInvoiceAction } from "@/features/shop/orders/actions";
+import { deleteRxOrderAction } from "@/features/shop/rx/actions";
 import { ButtonLink } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { inputClass } from "@/components/ui/field";
@@ -437,13 +435,13 @@ export default async function RxOrdersPage({
                         )}
                         {job.billedIn !== null && !job.voided && (
                           <ConfirmButton
-                            action={voidRxInvoiceForEditAction}
+                            action={reopenInvoiceAction}
                             id={job.billedIn}
                             name={formatRxNo(job.rxNo)}
                             idField="orderId"
                             kind="edit"
-                            question="Void the invoice so its RX jobs can be edited? Every RX job on it goes back to the list, to be billed again."
-                            confirmLabel="Void and edit"
+                            question="Edit this invoice to add stock items or freight? It keeps its number."
+                            confirmLabel="Edit invoice"
                           />
                         )}
                       </td>
