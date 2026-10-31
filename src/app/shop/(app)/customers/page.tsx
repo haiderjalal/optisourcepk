@@ -6,7 +6,9 @@ import { listCustomers } from "@/services/shop/customer.service";
 import { ButtonLink } from "@/components/ui/button";
 import { inputClass } from "@/components/ui/field";
 import { ShowMore } from "@/components/ui/show-more";
+import { CustomerStatementShare } from "@/features/shop/customers/CustomerStatementShare";
 import { ShopPageHeader } from "@/features/shop/layout/ShopPageHeader";
+import { whatsappNumber } from "@/features/shop/payments/reminder";
 import { listLimit } from "@/lib/list-pagination";
 import { formatPkr } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -139,7 +141,7 @@ export default async function CustomersPage({
                   {formatPkr(shop.balance)}
                 </span>
 
-                <div className="flex w-full items-center justify-end gap-1.5 md:w-auto md:justify-end">
+                <div className="flex w-full flex-wrap items-center justify-end gap-1.5 md:w-auto md:justify-end">
                   <ButtonLink
                     href={`/shop/payments?customer=${shop.id}`}
                     size="sm"
@@ -158,6 +160,13 @@ export default async function CustomersPage({
                     <FileText className="size-3.5" aria-hidden />
                     PDF
                   </ButtonLink>
+                  <CustomerStatementShare
+                    key={shop.balance}
+                    customerId={shop.id}
+                    shopName={shop.shop_name || shop.customer_name}
+                    number={whatsappNumber(shop.phone)}
+                    balance={shop.balance}
+                  />
                   <Link
                     href={`/shop/customers/${shop.id}`}
                     aria-label={`Edit ${shop.shop_name}`}
