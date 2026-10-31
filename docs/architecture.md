@@ -250,3 +250,10 @@ published — those are facts about supply, not commercial terms.
 - `prefers-reduced-motion` honoured globally and per component
 - All decorative layers — grids, glows, schematics, the whole canvas — are
   `aria-hidden`
+
+## Back-office label printing
+
+The `/shop` back-office prints stock labels on a TSC TE244 by sending TSPL to a
+small helper on the shop PC (`tools/label-printer`), which hands it to the
+Windows print queue. It lives outside the Next.js build and adds no
+dependencies. See [label-printing.md](./label-printing.md).

@@ -13,6 +13,7 @@ import { ProductForm } from "@/features/shop/products/ProductForm";
 import { StockPanel } from "@/features/shop/products/StockPanel";
 import { RangeFillPanel } from "@/features/shop/products/RangeFillPanel";
 import { PowerGrid } from "@/features/shop/products/PowerGrid";
+import { LabelPrintPanel } from "@/features/shop/labels/LabelPrintPanel";
 import {
   archiveProductAction,
   deleteStockMovementAction,
@@ -55,6 +56,7 @@ export default async function ProductPage({
         <PowerGrid product={product} bins={bins} suppliers={suppliers} />
         <RangeFillPanel product={product} />
         <StockPanel product={product} bins={bins} />
+        <LabelPrintPanel product={product} bins={bins} />
       </div>
 
       {movements.length > 0 && (

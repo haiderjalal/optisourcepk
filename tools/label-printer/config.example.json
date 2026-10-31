@@ -1,0 +1,10 @@
+{
+  "port": 9777,
+  "printerName": "TSC TE244",
+  "allowedOrigins": [
+    "https://optisource.pk",
+    "https://www.optisource.pk",
+    "http://localhost:3000"
+  ],
+  "dryRun": false
+}
