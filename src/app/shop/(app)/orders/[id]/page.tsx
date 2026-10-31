@@ -48,8 +48,11 @@ export const metadata: Metadata = { title: "Order" };
 
 export default async function OrderPage({
   params,
+  searchParams,
 }: PageProps<"/shop/orders/[id]">) {
   await requireUser();
+  const query = await searchParams;
+  const notice = typeof query.notice === "string" ? query.notice : null;
   const { id } = await params;
 
   const order = await getOrder(id);
@@ -131,6 +134,15 @@ export default async function OrderPage({
         <ArrowLeft className="size-4" aria-hidden />
         {order.is_rx ? "RX orders" : order.is_daily ? "Daily stock" : "Orders"}
       </Link>
+
+      {notice && (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg bg-amber-50 px-3.5 py-3 text-sm text-amber-800 ring-1 ring-amber-200 ring-inset"
+        >
+          {notice}
+        </p>
+      )}
 
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
@@ -569,7 +581,7 @@ export default async function OrderPage({
           name={`invoice ${billedOn.invoice_no}`}
           idField="orderId"
           kind="edit"
-          question="Edit this invoice to add stock items or freight? It keeps its number."
+          question="Edit this invoice to change its lenses, prices or stock items? It keeps its number."
           confirmLabel="Edit invoice"
         />
       )}

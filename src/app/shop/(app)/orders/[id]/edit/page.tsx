@@ -12,7 +12,7 @@ import {
 import { listSuppliers } from "@/services/shop/supplier.service";
 import { OrderBuilder } from "@/features/shop/orders/OrderBuilder";
 import { RxOrderForm } from "@/features/shop/rx/RxOrderForm";
-import { RxInvoiceStockForm } from "@/features/shop/rx/RxInvoiceStockForm";
+import { RxInvoiceForm } from "@/features/shop/rx/RxInvoiceForm";
 import { formatRxNo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Edit order" };
@@ -60,7 +60,7 @@ export default async function EditOrderPage({
       </Link>
       <h1 className="mb-6 text-2xl font-bold">Edit {label}</h1>
       {order.combines_rx ? (
-        <RxInvoiceStockForm
+        <RxInvoiceForm
           invoice={order}
           lines={order.lines}
           stockProducts={stockProducts}
