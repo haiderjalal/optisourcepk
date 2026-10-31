@@ -651,6 +651,23 @@ export interface Database {
         Args: { p_rx_order_id: string };
         Returns: OrderRow;
       };
+      update_rx_invoice_lenses: {
+        Args: {
+          p_invoice_id: string;
+          p_patients: { rx_no: number; patient_name: string | null }[];
+          p_lines: {
+            id: string;
+            sph: number;
+            cyl: number | null;
+            ax: number | null;
+            add_power: number | null;
+            unit_price: number;
+            discount_pct: number;
+            quantity: number;
+          }[];
+        };
+        Returns: undefined;
+      };
       trash_ledger_entry: {
         Args: { p_entry_id: string };
         Returns: string;

@@ -440,7 +440,7 @@ export default async function RxOrdersPage({
                             name={formatRxNo(job.rxNo)}
                             idField="orderId"
                             kind="edit"
-                            question="Edit this invoice to add stock items or freight? It keeps its number."
+                            question="Edit this invoice to change its lenses, prices or stock items? It keeps its number."
                             confirmLabel="Edit invoice"
                           />
                         )}

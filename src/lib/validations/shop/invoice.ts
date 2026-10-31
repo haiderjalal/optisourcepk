@@ -33,6 +33,44 @@ function dioptre(min: number, max: number, label: string) {
     });
 }
 
+/** Optional axis: blank is allowed, a value is a whole number of degrees. */
+const axField = z
+  .string()
+  .trim()
+  .transform((value) => (value === "" ? null : Number(value)))
+  .refine((value) => value === null || Number.isInteger(value), {
+    error: "AX is a whole number of degrees.",
+  })
+  .refine((value) => value === null || (value >= 0 && value <= 180), {
+    error: "AX runs from 0 to 180.",
+  });
+
+const discountField = z.coerce
+  .number({ error: "Enter a discount, or 0." })
+  .min(0, "Discount cannot be negative.")
+  .max(100, "Discount cannot exceed 100%.")
+  .default(0);
+
+const quantityField = z.coerce
+  .number({ error: "Enter a quantity." })
+  .int("Quantities are whole numbers.")
+  .positive("Quantity must be at least 1.")
+  .max(100_000, "That quantity is out of range.");
+
+/**
+ * Mirrors order_lines_ax_needs_cyl: an axis without a cylinder is meaningless.
+ * A CYL of 0 means "no cylinder", so its axis is dropped on save; a blank CYL
+ * with an axis is more likely a CYL forgotten, so ask.
+ */
+function axHasCylinder(line: { ax: number | null; cyl: number | null }) {
+  return line.ax === null || line.cyl !== null;
+}
+
+const AX_NEEDS_CYL = {
+  error: "An axis needs a cylinder value. Enter the CYL, or clear the axis.",
+  path: ["ax"],
+};
+
 /** A short RX fitting detail (dia, base, prism…), passed on as typed. */
 function fitting(label: string) {
   return z
@@ -70,31 +108,14 @@ export const orderLineSchema = z
     eye: z.enum(["", "R", "L"]).optional(),
     sph: sphField,
     cyl: dioptre(-12, 12, "CYL"),
-    ax: z
-      .string()
-      .trim()
-      .transform((value) => (value === "" ? null : Number(value)))
-      .refine((value) => value === null || Number.isInteger(value), {
-        error: "AX is a whole number of degrees.",
-      })
-      .refine((value) => value === null || (value >= 0 && value <= 180), {
-        error: "AX runs from 0 to 180.",
-      }),
+    ax: axField,
     addPower: dioptre(0, 6, "ADD"),
     unitPrice: z.coerce
       .number({ error: "Enter a rate." })
       .min(0, "A rate cannot be negative.")
       .max(9_999_999, "That rate is out of range."),
-    discountPct: z.coerce
-      .number({ error: "Enter a discount, or 0." })
-      .min(0, "Discount cannot be negative.")
-      .max(100, "Discount cannot exceed 100%.")
-      .default(0),
-    quantity: z.coerce
-      .number({ error: "Enter a quantity." })
-      .int("Quantities are whole numbers.")
-      .positive("Quantity must be at least 1.")
-      .max(100_000, "That quantity is out of range."),
+    discountPct: discountField,
+    quantity: quantityField,
     // RX only: what the lab charges us, and which lab. Blank means not known yet.
     unitCost: z
       .string()
@@ -122,13 +143,7 @@ export const orderLineSchema = z
     error: "Pick or type a product for every line.",
     path: ["productId"],
   })
-  // Mirrors order_lines_ax_needs_cyl: an axis without a cylinder is
-  // meaningless. A CYL of 0 means "no cylinder", so its axis is dropped on
-  // save; a blank CYL with an axis is more likely a CYL forgotten, so ask.
-  .refine((line) => line.ax === null || line.cyl !== null, {
-    error: "An axis needs a cylinder value. Enter the CYL, or clear the axis.",
-    path: ["ax"],
-  });
+  .refine(axHasCylinder, AX_NEEDS_CYL);
 
 export const orderSchema = z.object({
   customerId: z.uuid("Pick a customer."),
@@ -186,21 +201,59 @@ export const issueInvoiceSchema = z.object({
 });
 
 /**
- * A patient name for one lens pair (or a lone eye) of an existing order. The
- * name is optional: a blank value clears it, so it is stored as null.
+ * A patient name, optional: a blank value clears it, so it is stored as null.
+ * Single-spaced, as the grouping and the printed invoice compare names.
  */
+const patientNameField = z
+  .string()
+  .trim()
+  .max(120, "Keep a patient name under 120 characters.")
+  .transform((value) => value.replace(/\s+/g, " ") || null);
+
+/** A patient name for one lens pair (or a lone eye) of an existing order. */
 export const pairPatientSchema = z.object({
   orderId: z.uuid("That order could not be found."),
   lineIds: z.array(z.uuid()).min(1, "Pick the pair to name.").max(2),
-  patientName: z
-    .string()
-    .trim()
-    .max(120, "Keep a patient name under 120 characters.")
-    // Single-spaced, as the grouping and the printed invoice compare names.
-    .transform((value) => value.replace(/\s+/g, " ") || null),
+  patientName: patientNameField,
+});
+
+/**
+ * One lens of a reopened combined RX invoice: its power, quantity, discount and
+ * sale price. The eye, product and lab details stay as they were booked, so
+ * they are not part of the payload. A billed lens needs a sale price, as it did
+ * when it was priced.
+ */
+export const rxInvoiceLensSchema = z
+  .object({
+    id: z.uuid("That lens could not be found."),
+    sph: sphField,
+    cyl: dioptre(-12, 12, "CYL"),
+    ax: axField,
+    addPower: dioptre(0, 6, "ADD"),
+    unitPrice: z.coerce
+      .number({ error: "Enter a sale price." })
+      .positive("Enter a sale price for every lens.")
+      .max(9_999_999, "That price is out of range."),
+    discountPct: discountField,
+    quantity: quantityField,
+  })
+  .refine(axHasCylinder, AX_NEEDS_CYL);
+
+/** The lenses of a reopened combined RX invoice, and the patient of each RX order on it. */
+export const rxInvoiceLensesSchema = z.object({
+  patients: z
+    .array(
+      z.object({
+        rxNo: z.number().int().positive(),
+        patientName: patientNameField,
+      }),
+    )
+    .max(200),
+  lines: z.array(rxInvoiceLensSchema).max(200),
 });
 
 export type OrderPayload = z.output<typeof orderSchema>;
 export type OrderLinePayload = z.output<typeof orderLineSchema>;
 export type IssueInvoicePayload = z.output<typeof issueInvoiceSchema>;
 export type PairPatientPayload = z.output<typeof pairPatientSchema>;
+export type RxInvoiceLensesPayload = z.output<typeof rxInvoiceLensesSchema>;

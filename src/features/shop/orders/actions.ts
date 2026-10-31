@@ -9,6 +9,7 @@ import {
   orderSchema,
   issueInvoiceSchema,
   pairPatientSchema,
+  rxInvoiceLensesSchema,
 } from "@/lib/validations/shop/invoice";
 import { paymentSchema } from "@/lib/validations/shop/payment";
 import {
@@ -22,7 +23,7 @@ import {
   reopenInvoice,
   issueOrdersInvoice,
   setPairPatient,
-  replaceRxInvoiceStockLines,
+  saveRxInvoice,
 } from "@/services/shop/invoice.service";
 import { recordPayment } from "@/services/shop/ledger.service";
 
@@ -38,19 +39,28 @@ export interface OrderFormState {
   fieldErrors?: Record<string, string[]>;
 }
 
+/** A form's JSON field, or the fallback when it is missing or not valid JSON. */
+function readJsonField(
+  formData: FormData,
+  name: string,
+  fallback: unknown,
+): unknown {
+  const raw = formData.get(name);
+  if (typeof raw !== "string") return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
 /**
  * The builder posts its lines as one JSON field rather than as indexed form
  * inputs — the rows are dynamic, and `lines[3][sph]` parsing is a class of bug
  * worth not having.
  */
 function readOrder(formData: FormData) {
-  const raw = formData.get("lines");
-  let lines: unknown = [];
-  try {
-    lines = typeof raw === "string" ? JSON.parse(raw) : [];
-  } catch {
-    lines = [];
-  }
+  const lines = readJsonField(formData, "lines", []);
 
   return {
     customerId: formData.get("customerId"),
@@ -91,17 +101,9 @@ export async function savePairPatient(
 ): Promise<PairPatientState> {
   await requireUser();
 
-  let lineIds: unknown = [];
-  try {
-    const raw = formData.get("lineIds");
-    lineIds = typeof raw === "string" ? JSON.parse(raw) : [];
-  } catch {
-    lineIds = [];
-  }
-
   const parsed = pairPatientSchema.safeParse({
     orderId: formData.get("orderId"),
-    lineIds,
+    lineIds: readJsonField(formData, "lineIds", []),
     patientName: formData.get("patientName") ?? "",
   });
 
@@ -170,10 +172,11 @@ export async function saveOrder(
 }
 
 /**
- * Save the stock items on a reopened combined RX invoice. Its lens lines are kept,
- * so the RX status and the lab prices stay on them.
+ * Save a reopened combined RX invoice: its lenses (patient, power, quantity,
+ * discount, sale price) and its stock items. The lens lines keep their RX status
+ * and lab prices; the RX orders they came from are changed to match.
  */
-export async function saveRxInvoiceStockAction(
+export async function saveRxInvoiceAction(
   _previous: OrderFormState,
   formData: FormData,
 ): Promise<OrderFormState> {
@@ -182,27 +185,34 @@ export async function saveRxInvoiceStockAction(
   const id = z.uuid().safeParse(formData.get("id"));
   if (!id.success) return { error: "That invoice could not be found." };
 
-  let raw: unknown = [];
-  try {
-    raw = JSON.parse(String(formData.get("lines") ?? "[]"));
-  } catch {
-    raw = [];
-  }
-  const parsed = z.array(orderLineSchema).safeParse(raw);
-  if (!parsed.success) {
+  const lenses = rxInvoiceLensesSchema.safeParse(
+    readJsonField(formData, "lenses", { patients: [], lines: [] }),
+  );
+  if (!lenses.success) {
     return {
-      error: parsed.error.issues[0]?.message ?? "Check the stock items.",
+      error: lenses.error.issues[0]?.message ?? "Check the lenses.",
+    };
+  }
+
+  const stock = z
+    .array(orderLineSchema)
+    .safeParse(readJsonField(formData, "lines", []));
+  if (!stock.success) {
+    return {
+      error: stock.error.issues[0]?.message ?? "Check the stock items.",
     };
   }
 
   try {
-    await replaceRxInvoiceStockLines(id.data, parsed.data);
+    await saveRxInvoice(id.data, lenses.data, stock.data);
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Save failed." };
   }
 
+  // The RX orders on the invoice show the new powers, prices and patients too.
   revalidatePath(`/shop/orders/${id.data}`);
   revalidatePath("/shop/invoices");
+  revalidatePath("/shop/rx");
   redirect(`/shop/orders/${id.data}`);
 }
 
@@ -305,9 +315,13 @@ export async function reopenInvoiceAction(formData: FormData): Promise<void> {
 
   try {
     await reopenInvoice(id.data);
-  } catch {
-    // Refused (an invoice with returns, say): open the invoice, which says why.
-    redirect(`/shop/orders/${id.data}`);
+  } catch (error) {
+    // Refused (an invoice with returns, say): back on the invoice, with the reason.
+    const reason =
+      error instanceof Error
+        ? error.message
+        : "The invoice could not be edited.";
+    redirect(`/shop/orders/${id.data}?notice=${encodeURIComponent(reason)}`);
   }
   revalidatePath("/shop/invoices");
   revalidatePath("/shop/orders");

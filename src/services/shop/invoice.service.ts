@@ -6,6 +6,7 @@ import { chunk } from "@/lib/utils";
 import type {
   IssueInvoicePayload,
   OrderPayload,
+  RxInvoiceLensesPayload,
 } from "@/lib/validations/shop/invoice";
 import type { Customer, Order, OrderLine } from "@/types/database";
 import { describePostgresError } from "./errors";
@@ -422,6 +423,64 @@ export async function replaceRxInvoiceStockLines(
     invoiceId,
     items: rows.length,
   });
+}
+
+/**
+ * Change the lenses on a reopened combined RX invoice: each lens's power,
+ * quantity, discount and sale price, and the patient of each RX order on it.
+ *
+ * The database changes the invoice's copies and the RX orders they came from in
+ * one transaction (migration 0051), so the RX list never shows a power, price or
+ * patient the invoice does not.
+ */
+export async function updateRxInvoiceLenses(
+  invoiceId: string,
+  lenses: RxInvoiceLensesPayload,
+): Promise<void> {
+  const { supabase } = await requireUser();
+
+  const { error } = await supabase.rpc("update_rx_invoice_lenses", {
+    p_invoice_id: invoiceId,
+    p_patients: lenses.patients.map((patient) => ({
+      rx_no: patient.rxNo,
+      patient_name: patient.patientName,
+    })),
+    p_lines: lenses.lines.map((line) => {
+      // The same rules as any line: a lens with no SPH is plano, zero CYL or
+      // ADD is stored as none, and an axis means nothing without a cylinder.
+      const cyl = line.cyl === 0 ? null : line.cyl;
+      return {
+        id: line.id,
+        sph: line.sph ?? 0,
+        cyl,
+        ax: cyl === null ? null : line.ax,
+        add_power: line.addPower === 0 ? null : line.addPower,
+        unit_price: line.unitPrice,
+        discount_pct: line.discountPct,
+        quantity: line.quantity,
+      };
+    }),
+  });
+  if (error) throw new Error(describePostgresError(error, "save the lenses"));
+
+  logger.info("RX invoice lenses updated", {
+    invoiceId,
+    lenses: lenses.lines.length,
+  });
+}
+
+/**
+ * Save everything the reopened-invoice form changes. The lenses go first: the
+ * database checks them against their RX orders and refuses all of it if one
+ * does not match. The stock items follow, and saving again repeats both safely.
+ */
+export async function saveRxInvoice(
+  invoiceId: string,
+  lenses: RxInvoiceLensesPayload,
+  stockLines: OrderPayload["lines"],
+): Promise<void> {
+  await updateRxInvoiceLenses(invoiceId, lenses);
+  await replaceRxInvoiceStockLines(invoiceId, stockLines);
 }
 
 /** Invoice numbers per `in` filter: a long list overflows the request URL. */
