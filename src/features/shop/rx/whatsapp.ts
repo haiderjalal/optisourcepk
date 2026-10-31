@@ -36,12 +36,12 @@ export interface RxMessageLine {
 }
 
 /**
- * A WhatsApp share link: WhatsApp opens with the message typed and lets the
- * operator choose the chat. No number is filled in — who it goes to is their
- * call, not the system's.
+ * A WhatsApp share link: WhatsApp opens with the message typed. Without a
+ * number the operator chooses the chat — who it goes to is their call, not the
+ * system's. Give a number (international form, no "+") to open that chat.
  */
-export function whatsappLink(text: string): string {
-  return `https://wa.me/?text=${encodeURIComponent(text)}`;
+export function whatsappLink(text: string, number?: string): string {
+  return `https://wa.me/${number ?? ""}?text=${encodeURIComponent(text)}`;
 }
 
 const rxNo = (n: number | null) =>

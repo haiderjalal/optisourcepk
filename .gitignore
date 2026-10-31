@@ -46,3 +46,7 @@ next-env.d.ts
 
 # Third-party reference documents — never commit or serve publicly
 docs/reference/
+
+# Label printer helper — this PC's own settings and its last dry-run job
+/tools/label-printer/config.json
+/tools/label-printer/out/
