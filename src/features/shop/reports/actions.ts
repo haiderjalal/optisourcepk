@@ -8,6 +8,7 @@ import {
 } from "@/lib/validations/shop/reportUnlock";
 import { requireUser } from "@/server/shop/dal";
 import {
+  lockReports,
   passcodeMatches,
   REPORTS_UNLOCK_PATH,
   reportsPasscodeConfigured,
@@ -53,4 +54,10 @@ export async function unlockReportsAction(formData: FormData): Promise<void> {
 
   await unlockReports(report);
   redirect(next);
+}
+
+/** Locks the reports again once this browser has left them for another page. */
+export async function lockReportsAction(): Promise<void> {
+  await requireUser();
+  await lockReports();
 }

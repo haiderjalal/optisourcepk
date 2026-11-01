@@ -12,6 +12,7 @@ import type { ReportKey } from "@/lib/validations/shop/reportUnlock";
  * The passcode is read from REPORTS_PASSCODE on the server and never reaches the
  * browser. Only one report is open at a time: opening a report unlocks it and
  * locks the one before, so switching report tabs asks for the passcode again.
+ * Leaving the reports for any other page locks them too (`ReportLockWatcher`).
  * The unlock lasts 8 hours at most, and changing the passcode locks every browser.
  * With REPORTS_PASSCODE unset, the reports stay locked.
  *
@@ -20,6 +21,8 @@ import type { ReportKey } from "@/lib/validations/shop/reportUnlock";
  */
 
 const COOKIE_NAME = "shop_reports_unlocked";
+/** Deleting the cookie must name the same path it was set with, or the browser keeps it. */
+const COOKIE_PATH = "/shop";
 const UNLOCK_HOURS = 8;
 
 export const REPORTS_UNLOCK_PATH = "/shop/reports/unlock";
@@ -64,10 +67,25 @@ export async function unlockReports(report: ReportKey): Promise<void> {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
-      path: "/shop",
+      path: COOKIE_PATH,
       expires: new Date(expiresAt),
     },
   );
+}
+
+/**
+ * Locks every report for this browser. Leaves the cookies untouched when none is
+ * open, as changing one makes Next.js render the current page again.
+ */
+export async function lockReports(): Promise<void> {
+  const store = await cookies();
+  if (!store.has(COOKIE_NAME)) return;
+  store.delete({ name: COOKIE_NAME, path: COOKIE_PATH });
+}
+
+/** Whether this browser holds an unlock at all, valid or not. Enough to decide whether to lock. */
+export async function anyReportOpen(): Promise<boolean> {
+  return (await cookies()).has(COOKIE_NAME);
 }
 
 /**
