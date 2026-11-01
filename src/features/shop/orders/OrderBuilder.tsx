@@ -12,6 +12,7 @@ import { sphPlaceholder } from "@/lib/power";
 import { formatAmount } from "@/lib/format";
 import type { Customer, Order, OrderLine, Product } from "@/types/database";
 import { saveOrder, type OrderFormState } from "./actions";
+import { lineAmount, lineCell as cell } from "./lineTable";
 
 /**
  * Build an order line by line.
@@ -92,11 +93,7 @@ function fromExisting(line: OrderLine): LineDraft {
 }
 
 function lineTotal(line: LineDraft): number {
-  const price = Number(line.unitPrice) || 0;
-  const qty = Number(line.quantity) || 0;
-  const discount = Number(line.discountPct) || 0;
-  const gross = Math.round(price * qty * 100) / 100;
-  return gross - Math.round(((gross * discount) / 100) * 100) / 100;
+  return lineAmount(line.unitPrice, line.quantity, line.discountPct);
 }
 
 function SubmitButton({
@@ -120,9 +117,6 @@ function SubmitButton({
     </Button>
   );
 }
-
-const cell =
-  "border-mist-300 focus:border-accent-600 w-full rounded-md border bg-white px-2 py-1.5 text-sm outline-none transition-colors";
 
 export function OrderBuilder({
   customers,

@@ -229,15 +229,11 @@ async function replaceLines(
     if (!product) {
       throw new Error("One of those products no longer exists.");
     }
-    if (line.stockSource === "daily" && product.category === "services") {
-      throw new Error(
-        `${product.name} is a service and cannot be deducted from daily stock.`,
-      );
-    }
+    refuseDailyService(line, product);
     // A lens always has an SPH, and every lens bin is held at one, so a blank
     // SPH is plano (0.00) — otherwise the line matches no stock.
-    // On an RX order, an RX product is a lab job; any other product is stock
-    // for the same patient, and is kept as a normal stock line.
+    // On an RX order, an RX product is a lab job; any other product is a stock
+    // item for the same patient, from normal stock or the daily register.
     const rx = payload.isRx && product.is_rx;
     const sph = line.sph ?? (product.tracks_power || rx ? 0 : null);
     // Zero cylinder or addition means none: stored as NULL so it prints
@@ -271,7 +267,8 @@ async function replaceLines(
       // Only written when given, so a stock order with no patient still saves
       // on a database that has not had this column yet.
       ...(line.patientName ? { patient_name: line.patientName } : {}),
-      stock_source: payload.isRx ? "normal" : line.stockSource,
+      // A lab job is made for the order, so it is never taken from stock.
+      stock_source: rx ? "normal" : line.stockSource,
       product_id: product.id,
       product_name: product.name,
       unit: product.unit,
@@ -316,9 +313,22 @@ async function replaceLines(
   }
 }
 
+/** A service has no stock behind it, so it cannot come from the daily register. */
+function refuseDailyService(
+  line: { stockSource: "normal" | "daily" },
+  product: { name: string; category: string },
+): void {
+  if (line.stockSource === "daily" && product.category === "services") {
+    throw new Error(
+      `${product.name} is a service and cannot be deducted from daily stock.`,
+    );
+  }
+}
+
 /**
- * Replace the stock items on a reopened combined RX invoice. Its lens lines are
- * left as they are: they keep their lab status and are billed with the invoice.
+ * Replace the stock items on a reopened combined RX invoice, each from normal
+ * stock or the daily register. Its lens lines are left as they are: they keep
+ * their lab status and are billed with the invoice.
  */
 export async function replaceRxInvoiceStockLines(
   invoiceId: string,
@@ -354,12 +364,42 @@ export async function replaceRxInvoiceStockLines(
   ];
   const { data: products, error: productError } = await supabase
     .from("products")
-    .select("id, name, unit, tracks_power, is_rx")
+    .select("id, name, unit, category, tracks_power, is_rx")
     .in("id", productIds);
   if (productError) {
     throw new Error(describePostgresError(productError, "read the products"));
   }
   const byId = new Map((products ?? []).map((p) => [p.id, p]));
+
+  // Every item is checked before the old ones are cleared, so a refused item
+  // leaves the invoice's stock items as they were.
+  const items = lines.map((line) => {
+    const product = line.productId ? byId.get(line.productId) : undefined;
+    if (!product || product.is_rx) {
+      throw new Error("A stock item must be a shelf product, not an RX lens.");
+    }
+    refuseDailyService(line, product);
+    // Same rules as a normal line: a blank SPH on a lens is plano, and zero
+    // cylinder or addition is stored as none.
+    const cyl = line.cyl === 0 ? null : line.cyl;
+    const addPower = line.addPower === 0 ? null : line.addPower;
+    return {
+      product_id: product.id,
+      product_name: product.name,
+      unit: product.unit,
+      eye: line.eye ? line.eye : null,
+      sph: line.sph ?? (product.tracks_power ? 0 : null),
+      cyl,
+      ax: cyl === null ? null : line.ax,
+      add_power: addPower,
+      unit_price: line.unitPrice,
+      discount_pct: line.discountPct,
+      quantity: line.quantity,
+      stock_source: line.stockSource,
+      // Daily items keep their purchase price for separate reporting.
+      unit_cost: line.stockSource === "daily" ? line.unitCost : null,
+    };
+  });
 
   const { error: clearError } = await supabase
     .from("order_lines")
@@ -381,35 +421,13 @@ export async function replaceRxInvoiceStockLines(
   if (lastError) {
     throw new Error(describePostgresError(lastError, "update the stock items"));
   }
-  let lineNo = last?.[0]?.line_no ?? 0;
+  const lastLineNo = last?.[0]?.line_no ?? 0;
 
-  const rows = lines.map((line) => {
-    const product = line.productId ? byId.get(line.productId) : undefined;
-    if (!product || product.is_rx) {
-      throw new Error("A stock item must be a shelf product, not an RX lens.");
-    }
-    // Same rules as a normal line: a blank SPH on a lens is plano, and zero
-    // cylinder or addition is stored as none.
-    const cyl = line.cyl === 0 ? null : line.cyl;
-    const addPower = line.addPower === 0 ? null : line.addPower;
-    lineNo += 1;
-    return {
-      order_id: invoiceId,
-      line_no: lineNo,
-      product_id: product.id,
-      product_name: product.name,
-      unit: product.unit,
-      eye: line.eye ? line.eye : null,
-      sph: line.sph ?? (product.tracks_power ? 0 : null),
-      cyl,
-      ax: cyl === null ? null : line.ax,
-      add_power: addPower,
-      unit_price: line.unitPrice,
-      discount_pct: line.discountPct,
-      quantity: line.quantity,
-      stock_source: "normal" as const,
-    };
-  });
+  const rows = items.map((item, index) => ({
+    ...item,
+    order_id: invoiceId,
+    line_no: lastLineNo + index + 1,
+  }));
   if (rows.length === 0) return;
 
   const { error: insertError } = await supabase

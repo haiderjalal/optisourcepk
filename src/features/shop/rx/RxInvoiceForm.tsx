@@ -101,8 +101,9 @@ export function RxInvoiceForm({
       <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
         <h2 className="text-base font-semibold">Stock items</h2>
         <p className="text-navy-500 mt-1 text-xs">
-          Shelf items billed on this invoice. They come off the shelf when the
-          invoice is issued again.
+          Shelf items billed on this invoice. When it is issued again, Normal
+          items come off your stock and Daily items are recorded in the daily
+          register.
         </p>
         <StockItemRows
           rows={stockRows}
