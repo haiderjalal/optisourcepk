@@ -3,7 +3,9 @@ import { DatabaseBackup, LogOut, Plus } from "lucide-react";
 import { Logo, LogoMark } from "@/components/shared/Logo";
 import { ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/server/shop/dal";
+import { anyReportOpen } from "@/server/shop/reportLock";
 import { signOut } from "@/features/shop/auth/actions";
+import { ReportLockWatcher } from "@/features/shop/reports/ReportLockWatcher";
 import { ShopSidebar } from "@/features/shop/layout/ShopSidebar";
 import { ShopFinder } from "@/features/shop/layout/ShopFinder";
 import { MobileTabBar } from "@/features/shop/layout/MobileTabBar";
@@ -22,7 +24,10 @@ import { MobileTabBar } from "@/features/shop/layout/MobileTabBar";
 export default async function ShopAppLayout({
   children,
 }: LayoutProps<"/shop">) {
-  const { user } = await requireUser();
+  const [{ user }, reportOpen] = await Promise.all([
+    requireUser(),
+    anyReportOpen(),
+  ]);
 
   const account = (
     <div className="space-y-1">
@@ -85,6 +90,7 @@ export default async function ShopAppLayout({
       </div>
 
       <MobileTabBar account={account} />
+      <ReportLockWatcher reportOpen={reportOpen} />
     </div>
   );
 }

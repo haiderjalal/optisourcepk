@@ -27,7 +27,7 @@ export default async function ReportsUnlockPage({
       <ShopPageHeader
         eyebrow="Reports"
         title="Reports are locked"
-        description="Enter the passcode to open this report. Opening another report locks this one again."
+        description="Enter the passcode to open this report. Leaving it, for another report or any other page, locks it again."
       />
 
       <form
