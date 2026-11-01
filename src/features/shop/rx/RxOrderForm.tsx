@@ -598,8 +598,9 @@ export function RxOrderForm({
           Stock items for this patient
         </h2>
         <p className="text-navy-500 mt-1 text-xs">
-          Optional. Shelf items billed on the same invoice as the lenses. They
-          are not sent to the lab.
+          Optional. Shelf items billed on the same invoice as the lenses, not
+          sent to the lab. Normal items come off your stock; Daily items are
+          recorded in the daily register when the invoice is made.
         </p>
 
         <StockItemRows
@@ -684,7 +685,7 @@ export function RxOrderForm({
               : stockProblem !== null
                 ? stockProblem
                 : stockRows.length > 0
-                  ? "Gets the next RX number when booked. Stock items come off the shelf when the invoice is issued."
+                  ? "Gets the next RX number when booked. Stock items are taken from normal stock or the daily register when the invoice is made."
                   : "Gets the next RX number when booked. No stock is checked or deducted."}
         </span>
       </div>

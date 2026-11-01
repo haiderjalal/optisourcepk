@@ -95,7 +95,9 @@ export default async function OrderPage({
   const hasNormalLines = order.lines.some(
     (line) => line.stock_source === "normal" && line.rx_status === null,
   );
-  const showStockSource = !order.is_rx && !order.combines_rx;
+  // RX work shows where its stock items come from only once one is daily; its
+  // lenses are made by the lab.
+  const showStockSource = (!order.is_rx && !order.combines_rx) || hasDailyLines;
   const normalSubtotal = order.lines
     .filter((line) => line.stock_source === "normal")
     .reduce((sum, line) => sum + line.line_total, 0);
@@ -416,7 +418,11 @@ export default async function OrderPage({
                                 : "text-navy-500"
                             }
                           >
-                            {line.stock_source === "daily" ? "Daily" : "Normal"}
+                            {line.rx_status !== null
+                              ? "Lab"
+                              : line.stock_source === "daily"
+                                ? "Daily"
+                                : "Normal"}
                           </span>
                         </td>
                       )}

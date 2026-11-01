@@ -1,10 +1,9 @@
 "use client";
 
 import { Fragment } from "react";
-import { inputClass } from "@/components/ui/field";
 import { formatAmount, formatRxNo } from "@/lib/format";
 import type { OrderLine } from "@/types/database";
-import { cell } from "./StockItemRows";
+import { lineAmount, lineCell } from "../orders/lineTable";
 
 /**
  * The lenses on a reopened combined RX invoice, one row per eye, grouped by the
@@ -33,11 +32,14 @@ export type PatientDrafts = Record<number, string>;
 
 const RX_REFERENCE = /RX-(\d+)$/;
 
+/** One cell per heading in the lenses table. */
+const TABLE_COLUMNS = 11;
+
 const POWER_FIELDS = [
-  ["sph", "Sphere"],
-  ["cyl", "Cyl"],
-  ["ax", "Axis"],
-  ["add", "Add"],
+  ["sph", "SPH"],
+  ["cyl", "CYL"],
+  ["ax", "AX"],
+  ["add", "ADD"],
 ] as const;
 
 function rxNoOf(line: OrderLine): number | null {
@@ -133,13 +135,8 @@ export function lensPayload(rows: LensDraft[], patients: PatientDrafts) {
   };
 }
 
-/** Rounded as the database rounds a line: gross and discount each to the paisa. */
 function lineTotal(row: LensDraft): number {
-  const price = Number(row.rate) || 0;
-  const quantity = Number(row.quantity) || 0;
-  const discount = Number(row.discount) || 0;
-  const gross = Math.round(price * quantity * 100) / 100;
-  return gross - Math.round(((gross * discount) / 100) * 100) / 100;
+  return lineAmount(row.rate, row.quantity, row.discount);
 }
 
 export function LensRows({
@@ -159,145 +156,179 @@ export function LensRows({
     );
   }
 
+  const subtotal = rows.reduce((sum, row) => sum + lineTotal(row), 0);
+
   return (
-    <div className="mt-4 overflow-x-auto">
-      <table className="w-full min-w-[860px] text-sm">
-        <caption className="sr-only">Lenses on this invoice</caption>
-        <thead>
-          <tr className="text-navy-600 bg-mist-100 text-xs">
-            <th scope="col" className="w-12 px-3 py-2 text-left font-medium">
-              Eye
-            </th>
-            <th scope="col" className="px-3 py-2 text-left font-medium">
-              Lens
-            </th>
-            {POWER_FIELDS.map(([key, label]) => (
-              <th key={key} scope="col" className="px-2 py-2 font-medium">
-                {label}
+    <div className="mt-4 overflow-hidden rounded-xl border border-mist-200">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[960px] text-sm">
+          <caption className="sr-only">Lenses on this invoice</caption>
+          <thead>
+            <tr className="text-navy-500 bg-mist-100 text-left text-xs">
+              <th scope="col" className="w-8 px-3 py-2.5 font-medium">
+                #
               </th>
-            ))}
-            <th scope="col" className="px-2 py-2 font-medium">
-              Qty
-            </th>
-            <th scope="col" className="px-2 py-2 font-medium">
-              Sale price
-            </th>
-            <th scope="col" className="px-2 py-2 font-medium">
-              Disc %
-            </th>
-            <th scope="col" className="px-3 py-2 text-right font-medium">
-              Total
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => {
-            const rxNo = row.rxNo;
-            const startsOrder = index === 0 || rows[index - 1].rxNo !== rxNo;
-            const editable = rxNo !== null;
-            return (
-              <Fragment key={row.id}>
-                {startsOrder && rxNo !== null && (
-                  <tr className="border-t border-mist-200 bg-mist-100/50">
-                    <td colSpan={10} className="px-3 py-2">
-                      <label className="flex flex-wrap items-center gap-3 text-xs">
-                        <span className="text-navy-700 font-semibold">
-                          {formatRxNo(rxNo)}
-                        </span>
-                        <span className="text-navy-500">Patient name</span>
+              <th scope="col" className="px-3 py-2.5 font-medium">
+                Product
+              </th>
+              <th scope="col" className="w-16 px-2 py-2.5 font-medium">
+                Eye
+              </th>
+              {POWER_FIELDS.map(([key, label]) => (
+                <th
+                  key={key}
+                  scope="col"
+                  className={`${key === "ax" ? "w-16" : "w-20"} px-2 py-2.5 font-medium`}
+                >
+                  {label}
+                </th>
+              ))}
+              <th scope="col" className="w-24 px-2 py-2.5 font-medium">
+                Sale
+              </th>
+              <th scope="col" className="w-20 px-2 py-2.5 font-medium">
+                Disc %
+              </th>
+              <th scope="col" className="w-16 px-2 py-2.5 font-medium">
+                Qty
+              </th>
+              <th
+                scope="col"
+                className="w-24 px-3 py-2.5 text-right font-medium"
+              >
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, index) => {
+              const rxNo = row.rxNo;
+              const startsOrder = index === 0 || rows[index - 1].rxNo !== rxNo;
+              const editable = rxNo !== null;
+              return (
+                <Fragment key={row.id}>
+                  {startsOrder && rxNo !== null && (
+                    <tr className="border-navy-100 bg-accent-600/5 border-t-2">
+                      <td colSpan={TABLE_COLUMNS} className="px-3 py-2.5">
+                        <label className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                          <span className="text-navy-700 text-sm font-semibold">
+                            {formatRxNo(rxNo)}
+                          </span>
+                          <span className="flex items-center gap-2">
+                            <span className="text-navy-500 text-xs font-medium">
+                              Patient
+                            </span>
+                            <input
+                              className={`${lineCell} max-w-xs`}
+                              type="text"
+                              maxLength={120}
+                              placeholder="Patient name"
+                              value={patients[rxNo] ?? ""}
+                              onChange={(e) =>
+                                onPatientChange(rxNo, e.target.value)
+                              }
+                            />
+                          </span>
+                        </label>
+                      </td>
+                    </tr>
+                  )}
+                  <tr className="border-t border-mist-200 align-top">
+                    <td className="text-navy-400 px-3 py-2 text-xs">
+                      {index + 1}
+                    </td>
+                    <td className="px-3 py-2">{row.product}</td>
+                    <td className="text-navy-700 px-2 py-2 font-medium">
+                      {row.eye || "—"}
+                    </td>
+                    {POWER_FIELDS.map(([key, label]) => (
+                      <td key={key} className="px-2 py-2">
                         <input
-                          type="text"
-                          maxLength={120}
-                          className={`${inputClass} max-w-xs`}
-                          value={patients[rxNo] ?? ""}
+                          aria-label={`${label} for the ${describe(row)}`}
+                          className={lineCell}
+                          type="number"
+                          step={key === "ax" ? "1" : "0.25"}
+                          min={key === "ax" || key === "add" ? 0 : undefined}
+                          max={
+                            key === "ax" ? 180 : key === "add" ? 6 : undefined
+                          }
+                          inputMode={key === "ax" ? "numeric" : "decimal"}
+                          disabled={!editable}
+                          value={row[key]}
                           onChange={(e) =>
-                            onPatientChange(rxNo, e.target.value)
+                            update(row.id, { [key]: e.target.value })
                           }
                         />
-                      </label>
-                    </td>
-                  </tr>
-                )}
-                <tr className="border-t border-mist-200">
-                  <th
-                    scope="row"
-                    className="text-navy-700 px-3 py-2 text-left font-medium"
-                  >
-                    {row.eye || "—"}
-                  </th>
-                  <td className="px-3 py-2">{row.product}</td>
-                  {POWER_FIELDS.map(([key, label]) => (
-                    <td key={key} className="px-1.5 py-1.5">
+                      </td>
+                    ))}
+                    <td className="px-2 py-2">
                       <input
-                        aria-label={`${label}, ${describe(row)}`}
-                        className={cell}
+                        aria-label={`Sale price for the ${describe(row)}`}
+                        className={lineCell}
                         type="number"
-                        step={key === "ax" ? "1" : "0.25"}
-                        min={key === "ax" || key === "add" ? 0 : undefined}
-                        max={key === "ax" ? 180 : key === "add" ? 6 : undefined}
+                        step="0.01"
+                        min={0}
                         inputMode="decimal"
                         disabled={!editable}
-                        value={row[key]}
+                        value={row.rate}
                         onChange={(e) =>
-                          update(row.id, { [key]: e.target.value })
+                          update(row.id, { rate: e.target.value })
                         }
                       />
                     </td>
-                  ))}
-                  <td className="px-1.5 py-1.5">
-                    <input
-                      aria-label={`Quantity, ${describe(row)}`}
-                      className={cell}
-                      type="number"
-                      step="1"
-                      min={1}
-                      max={100000}
-                      inputMode="numeric"
-                      disabled={!editable}
-                      value={row.quantity}
-                      onChange={(e) =>
-                        update(row.id, { quantity: e.target.value })
-                      }
-                    />
-                  </td>
-                  <td className="px-1.5 py-1.5">
-                    <input
-                      aria-label={`Sale price, ${describe(row)}`}
-                      className={cell}
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      inputMode="decimal"
-                      disabled={!editable}
-                      value={row.rate}
-                      onChange={(e) => update(row.id, { rate: e.target.value })}
-                    />
-                  </td>
-                  <td className="px-1.5 py-1.5">
-                    <input
-                      aria-label={`Discount percent, ${describe(row)}`}
-                      className={cell}
-                      type="number"
-                      step="0.01"
-                      min={0}
-                      max={100}
-                      inputMode="decimal"
-                      disabled={!editable}
-                      value={row.discount}
-                      onChange={(e) =>
-                        update(row.id, { discount: e.target.value })
-                      }
-                    />
-                  </td>
-                  <td className="px-3 py-2 text-right tabular-nums">
-                    {formatAmount(lineTotal(row))}
-                  </td>
-                </tr>
-              </Fragment>
-            );
-          })}
-        </tbody>
-      </table>
+                    <td className="px-2 py-2">
+                      <input
+                        aria-label={`Discount for the ${describe(row)}`}
+                        className={lineCell}
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        max={100}
+                        inputMode="decimal"
+                        disabled={!editable}
+                        value={row.discount}
+                        onChange={(e) =>
+                          update(row.id, { discount: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td className="px-2 py-2">
+                      <input
+                        aria-label={`Quantity for the ${describe(row)}`}
+                        className={lineCell}
+                        type="number"
+                        step="1"
+                        min={1}
+                        max={100000}
+                        inputMode="numeric"
+                        disabled={!editable}
+                        value={row.quantity}
+                        onChange={(e) =>
+                          update(row.id, { quantity: e.target.value })
+                        }
+                      />
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium tabular-nums">
+                      {formatAmount(lineTotal(row))}
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-mist-200 px-4 py-3">
+        <p className="text-navy-500 text-sm">
+          {rows.length} {rows.length === 1 ? "lens" : "lenses"}
+        </p>
+        <p className="text-sm">
+          <span className="text-navy-500">Lenses </span>
+          <span className="font-semibold tabular-nums">
+            Rs {formatAmount(subtotal)}
+          </span>
+        </p>
+      </div>
     </div>
   );
 }
