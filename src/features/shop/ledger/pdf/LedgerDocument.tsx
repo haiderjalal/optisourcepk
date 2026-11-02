@@ -146,6 +146,9 @@ export function LedgerDocument({
 
           <View style={{ width: 170 }}>
             <Text style={styles.title}>STATEMENT OF ACCOUNT</Text>
+            {model.periodLabel && (
+              <Text style={styles.asOf}>Period {model.periodLabel}</Text>
+            )}
             <Text style={styles.asOf}>As of {model.asOf}</Text>
           </View>
         </View>

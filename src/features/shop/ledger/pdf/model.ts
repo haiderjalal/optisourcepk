@@ -5,6 +5,10 @@ import type {
   CustomerBalance,
   CustomerStatementLine,
 } from "@/types/database";
+import {
+  describeStatementPeriod,
+  type StatementPeriod,
+} from "../statementRange";
 
 /**
  * What the ledger PDF draws.
@@ -31,6 +35,8 @@ export interface LedgerPdfModel {
   owner: string;
   addressLines: string[];
   asOf: string;
+  /** "1 Oct 2026 to 31 Oct 2026", or null when the statement is the whole account. */
+  periodLabel: string | null;
   /** Invoiced, paid and adjustments, in the order the screen shows them. */
   summary: { label: string; value: string }[];
   closingLabel: string;
@@ -40,8 +46,14 @@ export interface LedgerPdfModel {
 
 export interface LedgerPdfInput {
   customer: Customer;
+  /** The entries in the period, in statement order. */
   lines: CustomerStatementLine[];
   balance: CustomerBalance | null;
+  period: StatementPeriod;
+  /** The balance carried in before the period, or null when the period has no start. */
+  broughtForward: number | null;
+  /** The balance at the end of the period. */
+  closing: number;
   /** `YYYY-MM-DD`: the day the statement is run. */
   asOf: string;
 }
@@ -58,12 +70,11 @@ export function buildLedgerPdfModel({
   customer,
   lines,
   balance,
+  period,
+  broughtForward,
+  closing,
   asOf,
 }: LedgerPdfInput): LedgerPdfModel {
-  // Same fallback as the statement screen: no balance row yet means the
-  // opening balance is all there is.
-  const owed = balance?.balance ?? customer.opening_balance;
-
   return {
     company: PDF_COMPANY,
     shopName: customer.shop_name,
@@ -76,6 +87,7 @@ export function buildLedgerPdfModel({
       customer.strn ? `STRN ${customer.strn}` : null,
     ),
     asOf: formatDate(asOf),
+    periodLabel: describeStatementPeriod(period),
     summary: [
       { label: "Invoiced", value: formatAmount(balance?.invoiced ?? 0) },
       { label: "Paid", value: formatAmount(balance?.paid ?? 0) },
@@ -84,10 +96,29 @@ export function buildLedgerPdfModel({
         value: formatAmount(balance?.adjustments ?? 0),
       },
     ],
-    closingLabel: closingLabel(owed),
-    closingValue: formatAmount(owed),
-    rows: lines.map((line, index) => toRow(line, index)),
+    closingLabel: closingLabel(closing),
+    closingValue: formatAmount(closing),
+    rows: [
+      ...broughtForwardRow(broughtForward),
+      ...lines.map((line, index) => toRow(line, index)),
+    ],
   };
+}
+
+/** The balance carried in before the period, as the first row of its table. */
+function broughtForwardRow(balance: number | null): LedgerPdfRow[] {
+  if (balance === null) return [];
+  return [
+    {
+      key: "brought-forward",
+      date: "",
+      detail: "Balance brought forward",
+      note: "",
+      debit: "",
+      credit: "",
+      balance: formatAmount(balance),
+    },
+  ];
 }
 
 function toRow(line: CustomerStatementLine, index: number): LedgerPdfRow {

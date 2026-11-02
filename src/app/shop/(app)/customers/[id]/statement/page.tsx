@@ -9,14 +9,24 @@ import { getOrderIdsByInvoiceNo } from "@/services/shop/invoice.service";
 import { LedgerEntryRemoveButton } from "@/features/shop/ledger/LedgerEntryRemoveButton";
 import { ButtonLink } from "@/components/ui/button";
 import { formatAmount, formatDate } from "@/lib/format";
+import { inputClass } from "@/components/ui/field";
+import {
+  describeStatementPeriod,
+  isReversedPeriod,
+  readStatementDay,
+  statementSlice,
+  type StatementPeriod,
+} from "@/features/shop/ledger/statementRange";
 
 export const metadata: Metadata = { title: "Statement" };
 
 export default async function StatementPage({
   params,
+  searchParams,
 }: PageProps<"/shop/customers/[id]/statement">) {
   await requireUser();
   const { id } = await params;
+  const query = await searchParams;
 
   const customer = await getCustomer(id);
   if (!customer) notFound();
@@ -39,6 +49,25 @@ export default async function StatementPage({
   }));
   const owed = balance?.balance ?? customer.opening_balance;
 
+  // Optional From and To days. A reversed pair is shown whole, with a note.
+  const requested: StatementPeriod = {
+    from: readStatementDay(
+      typeof query.from === "string" ? query.from : undefined,
+    ),
+    to: readStatementDay(typeof query.to === "string" ? query.to : undefined),
+  };
+  const reversed = isReversedPeriod(requested);
+  const period: StatementPeriod = reversed
+    ? { from: null, to: null }
+    : requested;
+  const periodText = describeStatementPeriod(period);
+  const slice = statementSlice(statementLines, period, owed);
+
+  const pdfQuery = new URLSearchParams();
+  if (period.from !== null) pdfQuery.set("from", period.from);
+  if (period.to !== null) pdfQuery.set("to", period.to);
+  pdfQuery.set("download", "");
+
   return (
     <div className="mx-auto max-w-4xl">
       <Link
@@ -59,7 +88,7 @@ export default async function StatementPage({
         </div>
         <div className="flex flex-wrap gap-2">
           <ButtonLink
-            href={`/shop/customers/${id}/statement/pdf?download`}
+            href={`/shop/customers/${id}/statement/pdf?${pdfQuery}`}
             variant="outline"
             prefetch={false}
           >
@@ -72,6 +101,62 @@ export default async function StatementPage({
           </ButtonLink>
         </div>
       </div>
+
+      {/* A GET form: the period lives in the URL, so back and refresh work. */}
+      <form
+        method="get"
+        className="shadow-lift mb-5 flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4"
+      >
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-navy-500 text-xs">From</span>
+          <input
+            type="date"
+            name="from"
+            defaultValue={requested.from ?? ""}
+            className={inputClass}
+          />
+        </label>
+        <label className="flex flex-col gap-1 text-sm">
+          <span className="text-navy-500 text-xs">To</span>
+          <input
+            type="date"
+            name="to"
+            defaultValue={requested.to ?? ""}
+            className={inputClass}
+          />
+        </label>
+        <button
+          type="submit"
+          className="bg-navy-500 rounded-xl px-4 py-2 text-sm font-medium text-white"
+        >
+          Show
+        </button>
+        {periodText !== null && (
+          <Link
+            href={`/shop/customers/${id}/statement`}
+            className="text-navy-500 hover:text-navy-700 text-sm font-medium"
+          >
+            All dates
+          </Link>
+        )}
+      </form>
+
+      {reversed && (
+        <p
+          role="alert"
+          className="mb-5 rounded-lg bg-amber-50 px-3.5 py-3 text-sm text-amber-800 ring-1 ring-amber-200 ring-inset"
+        >
+          The From date is after the To date, so every entry is shown.
+        </p>
+      )}
+      {periodText !== null && (
+        <p className="text-navy-500 mb-5 text-sm">
+          Showing {periodText}.
+          {period.to !== null &&
+            ` Balance at ${formatDate(period.to)}: ${formatAmount(slice.closing)}.`}{" "}
+          The figures above are for the whole account.
+        </p>
+      )}
 
       <div className="shadow-lift mb-5 grid gap-px overflow-hidden rounded-2xl bg-mist-200 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Invoiced" value={balance?.invoiced ?? 0} />
@@ -117,7 +202,31 @@ export default async function StatementPage({
             </tr>
           </thead>
           <tbody>
-            {statementLines.map((line, index) => (
+            {slice.broughtForward !== null && (
+              <tr className="border-t border-mist-200 bg-mist-100/50">
+                <td className="px-4 py-2.5" />
+                <td className="px-4 py-2.5 font-medium">
+                  Balance brought forward
+                </td>
+                <td className="px-4 py-2.5" />
+                <td className="px-4 py-2.5" />
+                <td className="px-4 py-2.5 text-right font-medium tabular-nums">
+                  {formatAmount(slice.broughtForward)}
+                </td>
+                <td className="px-2 py-2.5" />
+              </tr>
+            )}
+            {periodText !== null && slice.lines.length === 0 && (
+              <tr className="border-t border-mist-200">
+                <td
+                  colSpan={6}
+                  className="text-navy-500 px-4 py-6 text-center text-sm"
+                >
+                  No entries in this period.
+                </td>
+              </tr>
+            )}
+            {slice.lines.map((line, index) => (
               <tr
                 key={line.entry_id ?? `opening-${index}`}
                 className="border-t border-mist-200"
