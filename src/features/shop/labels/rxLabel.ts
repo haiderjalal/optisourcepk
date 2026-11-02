@@ -22,9 +22,6 @@ import {
  * two stickers.
  */
 
-/** The lab's code, printed in brackets after the shop name. */
-const LAB_CODE = "ISB";
-
 const HEADER_FONT: PrinterFont = { id: "4", widthDots: 24, pitchDots: 32 };
 const TEXT_FONT: PrinterFont = { id: "3", widthDots: 16, pitchDots: 24 };
 const VALUE_FONT: PrinterFont = { id: "4", widthDots: 24, pitchDots: 32 };
@@ -231,7 +228,7 @@ function stickerCommands(label: RxLabelData): string[] {
   const eye = label.eye ? `${label.eye}  ` : "";
 
   // The ordering shop's name, in the largest type that fits on one line.
-  const header = `${eye}${toPrinterText(label.shopName)} (${LAB_CODE})`;
+  const header = `${eye}${toPrinterText(label.shopName)}`;
   const headerFont =
     header.length <= charsAcross(HEADER_FONT) ? HEADER_FONT : TEXT_FONT;
   placeCentred(commands, ROW.header, headerFont, header);
