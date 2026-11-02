@@ -18,6 +18,15 @@ export const LABEL_GAP_MM = 3;
 /** The TE244 prints at 203 dpi, which is 8 dots to the millimetre. */
 export const DOTS_PER_MM = 8;
 
+/**
+ * Where the printer's own origin sits, in dots: everything comes out this far
+ * from where it is drawn. On the TE244 roll the stickers came out about 16 dots
+ * too far left and 12 dots too low, so every command is moved by these. Set
+ * both to 0 if the printer is calibrated and the frame sits flush on all sides.
+ */
+export const PRINT_OFFSET_X_DOTS = 16;
+export const PRINT_OFFSET_Y_DOTS = -12;
+
 /** 0 or 1. If the test label prints upside down, switch it to the other one. */
 export const PRINT_DIRECTION = 1;
 

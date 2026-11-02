@@ -6,6 +6,8 @@ import {
   MAX_LABEL_COPIES,
   PRINT_DENSITY,
   PRINT_DIRECTION,
+  PRINT_OFFSET_X_DOTS,
+  PRINT_OFFSET_Y_DOTS,
   PRINT_SPEED,
 } from "./config";
 
@@ -81,13 +83,19 @@ function wrapLines(text: string, maxChars: number, maxLines: number): string[] {
   return kept;
 }
 
+/** A position moved by the printer's offset, so it lands where it is drawn. */
+export function shifted(x: number, y: number): { x: number; y: number } {
+  return { x: x + PRINT_OFFSET_X_DOTS, y: y + PRINT_OFFSET_Y_DOTS };
+}
+
 export function textCommand(
   x: number,
   y: number,
   font: PrinterFont,
   text: string,
 ) {
-  return `TEXT ${x},${y},"${font.id}",0,1,1,"${text}"`;
+  const at = shifted(x, y);
+  return `TEXT ${at.x},${at.y},"${font.id}",0,1,1,"${text}"`;
 }
 
 export function jobHeader(): string[] {
@@ -146,7 +154,7 @@ export function buildLabelJob(content: LabelContent, copies: number): string {
 export function buildTestLabelJob(): string {
   return toJob([
     ...jobHeader(),
-    `BOX 0,0,${WIDTH_DOTS - 2},${HEIGHT_DOTS - 2},2`,
+    `BOX ${shifted(0, 0).x},${shifted(0, 0).y},${WIDTH_DOTS - 2},${HEIGHT_DOTS - 2},2`,
     textCommand(MARGIN_DOTS, TOP_DOTS, TITLE_FONT, "TOP-LEFT"),
     textCommand(
       MARGIN_DOTS,
