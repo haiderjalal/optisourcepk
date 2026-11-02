@@ -39,6 +39,7 @@ function rxCard(payload: OrderPayload) {
     lab_order_no: optional(payload.labOrderNo),
     rx_lens_type: payload.rxLensType ? payload.rxLensType : null,
     rx_tint_reason: optional(payload.rxTintReason),
+    rx_coating: optional(payload.rxCoating),
     frame_material: payload.frameMaterial ? payload.frameMaterial : null,
     frame_type: payload.frameType ? payload.frameType : null,
   };

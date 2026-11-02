@@ -162,6 +162,7 @@ export const orderSchema = z.object({
     .enum(["", "sv", "kry", "nv", "dbf", "prog", "blended"])
     .optional(),
   rxTintReason: z.string().trim().max(400).optional().or(z.literal("")),
+  rxCoating: z.string().trim().max(80).optional().or(z.literal("")),
   frameMaterial: z.enum(["", "plastic", "metal"]).optional(),
   frameType: z.enum(["", "rimmed", "half", "rimless"]).optional(),
 

@@ -72,6 +72,7 @@ function readOrder(formData: FormData) {
     labOrderNo: formData.get("labOrderNo") ?? "",
     rxLensType: formData.get("rxLensType") ?? "",
     rxTintReason: formData.get("rxTintReason") ?? "",
+    rxCoating: formData.get("rxCoating") ?? "",
     frameMaterial: formData.get("frameMaterial") ?? "",
     frameType: formData.get("frameType") ?? "",
     orderByName: formData.get("orderByName") ?? "",

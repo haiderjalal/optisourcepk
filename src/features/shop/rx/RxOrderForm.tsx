@@ -439,6 +439,22 @@ export function RxOrderForm({
         </datalist>
 
         <Field
+          name="rxCoating"
+          label="Lens coating"
+          className="mt-4"
+          hint="Printed on the lens sticker, for example NIGHT VISION."
+        >
+          {(p) => (
+            <input
+              {...p}
+              type="text"
+              maxLength={80}
+              defaultValue={order?.rx_coating ?? ""}
+            />
+          )}
+        </Field>
+
+        <Field
           name="rxTintReason"
           label="Specific reason for giving tint, photochromatic or antiglare"
           className="mt-4"

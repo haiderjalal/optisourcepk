@@ -24,7 +24,7 @@ export interface LabelContent {
   rows: string[];
 }
 
-interface PrinterFont {
+export interface PrinterFont {
   /** The printer's built-in font number. */
   id: string;
   widthDots: number;
@@ -32,7 +32,7 @@ interface PrinterFont {
   pitchDots: number;
 }
 
-const WIDTH_DOTS = LABEL_WIDTH_MM * DOTS_PER_MM;
+export const WIDTH_DOTS = LABEL_WIDTH_MM * DOTS_PER_MM;
 const HEIGHT_DOTS = LABEL_HEIGHT_MM * DOTS_PER_MM;
 const MARGIN_DOTS = 16;
 const TOP_DOTS = 10;
@@ -81,11 +81,16 @@ function wrapLines(text: string, maxChars: number, maxLines: number): string[] {
   return kept;
 }
 
-function textCommand(x: number, y: number, font: PrinterFont, text: string) {
+export function textCommand(
+  x: number,
+  y: number,
+  font: PrinterFont,
+  text: string,
+) {
   return `TEXT ${x},${y},"${font.id}",0,1,1,"${text}"`;
 }
 
-function jobHeader(): string[] {
+export function jobHeader(): string[] {
   return [
     `SIZE ${LABEL_WIDTH_MM} mm,${LABEL_HEIGHT_MM} mm`,
     `GAP ${LABEL_GAP_MM} mm,0 mm`,
@@ -97,7 +102,7 @@ function jobHeader(): string[] {
 }
 
 /** TSPL is line based and the printer expects CRLF. */
-function toJob(commands: string[]): string {
+export function toJob(commands: string[]): string {
   return `${commands.join("\r\n")}\r\n`;
 }
 

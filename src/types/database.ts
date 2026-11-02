@@ -255,6 +255,8 @@ type OrderRow = {
   lab_order_no: string | null;
   rx_lens_type: RxLensType | null;
   rx_tint_reason: string | null;
+  /** RX only: the lens coating, printed on the lens sticker. */
+  rx_coating: string | null;
   frame_material: FrameMaterial | null;
   frame_type: FrameType | null;
   /** RX only: booked, sent to lab, back from lab. */
