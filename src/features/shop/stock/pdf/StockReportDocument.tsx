@@ -15,7 +15,8 @@ import type {
 
 /**
  * The stock report as a PDF: purchases from suppliers, the daily stock register,
- * and the invoices that sold from it, one table each.
+ * and the invoices that sold from it, one table each. Shelf items billed with RX
+ * orders get their own table after the stock order sales.
  *
  * The same family as the RX lab report and the ledger. Column widths are fixed
  * percentages that sum to 100, so each table reads the same every time it is
@@ -180,6 +181,9 @@ export function StockReportDocument({
         <Section section={model.purchases} columns={PURCHASE_COLUMNS} />
         <Section section={model.register} columns={REGISTER_COLUMNS} />
         <Section section={model.sales} columns={SALES_COLUMNS} />
+        {model.rxSales.rows.length > 0 && (
+          <Section section={model.rxSales} columns={SALES_COLUMNS} />
+        )}
 
         {model.notes.map((note) => (
           <Text key={note} style={styles.note}>

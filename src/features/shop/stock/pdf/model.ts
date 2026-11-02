@@ -6,6 +6,8 @@ import {
   soldSaleTotal,
   stockReportNotes,
   stockReportTotals,
+  type SaleReportRow,
+  type SalesTotals,
   type StockReport,
 } from "@/features/shop/stock/report";
 import { formatAmount, formatDate } from "@/lib/format";
@@ -40,6 +42,8 @@ export interface StockReportPdfModel {
   purchases: StockPdfSection;
   register: StockPdfSection;
   sales: StockPdfSection;
+  /** Shelf items billed with RX orders, apart from the stock orders. */
+  rxSales: StockPdfSection;
   notes: string[];
 }
 
@@ -54,6 +58,43 @@ const CHANNEL_LABEL = { normal: "Normal", daily: "Daily" } as const;
 /** A total for display, or a dash when the line has none. */
 function formatOrDash(value: number | null): string {
   return value === null ? "—" : formatAmount(value);
+}
+
+/** One list of sales, in the sales columns, with its total row. */
+function salesSection(
+  title: string,
+  rows: SaleReportRow[],
+  totals: SalesTotals,
+): StockPdfSection {
+  return {
+    title,
+    rows: rows.map((row) => ({
+      key: row.lineId,
+      cells: [
+        formatDate(row.date),
+        row.invoiceNo === null ? "—" : String(row.invoiceNo),
+        row.product,
+        String(row.quantity),
+        row.purchaser,
+        row.shop,
+        CHANNEL_LABEL[row.channel],
+        formatOrDash(soldPurchaseTotal(row)),
+        row.salePrice === 0 ? "no price" : formatAmount(soldSaleTotal(row)),
+      ],
+      flagged: row.salePrice === 0,
+    })),
+    total: [
+      "",
+      "",
+      "Total",
+      String(totals.quantity),
+      "",
+      "",
+      "",
+      formatAmount(totals.atCost),
+      formatAmount(totals.atSalePrice),
+    ],
+  };
 }
 
 export function buildStockReportPdfModel({
@@ -118,35 +159,20 @@ export function buildStockReportPdfModel({
         "",
       ],
     },
-    sales: {
-      title: "Sales (normal and daily stock)",
-      rows: report.sales.map((row) => ({
-        key: row.lineId,
-        cells: [
-          formatDate(row.date),
-          row.invoiceNo === null ? "—" : String(row.invoiceNo),
-          row.product,
-          String(row.quantity),
-          row.purchaser,
-          row.shop,
-          CHANNEL_LABEL[row.channel],
-          formatOrDash(soldPurchaseTotal(row)),
-          row.salePrice === 0 ? "no price" : formatAmount(soldSaleTotal(row)),
-        ],
-        flagged: row.salePrice === 0,
-      })),
-      total: [
-        "",
-        "",
-        "Total",
-        String(totals.soldQuantity),
-        "",
-        "",
-        "",
-        formatAmount(totals.soldAtCost),
-        formatAmount(totals.soldAtSalePrice),
-      ],
-    },
+    sales: salesSection(
+      "Sales on stock orders (normal and daily stock)",
+      report.sales,
+      {
+        quantity: totals.soldQuantity,
+        atCost: totals.soldAtCost,
+        atSalePrice: totals.soldAtSalePrice,
+      },
+    ),
+    rxSales: salesSection(
+      "Shelf items on RX invoices",
+      report.rxSales,
+      totals.rxSales,
+    ),
     notes: stockReportNotes(totals),
   };
 }

@@ -48,13 +48,15 @@ interface SaleLineRow {
   quantity: number;
   unit_price: number | string;
   unit_cost: number | string | null;
-  products: { purchase_price: number | string } | null;
+  products: { purchase_price: number | string; is_rx: boolean } | null;
   orders: {
     id: string;
     invoice_no: number | null;
     bill_to_name: string | null;
     bill_to_shop: string | null;
     issued_at: string;
+    is_rx: boolean;
+    combines_rx: boolean;
   } | null;
 }
 
@@ -163,16 +165,29 @@ function soldUnitCost(line: SaleLineRow): {
     : { price: null, fromProduct: false };
 }
 
+/** Oldest first, then by invoice number and product. */
+function bySaleOrder(a: SaleReportRow, b: SaleReportRow): number {
+  return (
+    a.date.localeCompare(b.date) ||
+    (a.invoiceNo ?? 0) - (b.invoiceNo ?? 0) ||
+    a.product.localeCompare(b.product)
+  );
+}
+
 /**
  * Every line sold on an issued, non-voided invoice in the range, from normal and
- * daily stock alike, one row per line. RX lenses are left out: they have their own
- * report. A stock item billed with lenses on a combined RX invoice is kept, since
- * it is a normal sale. Dated by the day the invoice was issued.
+ * daily stock alike, one row per line, dated by the day the invoice was issued.
+ *
+ * Split by what the invoice is, not only by the line: a line on an RX order or a
+ * combined RX invoice is RX work, so it goes in `rxSales` and never among the
+ * stock orders. RX lenses are left out altogether: they have their own report.
+ * A lens is known by its lab status, or by its RX product when an edit made
+ * before migration 0048 stripped that status.
  */
 async function loadSales(range: {
   from: string;
   to: string;
-}): Promise<SaleReportRow[]> {
+}): Promise<Pick<StockReport, "sales" | "rxSales">> {
   const { supabase } = await requireUser();
   const bounds = karachiRangeBounds(range);
 
@@ -181,7 +196,7 @@ async function loadSales(range: {
       supabase
         .from("order_lines")
         .select(
-          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price), orders!inner(id, invoice_no, bill_to_name, bill_to_shop, issued_at, voided_at)",
+          "id, product_name, unit, stock_source, quantity, unit_price, unit_cost, products(purchase_price, is_rx), orders!inner(id, invoice_no, bill_to_name, bill_to_shop, issued_at, voided_at, is_rx, combines_rx)",
         )
         .is("rx_status", null)
         .gte("orders.issued_at", bounds.start)
@@ -194,35 +209,34 @@ async function loadSales(range: {
     throw new Error(describePostgresError(error, "load the sales"));
   });
 
-  return lines
-    .flatMap((line) => {
-      const order = line.orders;
-      if (!order) return [];
-      const cost = soldUnitCost(line);
-      return [
-        {
-          lineId: line.id,
-          date: karachiDate(order.issued_at),
-          invoiceNo: order.invoice_no,
-          orderId: order.id,
-          product: line.product_name,
-          unit: line.unit,
-          quantity: line.quantity,
-          purchaser: order.bill_to_name ?? "—",
-          shop: order.bill_to_shop ?? "—",
-          channel: line.stock_source,
-          purchasedPrice: cost.price,
-          costFromProduct: cost.fromProduct,
-          salePrice: Number(line.unit_price),
-        },
-      ];
-    })
-    .sort(
-      (a, b) =>
-        a.date.localeCompare(b.date) ||
-        (a.invoiceNo ?? 0) - (b.invoiceNo ?? 0) ||
-        a.product.localeCompare(b.product),
-    );
+  const sales: SaleReportRow[] = [];
+  const rxSales: SaleReportRow[] = [];
+  for (const line of lines) {
+    const order = line.orders;
+    if (!order || line.products?.is_rx) continue;
+    const cost = soldUnitCost(line);
+    const row: SaleReportRow = {
+      lineId: line.id,
+      date: karachiDate(order.issued_at),
+      invoiceNo: order.invoice_no,
+      orderId: order.id,
+      product: line.product_name,
+      unit: line.unit,
+      quantity: line.quantity,
+      purchaser: order.bill_to_name ?? "—",
+      shop: order.bill_to_shop ?? "—",
+      channel: line.stock_source,
+      purchasedPrice: cost.price,
+      costFromProduct: cost.fromProduct,
+      salePrice: Number(line.unit_price),
+    };
+    (order.is_rx || order.combines_rx ? rxSales : sales).push(row);
+  }
+
+  return {
+    sales: sales.sort(bySaleOrder),
+    rxSales: rxSales.sort(bySaleOrder),
+  };
 }
 
 /** Purchases, the daily register and the sales on issued invoices, for one date range. */
@@ -230,10 +244,10 @@ export async function loadStockReport(range: {
   from: string;
   to: string;
 }): Promise<StockReport> {
-  const [purchases, register, sales] = await Promise.all([
+  const [purchases, register, sold] = await Promise.all([
     loadPurchases(range),
     loadRegister(range),
     loadSales(range),
   ]);
-  return { purchases, register, sales };
+  return { purchases, register, ...sold };
 }
