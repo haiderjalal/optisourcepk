@@ -121,11 +121,14 @@ export default async function OrderPage({
   const patientsEditable =
     !order.is_rx && !order.combines_rx && !billed && !voided;
 
+  // A combined RX invoice belongs with the RX orders it bills, not the stock orders.
+  const rxWork = order.is_rx || order.combines_rx;
+
   return (
     <div className="mx-auto max-w-5xl">
       <Link
         href={
-          order.is_rx
+          rxWork
             ? "/shop/rx"
             : order.is_daily
               ? "/shop/stock/daily"
@@ -134,7 +137,7 @@ export default async function OrderPage({
         className="text-navy-500 hover:text-navy-700 mb-5 inline-flex items-center gap-2 text-sm font-medium"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        {order.is_rx ? "RX orders" : order.is_daily ? "Daily stock" : "Orders"}
+        {rxWork ? "RX orders" : order.is_daily ? "Daily stock" : "Orders"}
       </Link>
 
       {notice && (
@@ -568,7 +571,20 @@ export default async function OrderPage({
         </section>
       )}
 
-      {billedOn && (
+      {billedOn && billedOn.issued_at === null && (
+        <p className="rounded-2xl bg-amber-50 px-5 py-4 text-sm text-amber-900 ring-1 ring-amber-200 ring-inset">
+          Billed on invoice {billedOn.reserved_invoice_no}, which is open for
+          editing.{" "}
+          <Link
+            href={`/shop/orders/${billedOn.id}`}
+            className="font-semibold underline underline-offset-2"
+          >
+            Finish invoice {billedOn.reserved_invoice_no}
+          </Link>{" "}
+          to edit it or issue it again.
+        </p>
+      )}
+      {billedOn && billedOn.issued_at !== null && (
         <p className="rounded-2xl bg-emerald-50 px-5 py-4 text-sm text-emerald-900 ring-1 ring-emerald-200 ring-inset">
           Billed on{" "}
           <Link
@@ -580,7 +596,7 @@ export default async function OrderPage({
           , together with the shop&rsquo;s other RX orders that day.
         </p>
       )}
-      {order.is_rx && billedOn && !voided && (
+      {order.is_rx && billedOn && billedOn.issued_at !== null && !voided && (
         <ConfirmButton
           action={reopenInvoiceAction}
           id={billedOn.id}

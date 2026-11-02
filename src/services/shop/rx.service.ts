@@ -42,6 +42,8 @@ export interface RxJob extends OrderLine {
   rxOnHold: boolean;
   /** The combined invoice this RX order was billed on, if any. */
   billedIn: string | null;
+  /** That invoice is reopened for editing: it keeps its number, but is not issued. */
+  billedEditing: boolean;
 }
 
 export interface RxSearch {
@@ -267,7 +269,10 @@ export async function listRxJobs(
         ...new Set((orders.data ?? []).map((o) => o.bill_to_customer_id)),
       ]),
     billedIds.length > 0
-      ? supabase.from("orders").select("id, invoice_no").in("id", billedIds)
+      ? supabase
+          .from("orders")
+          .select("id, invoice_no, reserved_invoice_no, issued_at")
+          .in("id", billedIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
   const { data: customers, error: customerError } = customerRead;
@@ -277,8 +282,16 @@ export async function listRxJobs(
   if (billedRead.error) {
     throw new Error(describePostgresError(billedRead.error, "load RX jobs"));
   }
-  const billedNo = new Map<string, number | null>(
-    (billedRead.data ?? []).map((b) => [b.id, b.invoice_no]),
+  // A reopened invoice has given up its number for now; it shows the one it
+  // keeps for when it is issued again.
+  const billedById = new Map(
+    (billedRead.data ?? []).map((b) => [
+      b.id,
+      {
+        invoiceNo: b.invoice_no ?? b.reserved_invoice_no,
+        editing: b.issued_at === null,
+      },
+    ]),
   );
   const customerById = new Map((customers ?? []).map((c) => [c.id, c]));
   const supplierById = new Map(
@@ -297,8 +310,13 @@ export async function listRxJobs(
       orderNo: order?.order_no ?? 0,
       invoiceNo:
         order?.invoice_no ??
-        (order?.billed_in ? (billedNo.get(order.billed_in) ?? null) : null),
+        (order?.billed_in
+          ? (billedById.get(order.billed_in)?.invoiceNo ?? null)
+          : null),
       billedIn: order?.billed_in ?? null,
+      billedEditing: order?.billed_in
+        ? (billedById.get(order.billed_in)?.editing ?? false)
+        : false,
       shopName: customer?.shop_name ?? "—",
       area: customer?.area ?? "",
       supplierName: line.supplier_id

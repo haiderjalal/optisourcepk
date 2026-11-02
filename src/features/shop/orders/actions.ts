@@ -254,6 +254,8 @@ export async function issueInvoiceAction(
 
   revalidatePath(`/shop/orders/${parsed.data.orderId}`);
   revalidatePath("/shop/orders");
+  // A combined RX invoice issued again stops showing as being edited there.
+  revalidatePath("/shop/rx");
   revalidatePath("/shop/invoices");
   revalidatePath("/shop/payments");
   revalidatePath("/shop/stock");
@@ -325,6 +327,8 @@ export async function reopenInvoiceAction(formData: FormData): Promise<void> {
   }
   revalidatePath("/shop/invoices");
   revalidatePath("/shop/orders");
+  // The RX list shows a reopened combined RX invoice as being edited.
+  revalidatePath("/shop/rx");
   revalidatePath("/shop/payments");
   revalidatePath("/shop/stock");
   revalidatePath("/shop/stock/daily");

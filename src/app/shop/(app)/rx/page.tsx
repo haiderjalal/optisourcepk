@@ -321,7 +321,7 @@ export default async function RxOrdersPage({
                           {job.voided
                             ? "void"
                             : job.invoiceNo
-                              ? `Invoice ${job.invoiceNo}${job.orderStatus === "delivered" ? " · delivered" : ""}`
+                              ? `Invoice ${job.invoiceNo}${job.billedEditing ? " · editing" : job.orderStatus === "delivered" ? " · delivered" : ""}`
                               : "not invoiced"}
                         </span>
                         {job.labOrderNo && (
@@ -426,24 +426,42 @@ export default async function RxOrdersPage({
                               />
                             </div>
                           )}
-                        {job.billedIn !== null && !job.voided && (
-                          <RxRemoveFromInvoice
-                            orderId={job.orderId}
-                            label={formatRxNo(job.rxNo)}
-                            compact
-                          />
-                        )}
-                        {job.billedIn !== null && !job.voided && (
-                          <ConfirmButton
-                            action={reopenInvoiceAction}
-                            id={job.billedIn}
-                            name={formatRxNo(job.rxNo)}
-                            idField="orderId"
-                            kind="edit"
-                            question="Edit this invoice to change its lenses, prices or stock items? It keeps its number."
-                            confirmLabel="Edit invoice"
-                          />
-                        )}
+                        {/* A reopened invoice is finished from its own page, where
+                            it is edited and issued again; removing a job or
+                            reopening it again works only on an issued one. */}
+                        {job.billedIn !== null &&
+                          !job.voided &&
+                          job.billedEditing && (
+                            <Link
+                              href={`/shop/orders/${job.billedIn}`}
+                              className="text-accent-700 inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap hover:underline"
+                            >
+                              <Pencil className="size-3.5" aria-hidden />
+                              Finish invoice {job.invoiceNo}
+                            </Link>
+                          )}
+                        {job.billedIn !== null &&
+                          !job.voided &&
+                          !job.billedEditing && (
+                            <RxRemoveFromInvoice
+                              orderId={job.orderId}
+                              label={formatRxNo(job.rxNo)}
+                              compact
+                            />
+                          )}
+                        {job.billedIn !== null &&
+                          !job.voided &&
+                          !job.billedEditing && (
+                            <ConfirmButton
+                              action={reopenInvoiceAction}
+                              id={job.billedIn}
+                              name={formatRxNo(job.rxNo)}
+                              idField="orderId"
+                              kind="edit"
+                              question="Edit this invoice to change its lenses, prices or stock items? It keeps its number."
+                              confirmLabel="Edit invoice"
+                            />
+                          )}
                       </td>
                     </tr>
                   );
