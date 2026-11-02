@@ -19,13 +19,13 @@ export const LABEL_GAP_MM = 3;
 export const DOTS_PER_MM = 8;
 
 /**
- * Where the printer's own origin sits, in dots: everything comes out this far
- * from where it is drawn. On the TE244 roll the stickers came out about 16 dots
- * too far left and 12 dots too low, so every command is moved by these. Set
- * both to 0 if the printer is calibrated and the frame sits flush on all sides.
+ * A fixed shift, in dots, applied to every command. Leave both at 0: the
+ * stickers did not come out at a steady offset from print to print, so a
+ * shift only moved the problem. Calibrate the printer's label sensor instead
+ * (see docs/label-printing.md), then use these only for a constant error.
  */
-export const PRINT_OFFSET_X_DOTS = 16;
-export const PRINT_OFFSET_Y_DOTS = -12;
+export const PRINT_OFFSET_X_DOTS = 0;
+export const PRINT_OFFSET_Y_DOTS = 0;
 
 /** 0 or 1. If the test label prints upside down, switch it to the other one. */
 export const PRINT_DIRECTION = 1;
