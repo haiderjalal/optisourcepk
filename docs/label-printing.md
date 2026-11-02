@@ -56,7 +56,7 @@ rendered by the driver cannot promise. BarTender is not used.
 
 ## Label size and gap
 
-The roll is assumed to be 75 × 25 mm with a 3 mm gap, set at the top of
+The roll is assumed to be 75 × 50 mm with a 3 mm gap, set at the top of
 `src/features/shop/labels/config.ts`. Measure the real roll and correct the
 numbers if needed. The test label draws a frame around the whole label: the
 frame must show on all four sides.

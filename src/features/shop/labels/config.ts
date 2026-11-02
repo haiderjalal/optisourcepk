@@ -10,7 +10,7 @@
 export const LABEL_WIDTH_MM = 75;
 
 /** Label height in millimetres. */
-export const LABEL_HEIGHT_MM = 25;
+export const LABEL_HEIGHT_MM = 50;
 
 /** Gap between two labels on the roll, in millimetres. */
 export const LABEL_GAP_MM = 3;
