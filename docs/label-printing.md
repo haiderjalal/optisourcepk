@@ -118,7 +118,7 @@ An RX order prints one sticker per lens from its own page, under **Lens
 stickers**: R and L separately, or both at once. A line with a quantity of 2
 prints two stickers.
 
-Each sticker shows the shop name with the lab code `ISB` in brackets, the lens
+Each sticker shows the name of the shop the order is for, the lens
 name, the coating, the tint reason, Dia, Sph, Cyl, Axis and ADD, the RX number,
 the lab order number as text and as a Code 128 barcode, and the ordered and
 shipped dates. "Shipped" is the day the job was sent to the lab. The lab order
