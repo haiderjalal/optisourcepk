@@ -120,11 +120,13 @@ export default async function OrderPage({
   }));
   const patientsEditable =
     !order.is_rx && !order.combines_rx && !billed && !voided;
-  // One sticker per lens line of an RX job: the R and L of a pair.
+  // One sticker per lens line of an RX job: the R and L of a pair, headed by
+  // the shop the order is for.
+  const shopName = order.customer?.shop_name ?? order.bill_to_shop ?? "";
   const rxLabels = order.is_rx
     ? order.lines
         .filter((line) => line.rx_status !== null)
-        .map((line) => rxLabelFor(order, line))
+        .map((line) => rxLabelFor(order, line, shopName))
     : [];
 
   return (

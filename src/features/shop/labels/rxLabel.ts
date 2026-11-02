@@ -6,6 +6,7 @@ import { MAX_LABEL_COPIES } from "./config";
 import {
   WIDTH_DOTS,
   jobHeader,
+  shifted,
   textCommand,
   toJob,
   toPrinterText,
@@ -20,9 +21,6 @@ import {
  * roll is decided below. The sticker is one eye, so an RX job with a pair prints
  * two stickers.
  */
-
-/** The shop's name, as printed at the top of the sticker. */
-const SHOP_NAME = "OPTISOURCE";
 
 /** The lab's code, printed in brackets after the shop name. */
 const LAB_CODE = "ISB";
@@ -51,10 +49,10 @@ const ROW = {
 /** Where each power is printed across the sticker, with its heading. */
 const POWER_COLUMNS = [
   { heading: "Dia", x: 12 },
-  { heading: "Sph.", x: 132 },
-  { heading: "Cyl.", x: 252 },
+  { heading: "Sph.", x: 100 },
+  { heading: "Cyl.", x: 236 },
   { heading: "Axis", x: 372 },
-  { heading: "ADD", x: 492 },
+  { heading: "ADD", x: 476 },
 ] as const;
 
 const LAB_NUMBER_X = 12;
@@ -68,6 +66,8 @@ const BARCODE_SHORT_CODE = 12;
 /** Everything one sticker says, as plain values. */
 export interface RxLabelData {
   eye: Eye | null;
+  /** The shop the order is for, printed at the top of its sticker. */
+  shopName: string;
   productName: string;
   rxNo: number | null;
   coating: string | null;
@@ -93,9 +93,14 @@ function dayMonthYear(at: string): string {
 }
 
 /** The sticker's content for one lens line of an RX order. */
-export function rxLabelFor(order: Order, line: OrderLine): RxLabelData {
+export function rxLabelFor(
+  order: Order,
+  line: OrderLine,
+  shopName: string,
+): RxLabelData {
   return {
     eye: line.eye,
+    shopName,
     productName: line.product_name,
     rxNo: order.rx_no,
     coating: order.rx_coating,
@@ -225,12 +230,11 @@ function stickerCommands(label: RxLabelData): string[] {
   const commands: string[] = [];
   const eye = label.eye ? `${label.eye}   ` : "";
 
-  placeCentred(
-    commands,
-    ROW.header,
-    HEADER_FONT,
-    `${eye}${SHOP_NAME} (${LAB_CODE})`,
-  );
+  // The ordering shop's name, in the largest type that fits on one line.
+  const header = `${eye}${toPrinterText(label.shopName)} (${LAB_CODE})`;
+  const headerFont =
+    header.length <= charsAcross(HEADER_FONT) ? HEADER_FONT : TEXT_FONT;
+  placeCentred(commands, ROW.header, headerFont, header);
 
   const [firstName = "", secondName = ""] = nameLines(
     label.productName,
@@ -277,8 +281,9 @@ function stickerCommands(label: RxLabelData): string[] {
     const { narrow, width } = barcodeSize(labCode);
     const x = WIDTH_DOTS - EDGE_DOTS - width;
     if (x >= BARCODE_LEFT_DOTS) {
+      const at = shifted(x, ROW.lab);
       commands.push(
-        `BARCODE ${x},${ROW.lab},"128",${BARCODE_HEIGHT_DOTS},0,0,${narrow},${narrow},"${labCode}"`,
+        `BARCODE ${at.x},${at.y},"128",${BARCODE_HEIGHT_DOTS},0,0,${narrow},${narrow},"${labCode}"`,
       );
     }
   }
