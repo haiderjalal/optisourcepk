@@ -23,14 +23,16 @@ TSPL is the TE244's own command language. Sending it straight to the printer
 keeps text (and later, barcodes) aligned to the printer's dots, which a page
 rendered by the driver cannot promise. BarTender is not used.
 
-| Piece                                          | Job                                                    |
-| ---------------------------------------------- | ------------------------------------------------------ |
-| `src/features/shop/labels/config.ts`           | Label size, gap, direction, helper address             |
-| `src/features/shop/labels/tspl.ts`             | Turns a title and rows into a TSPL job; the test label |
-| `src/features/shop/labels/stockLabel.ts`       | What a stock lens label says                           |
-| `src/features/shop/labels/printClient.ts`      | Sends a job to the helper from the browser             |
-| `src/features/shop/labels/LabelPrintPanel.tsx` | The "Print labels" panel on the product page           |
-| `tools/label-printer/`                         | The helper that runs on the shop PC                    |
+| Piece                                            | Job                                                    |
+| ------------------------------------------------ | ------------------------------------------------------ |
+| `src/features/shop/labels/config.ts`             | Label size, gap, direction, helper address             |
+| `src/features/shop/labels/tspl.ts`               | Turns a title and rows into a TSPL job; the test label |
+| `src/features/shop/labels/stockLabel.ts`         | What a stock lens label says                           |
+| `src/features/shop/labels/printClient.ts`        | Sends a job to the helper from the browser             |
+| `src/features/shop/labels/LabelPrintPanel.tsx`   | The "Print labels" panel on the product page           |
+| `src/features/shop/labels/rxLabel.ts`            | The RX lens sticker: what it says and where it sits    |
+| `src/features/shop/labels/RxLabelPrintPanel.tsx` | The "Lens stickers" panel on an RX order               |
+| `tools/label-printer/`                           | The helper that runs on the shop PC                    |
 
 ## Set up the shop PC (once)
 
@@ -107,5 +109,21 @@ committed.
   `BARCODE` command in `tspl.ts`.
 - **Printing from other devices.** The helper is local to one PC. A phone or a
   second PC would need a print queue in the cloud that the helper polls.
-- **Labels from the Stock and Purchases screens, and RX job labels.** Only the
-  product page prints for now.
+- **Labels from the Stock and Purchases screens.** Only the product page
+  prints stock labels for now.
+
+## RX lens stickers
+
+An RX order prints one sticker per lens from its own page, under **Lens
+stickers**: R and L separately, or both at once. A line with a quantity of 2
+prints two stickers.
+
+Each sticker shows the shop name with the lab code `ISB` in brackets, the lens
+name, the coating, the tint reason, Dia, Sph, Cyl, Axis and ADD, the RX number,
+the lab order number as text and as a Code 128 barcode, and the ordered and
+shipped dates. "Shipped" is the day the job was sent to the lab. The lab order
+number is printed as text up to about seven characters; the barcode carries the
+whole number, and is left off if the number is too long to fit.
+
+The coating is typed on the RX job card (migration `0052_rx_coating.sql`, which
+must be run in the Supabase SQL Editor before saving an RX job).

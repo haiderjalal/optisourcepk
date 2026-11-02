@@ -27,6 +27,8 @@ import { RxHoldControl } from "@/features/shop/rx/RxHoldControl";
 import { RxCostForm } from "@/features/shop/rx/RxCostForm";
 import { RxLabOrderNumberButton } from "@/features/shop/rx/RxLabOrderNumberButton";
 import { RxWhatsAppButtons } from "@/features/shop/rx/RxWhatsAppButtons";
+import { RxLabelPrintPanel } from "@/features/shop/labels/RxLabelPrintPanel";
+import { rxLabelFor } from "@/features/shop/labels/rxLabel";
 import { listSamePatientSameDay } from "@/services/shop/rx.service";
 import {
   listReturns,
@@ -120,6 +122,12 @@ export default async function OrderPage({
   }));
   const patientsEditable =
     !order.is_rx && !order.combines_rx && !billed && !voided;
+  // One sticker per lens line of an RX job: the R and L of a pair.
+  const rxLabels = order.is_rx
+    ? order.lines
+        .filter((line) => line.rx_status !== null)
+        .map((line) => rxLabelFor(order, line))
+    : [];
 
   // A combined RX invoice belongs with the RX orders it bills, not the stock orders.
   const rxWork = order.is_rx || order.combines_rx;
@@ -292,6 +300,7 @@ export default async function OrderPage({
               label="Tint / photochromatic / antiglare"
               value={order.rx_tint_reason}
             />
+            <RxDetail label="Coating" value={order.rx_coating} />
             <RxDetail label="Notes" value={order.notes} />
           </dl>
           <RxWhatsAppButtons
@@ -310,6 +319,10 @@ export default async function OrderPage({
             />
           )}
         </section>
+      )}
+
+      {rxLabels.length > 0 && !voided && (
+        <RxLabelPrintPanel labels={rxLabels} />
       )}
 
       <section className="shadow-lift mb-5 overflow-hidden rounded-2xl bg-white">

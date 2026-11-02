@@ -210,11 +210,17 @@ async function main() {
     const origin = request.headers.origin;
     const originAllowed =
       origin !== undefined && config.allowedOrigins.includes(origin);
+    // Chrome and Edge ask a public site's permission to reach this PC with a
+    // preflight that carries Access-Control-Request-Local-Network (or its older
+    // Private-Network name). The preflight must say yes, or the browser never
+    // sends the print, and the page reports the helper as unreachable.
     const headers = originAllowed
       ? {
           "Access-Control-Allow-Origin": origin,
           "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
           "Access-Control-Allow-Headers": "Content-Type",
+          "Access-Control-Allow-Local-Network": "true",
+          "Access-Control-Allow-Private-Network": "true",
           "Access-Control-Max-Age": "600",
           Vary: "Origin",
         }
