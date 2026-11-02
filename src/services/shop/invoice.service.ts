@@ -578,12 +578,17 @@ const LINE_LOOKUP_BATCH = 100;
  */
 export async function getOrderReference(
   id: string,
-): Promise<Pick<Order, "id" | "invoice_no"> | null> {
+): Promise<Pick<
+  Order,
+  "id" | "invoice_no" | "reserved_invoice_no" | "issued_at"
+> | null> {
   const { supabase } = await requireUser();
 
+  // A reopened invoice holds its number in reserved_invoice_no until it is
+  // issued again, so both are read.
   const { data, error } = await supabase
     .from("orders")
-    .select("id, invoice_no")
+    .select("id, invoice_no, reserved_invoice_no, issued_at")
     .eq("id", id)
     .maybeSingle();
 
@@ -652,7 +657,10 @@ export async function listIssuedInvoicesForCustomer(
 export interface ListOrdersOptions {
   /** `true` for issued invoices, `false` for open drafts. */
   issued?: boolean;
-  /** `false` for stock orders only, `true` for RX only; omit for both. */
+  /**
+   * `false` for stock work only, with no RX orders and no combined RX invoices;
+   * `true` for RX orders only; omit for both.
+   */
   rx?: boolean;
   /** Only orders billed to these shops. An empty list matches nothing. */
   customerIds?: string[];
@@ -669,7 +677,10 @@ export async function listOrders({
   const { supabase } = await requireUser();
 
   let query = supabase.from("orders").select("*").limit(limit);
-  if (rx !== undefined) query = query.eq("is_rx", rx);
+  if (rx === true) query = query.eq("is_rx", true);
+  // A combined RX invoice is not an RX order itself, but it bills RX work, so
+  // it stays with the RX screens rather than the stock orders.
+  if (rx === false) query = query.eq("is_rx", false).eq("combines_rx", false);
   if (customerIds) query = query.in("bill_to_customer_id", customerIds);
 
   query =
