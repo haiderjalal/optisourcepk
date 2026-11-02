@@ -1,7 +1,8 @@
 /**
  * The stock report for one date range: what was bought from suppliers, what the
  * daily stock register recorded, and what was sold on issued invoices, from both
- * normal and daily stock.
+ * normal and daily stock. Shelf items billed with RX orders are listed on their
+ * own, apart from the stock orders; RX lenses are not stock and are left out.
  *
  * Pure: the service loads the rows, and this file works out the totals and the
  * notes. Purchases go to permanent stock, not to the daily register, so a
@@ -70,7 +71,19 @@ export interface SaleReportRow {
 export interface StockReport {
   purchases: PurchaseReportRow[];
   register: RegisterReportRow[];
+  /** Sold on stock orders. */
   sales: SaleReportRow[];
+  /** Shelf items sold on RX invoices, kept apart from the stock orders. */
+  rxSales: SaleReportRow[];
+}
+
+/** The totals of one list of sales. */
+export interface SalesTotals {
+  quantity: number;
+  /** Valued at the price paid per unit where one is known. */
+  atCost: number;
+  /** Valued at the sale price per unit, before discount. */
+  atSalePrice: number;
 }
 
 export interface StockReportTotals {
@@ -92,6 +105,10 @@ export interface StockReportTotals {
   unpricedSales: number;
   /** Sales costed at the product's purchase price today, not at the price on their line. */
   salesCostFromProduct: number;
+  /** Shelf items sold on RX invoices. */
+  rxSales: SalesTotals;
+  /** Lines in rxSales. */
+  rxSaleLines: number;
 }
 
 function round2(value: number): number {
@@ -128,17 +145,32 @@ export function soldSaleTotal(
   return round2(row.quantity * row.salePrice);
 }
 
+export function salesTotals(rows: SaleReportRow[]): SalesTotals {
+  let quantity = 0;
+  let atCost = 0;
+  let atSalePrice = 0;
+  for (const row of rows) {
+    quantity += row.quantity;
+    atSalePrice += row.salePrice * row.quantity;
+    const cost = soldPurchaseTotal(row);
+    if (cost !== null) atCost += cost;
+  }
+  return {
+    quantity,
+    atCost: round2(atCost),
+    atSalePrice: round2(atSalePrice),
+  };
+}
+
 export function stockReportTotals(report: StockReport): StockReportTotals {
-  const totals: StockReportTotals = {
+  const sold = salesTotals(report.sales);
+  const totals = {
     purchasedQuantity: 0,
     purchasedAtCost: 0,
     purchasedAtSalePrice: 0,
     purchasesWithoutListPrice: 0,
     received: 0,
     sold: 0,
-    soldQuantity: 0,
-    soldAtCost: 0,
-    soldAtSalePrice: 0,
     unpricedSales: 0,
     salesCostFromProduct: 0,
   };
@@ -153,11 +185,8 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
     totals.received += row.received;
     totals.sold += row.outgoing;
   }
-  for (const row of report.sales) {
-    totals.soldQuantity += row.quantity;
-    totals.soldAtSalePrice += row.salePrice * row.quantity;
-    const cost = soldPurchaseTotal(row);
-    if (cost !== null) totals.soldAtCost += cost;
+  // The notes count both lists of sales: a missing price matters in either.
+  for (const row of [...report.sales, ...report.rxSales]) {
     if (row.salePrice === 0) totals.unpricedSales += 1;
     if (row.costFromProduct) totals.salesCostFromProduct += 1;
   }
@@ -166,8 +195,11 @@ export function stockReportTotals(report: StockReport): StockReportTotals {
     ...totals,
     purchasedAtCost: round2(totals.purchasedAtCost),
     purchasedAtSalePrice: round2(totals.purchasedAtSalePrice),
-    soldAtCost: round2(totals.soldAtCost),
-    soldAtSalePrice: round2(totals.soldAtSalePrice),
+    soldQuantity: sold.quantity,
+    soldAtCost: sold.atCost,
+    soldAtSalePrice: sold.atSalePrice,
+    rxSales: salesTotals(report.rxSales),
+    rxSaleLines: report.rxSales.length,
   };
 }
 
@@ -179,6 +211,11 @@ export function stockReportNotes(totals: StockReportTotals): string[] {
     "A purchase's sale price is the product's list price today, not the price it sold for.",
     "The register's sold figure is daily stock only. Sales cover normal and daily stock on issued invoices.",
   ];
+  if (totals.rxSaleLines > 0) {
+    notes.push(
+      "Shelf items billed with RX orders are listed on their own, under RX invoices, and are not in the stock order sales. RX lenses are not stock: they are in the RX lab report.",
+    );
+  }
   if (totals.purchasesWithoutListPrice > 0) {
     const count = totals.purchasesWithoutListPrice;
     notes.push(

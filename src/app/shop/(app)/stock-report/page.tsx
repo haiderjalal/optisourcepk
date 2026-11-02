@@ -6,11 +6,10 @@ import { loadStockReport } from "@/services/shop/stock-report.service";
 import {
   purchasePriceTotal,
   purchaseSaleTotal,
-  soldPurchaseTotal,
-  soldSaleTotal,
   stockReportNotes,
   stockReportTotals,
 } from "@/features/shop/stock/report";
+import { SalesSection } from "@/features/shop/stock/SalesSection";
 import { ReportPdfActions } from "@/features/shop/pdf/ReportPdfActions";
 import { pdfFileName } from "@/features/shop/pdf/pdfResponse";
 import { inputClass } from "@/components/ui/field";
@@ -18,8 +17,6 @@ import { resolveDateRange } from "@/lib/date-range";
 import { formatAmount, formatDate, todayInKarachi } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Stock report" };
-
-const CHANNEL_LABEL = { normal: "Normal", daily: "Daily" } as const;
 
 /** A total for display, or a dash when the line has none. */
 function formatOrDash(value: number | null): string {
@@ -39,7 +36,11 @@ export default async function StockReportPage({
   const totals = stockReportTotals(report);
   const notes = stockReportNotes(totals);
   const hasRows =
-    report.purchases.length + report.register.length + report.sales.length > 0;
+    report.purchases.length +
+      report.register.length +
+      report.sales.length +
+      report.rxSales.length >
+    0;
 
   const pdfPath = `/shop/stock-report/pdf?${new URLSearchParams({ from, to })}`;
 
@@ -55,8 +56,9 @@ export default async function StockReportPage({
         <h1 className="mt-2 text-xl font-semibold">Stock report</h1>
         <p className="text-navy-500 mt-1 max-w-prose text-sm">
           What was bought from suppliers, the daily stock register day by day,
-          and what was sold on invoices from normal and daily stock. Amounts are
-          in rupees (Rs).
+          and what was sold on invoices from normal and daily stock. Shelf items
+          billed with RX orders are listed on their own; RX lenses are in the RX
+          lab report. Amounts are in rupees (Rs).
         </p>
       </header>
 
@@ -288,115 +290,25 @@ export default async function StockReportPage({
       )}
 
       {report.sales.length > 0 && (
-        <section className="shadow-lift overflow-hidden rounded-2xl bg-white">
-          <h2 className="border-b border-mist-200 px-4 py-3 text-sm font-semibold">
-            Sales (normal and daily stock)
-          </h2>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1040px] text-sm">
-              <caption className="sr-only">
-                Sales on issued invoices in the range
-              </caption>
-              <thead>
-                <tr className="text-navy-500 bg-mist-100 text-left text-xs">
-                  <th scope="col" className="px-4 py-2.5 font-medium">
-                    Date
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    Invoice no
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    Product
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-medium"
-                  >
-                    Qty
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    Purchaser name
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    Shop name
-                  </th>
-                  <th scope="col" className="px-3 py-2.5 font-medium">
-                    Channel
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-3 py-2.5 text-right font-medium"
-                  >
-                    Purchase price
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-4 py-2.5 text-right font-medium"
-                  >
-                    Sale price
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {report.sales.map((row) => (
-                  <tr key={row.lineId} className="border-t border-mist-200">
-                    <td className="px-4 py-2.5 whitespace-nowrap tabular-nums">
-                      {formatDate(row.date)}
-                    </td>
-                    <td className="px-3 py-2.5 tabular-nums">
-                      {row.invoiceNo === null ? (
-                        "—"
-                      ) : (
-                        <Link
-                          href={`/shop/orders/${row.orderId}`}
-                          className="hover:text-accent-600 font-medium"
-                        >
-                          {row.invoiceNo}
-                        </Link>
-                      )}
-                    </td>
-                    <td className="px-3 py-2.5">{row.product}</td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">
-                      {row.quantity}
-                    </td>
-                    <td className="px-3 py-2.5">{row.purchaser}</td>
-                    <td className="px-3 py-2.5">{row.shop}</td>
-                    <td className="px-3 py-2.5">
-                      {CHANNEL_LABEL[row.channel]}
-                    </td>
-                    <td className="px-3 py-2.5 text-right tabular-nums">
-                      {formatOrDash(soldPurchaseTotal(row))}
-                    </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums">
-                      {row.salePrice === 0 ? (
-                        <span className="text-amber-700">no price</span>
-                      ) : (
-                        formatAmount(soldSaleTotal(row))
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                <tr className="border-t border-mist-200 font-semibold">
-                  <td className="px-4 py-2.5" colSpan={3}>
-                    Total
-                  </td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">
-                    {totals.soldQuantity}
-                  </td>
-                  <td />
-                  <td />
-                  <td />
-                  <td className="px-3 py-2.5 text-right tabular-nums">
-                    {formatAmount(totals.soldAtCost)}
-                  </td>
-                  <td className="px-4 py-2.5 text-right tabular-nums">
-                    {formatAmount(totals.soldAtSalePrice)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <SalesSection
+          title="Sales on stock orders (normal and daily stock)"
+          caption="Sales on stock orders, on issued invoices in the range"
+          rows={report.sales}
+          totals={{
+            quantity: totals.soldQuantity,
+            atCost: totals.soldAtCost,
+            atSalePrice: totals.soldAtSalePrice,
+          }}
+        />
+      )}
+
+      {report.rxSales.length > 0 && (
+        <SalesSection
+          title="Shelf items on RX invoices"
+          caption="Shelf items billed with RX orders, on issued invoices in the range"
+          rows={report.rxSales}
+          totals={totals.rxSales}
+        />
       )}
 
       {notes.length > 0 && hasRows && (
