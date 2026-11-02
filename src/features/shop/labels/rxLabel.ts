@@ -31,31 +31,31 @@ const VALUE_FONT: PrinterFont = { id: "4", widthDots: 24, pitchDots: 32 };
 const DATE_FONT: PrinterFont = { id: "2", widthDots: 12, pitchDots: 20 };
 
 /** Space between the sticker's edge and its text, in dots. */
-const EDGE_DOTS = 12;
+const EDGE_DOTS = 24;
 
 /** Top of each row, in dots from the top of the label. */
 const ROW = {
-  header: 12,
-  name: 60,
-  nameSecond: 88,
+  header: 24,
+  name: 68,
+  nameSecond: 96,
   coating: 136,
   tint: 164,
-  headings: 200,
-  values: 228,
-  lab: 272,
-  dates: 364,
+  headings: 196,
+  values: 224,
+  lab: 260,
+  dates: 344,
 } as const;
 
 /** Where each power is printed across the sticker, with its heading. */
 const POWER_COLUMNS = [
-  { heading: "Dia", x: 12 },
+  { heading: "Dia", x: 24 },
   { heading: "Sph.", x: 100 },
   { heading: "Cyl.", x: 236 },
   { heading: "Axis", x: 372 },
   { heading: "ADD", x: 476 },
 ] as const;
 
-const LAB_NUMBER_X = 12;
+const LAB_NUMBER_X = 24;
 const RX_NUMBER_X = 150;
 /** The barcode may not start left of this, so it clears the RX number. */
 const BARCODE_LEFT_DOTS = 230;
@@ -228,7 +228,7 @@ function barcodeSize(data: string): { narrow: number; width: number } {
 /** The lines of one sticker, after the job's own header. */
 function stickerCommands(label: RxLabelData): string[] {
   const commands: string[] = [];
-  const eye = label.eye ? `${label.eye}   ` : "";
+  const eye = label.eye ? `${label.eye}  ` : "";
 
   // The ordering shop's name, in the largest type that fits on one line.
   const header = `${eye}${toPrinterText(label.shopName)} (${LAB_CODE})`;
