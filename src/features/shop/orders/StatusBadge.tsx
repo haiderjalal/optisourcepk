@@ -7,7 +7,7 @@ import type { Order } from "@/types/database";
  * status value — it is whether an invoice number has been assigned — and void
  * has to win over everything else.
  */
-export function StatusBadge({ order }: { order: Order }) {
+export function StatusBadge({ order }: { order: BadgeOrder }) {
   const { label, tone } = describe(order);
 
   const tones = {
@@ -29,7 +29,13 @@ export function StatusBadge({ order }: { order: Order }) {
   );
 }
 
-function describe(order: Order): {
+/** The fields the badge reads, so a list row can be passed in as it is. */
+type BadgeOrder = Pick<
+  Order,
+  "status" | "voided_at" | "issued_at" | "billed_in"
+>;
+
+function describe(order: BadgeOrder): {
   label: string;
   tone: "draft" | "issued" | "dispatched" | "delivered" | "void";
 } {

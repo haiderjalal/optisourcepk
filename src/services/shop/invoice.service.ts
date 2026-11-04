@@ -655,6 +655,31 @@ export async function listIssuedInvoicesForCustomer(
   }));
 }
 
+/**
+ * The columns the order lists draw: the Orders, Invoices and dashboard pages
+ * show nothing else. The rest of an order (addresses, notes, delivery, the
+ * billing snapshot) is left unread, so every list row is a fraction of the size.
+ */
+const ORDER_LIST_COLUMNS =
+  "id, order_no, invoice_no, reserved_invoice_no, status, priority, bill_to_customer_id, bill_to_shop, amount_incl_tax, issued_at, created_at, voided_at, billed_in" as const;
+
+export type OrderListRow = Pick<
+  Order,
+  | "id"
+  | "order_no"
+  | "invoice_no"
+  | "reserved_invoice_no"
+  | "status"
+  | "priority"
+  | "bill_to_customer_id"
+  | "bill_to_shop"
+  | "amount_incl_tax"
+  | "issued_at"
+  | "created_at"
+  | "voided_at"
+  | "billed_in"
+>;
+
 export interface ListOrdersOptions {
   /** `true` for issued invoices, `false` for open drafts. */
   issued?: boolean;
@@ -673,11 +698,11 @@ export async function listOrders({
   rx,
   customerIds,
   limit = 100,
-}: ListOrdersOptions = {}): Promise<Order[]> {
+}: ListOrdersOptions = {}): Promise<OrderListRow[]> {
   if (customerIds?.length === 0) return [];
   const { supabase } = await requireUser();
 
-  let query = supabase.from("orders").select("*").limit(limit);
+  let query = supabase.from("orders").select(ORDER_LIST_COLUMNS).limit(limit);
   if (rx === true) query = query.eq("is_rx", true);
   // A combined RX invoice is not an RX order itself, but it bills RX work, so
   // it stays with the RX screens rather than the stock orders.

@@ -6,6 +6,24 @@ import { SESSION_COOKIE_OPTIONS } from "./cookies";
 import type { Database } from "@/types/database";
 
 /**
+ * A database request that has not answered by then is abandoned, so a stuck
+ * connection shows an error instead of a page that never finishes loading.
+ * Longer than any single query the back-office makes, shorter than the
+ * function time limit.
+ */
+const DATABASE_TIMEOUT_MS = 25_000;
+
+function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  return fetch(input, {
+    ...init,
+    signal: init?.signal ?? AbortSignal.timeout(DATABASE_TIMEOUT_MS),
+  });
+}
+
+/**
  * Per-request Supabase client for Server Components, Server Actions and Route
  * Handlers.
  *
@@ -18,6 +36,7 @@ export async function getSupabaseServerClient(): Promise<
   const cookieStore = await cookies();
 
   return createServerClient<Database>(supabaseUrl(), supabaseAnonKey(), {
+    global: { fetch: fetchWithTimeout },
     cookieOptions: SESSION_COOKIE_OPTIONS,
     cookies: {
       getAll() {
