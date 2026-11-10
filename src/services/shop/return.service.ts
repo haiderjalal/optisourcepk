@@ -2,7 +2,7 @@ import "server-only";
 
 import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
-import type { SalesReturn, SalesReturnLine } from "@/types/database";
+import type { Order, SalesReturn, SalesReturnLine } from "@/types/database";
 import { describePostgresError } from "./errors";
 
 /**
@@ -79,6 +79,92 @@ export function returnedQuantities(
     out[line.order_line_id] = (out[line.order_line_id] ?? 0) + line.quantity;
   }
   return out;
+}
+
+/** A returned line as the sales return document prints it: where it sat on the invoice. */
+export type ReturnDocumentLine = SalesReturnLine & {
+  orderRef: string | null;
+  discountPct: number;
+  lineNo: number;
+};
+
+/** A sales return with the invoice it reverses, for its printed document. */
+export interface ReturnDocument {
+  ret: SalesReturn;
+  /** In the order the lines sat on the invoice. */
+  lines: ReturnDocumentLine[];
+  invoice: Pick<
+    Order,
+    | "invoice_no"
+    | "bill_to_name"
+    | "bill_to_shop"
+    | "bill_to_address"
+    | "bill_to_ntn"
+    | "bill_to_strn"
+    | "order_by_name"
+  >;
+}
+
+/** The return and its invoice, or null when there is no such return. */
+export async function getReturnDocument(
+  returnId: string,
+): Promise<ReturnDocument | null> {
+  const { supabase } = await requireUser();
+
+  const { data: ret, error: returnError } = await supabase
+    .from("sales_returns")
+    .select("*")
+    .eq("id", returnId)
+    .maybeSingle();
+  if (returnError) {
+    throw new Error(describePostgresError(returnError, "load the return"));
+  }
+  if (!ret) return null;
+
+  const { data: lines, error: linesError } = await supabase
+    .from("sales_return_lines")
+    .select("*")
+    .eq("return_id", ret.id);
+  if (linesError) {
+    throw new Error(describePostgresError(linesError, "load the return"));
+  }
+
+  const [orderLines, invoice] = await Promise.all([
+    supabase
+      .from("order_lines")
+      .select("id, order_ref, discount_pct, line_no")
+      .in(
+        "id",
+        (lines ?? []).map((line) => line.order_line_id),
+      ),
+    supabase
+      .from("orders")
+      .select(
+        "invoice_no, bill_to_name, bill_to_shop, bill_to_address, bill_to_ntn, bill_to_strn, order_by_name",
+      )
+      .eq("id", ret.order_id)
+      .single(),
+  ]);
+  const failed = orderLines.error ?? invoice.error;
+  if (failed) throw new Error(describePostgresError(failed, "load the return"));
+
+  const sourceById = new Map((orderLines.data ?? []).map((l) => [l.id, l]));
+  const documentLines = (lines ?? [])
+    .map((line) => {
+      const source = sourceById.get(line.order_line_id);
+      return {
+        ...line,
+        orderRef: source?.order_ref ?? null,
+        discountPct: Number(source?.discount_pct ?? 0),
+        lineNo: source?.line_no ?? 0,
+      };
+    })
+    .sort((a, b) => a.lineNo - b.lineNo);
+
+  if (!invoice.data) {
+    throw new Error("The invoice this return reverses could not be found.");
+  }
+  return { ret, lines: documentLines, invoice: invoice.data };
 }
 
 export async function recordReturn(input: {

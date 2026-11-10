@@ -38,7 +38,12 @@ export interface InvoicePdfLine {
 
 export interface InvoicePdfModel {
   company: { name: string; address: string; phone: string };
-  invoiceNo: string;
+  /** The heading's first word: an invoice, or a sales return. */
+  title: string;
+  /** What follows the title: the invoice number, or the return number. */
+  documentNo: string;
+  /** Printed under the title, such as the invoice a return reverses. */
+  reference: string | null;
   issuedAt: string;
   courier: string;
   trackingNo: string;
@@ -60,18 +65,18 @@ const AMOUNT = new Intl.NumberFormat("en-PK", {
   maximumFractionDigits: 2,
 });
 
-function amount(value: number | null): string {
+export function amount(value: number | null): string {
   return AMOUNT.format(value ?? 0);
 }
 
 /** Signed, two decimals — how an optician writes a dioptre. Blank for null. */
-function power(value: number | null): string {
+export function power(value: number | null): string {
   if (value === null) return "";
   if (value === 0) return "0.00";
   return `${value > 0 ? "+" : "-"}${Math.abs(value).toFixed(2)}`;
 }
 
-function stamp(iso: string | null): string {
+export function stamp(iso: string | null): string {
   if (!iso) return "";
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
@@ -87,7 +92,7 @@ function stamp(iso: string | null): string {
 }
 
 /** Drop empties so a party box never prints a blank line or a stray comma. */
-function partyLines(...values: (string | null | undefined)[]): string[] {
+export function partyLines(...values: (string | null | undefined)[]): string[] {
   return values.map((v) => v?.trim()).filter((v): v is string => Boolean(v));
 }
 
@@ -150,7 +155,9 @@ export function buildInvoicePdfModel(
 
   return {
     company: PDF_COMPANY,
-    invoiceNo: order.invoice_no ? String(order.invoice_no) : "DRAFT",
+    title: "INVOICE",
+    documentNo: order.invoice_no ? String(order.invoice_no) : "DRAFT",
+    reference: null,
     issuedAt: stamp(order.issued_at ?? order.created_at),
     courier: order.courier_name ?? "",
     trackingNo: order.tracking_no ?? "",

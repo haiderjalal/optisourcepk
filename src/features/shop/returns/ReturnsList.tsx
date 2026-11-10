@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { FileText } from "lucide-react";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { describeBin, formatAmount, formatDateTime } from "@/lib/format";
 import type { ReturnWithDetail } from "@/services/shop/return.service";
 import { deleteReturnAction } from "./actions";
-
-export const returnLabel = (no: number) => `RET-${String(no).padStart(4, "0")}`;
+import { returnLabel } from "./label";
 
 /**
  * Returns with their items, newest first. Server-rendered; the only action is
@@ -49,6 +49,13 @@ export function ReturnsList({
               <span className="font-semibold tabular-nums">
                 Rs {formatAmount(ret.amount)}
               </span>
+              <Link
+                href={`/shop/returns/${ret.id}/pdf`}
+                className="text-accent-600 hover:text-accent-700 inline-flex items-center gap-1 text-xs font-medium"
+              >
+                <FileText className="size-3.5" aria-hidden />
+                PDF
+              </Link>
               <ConfirmButton
                 action={deleteReturnAction}
                 id={ret.id}
