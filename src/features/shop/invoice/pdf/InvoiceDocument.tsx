@@ -59,6 +59,13 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
 
+  reference: {
+    marginTop: -6,
+    marginBottom: 8,
+    textAlign: "center",
+    color: MUTED,
+  },
+
   title: {
     marginTop: 10,
     marginBottom: 8,
@@ -299,7 +306,7 @@ export function InvoiceDocument({
 }) {
   return (
     <Document
-      title={`Invoice ${model.invoiceNo}`}
+      title={`${model.title} ${model.documentNo}`}
       author={model.company.name}
       creator={model.company.name}
     >
@@ -328,7 +335,7 @@ export function InvoiceBundleDocument({
       creator={PDF_COMPANY.name}
     >
       {models.map((model) => (
-        <InvoicePage key={model.invoiceNo} model={model} logo={logo} />
+        <InvoicePage key={model.documentNo} model={model} logo={logo} />
       ))}
     </Document>
   );
@@ -370,7 +377,9 @@ function InvoicePage({
         </View>
 
         <View style={{ width: 130 }}>
-          <Text style={styles.invoiceNoSmall}>INVOICE {model.invoiceNo}</Text>
+          <Text style={styles.invoiceNoSmall}>
+            {model.title} {model.documentNo}
+          </Text>
           <Text style={[styles.right, { color: MUTED, marginTop: 2 }]}>
             {model.issuedAt}
           </Text>
@@ -398,7 +407,12 @@ function InvoicePage({
         <Text style={styles.headerValue}>{model.trackingNo || "—"}</Text>
       </View>
 
-      <Text style={styles.title}>INVOICE {model.invoiceNo}</Text>
+      <Text style={styles.title}>
+        {model.title} {model.documentNo}
+      </Text>
+      {model.reference && (
+        <Text style={styles.reference}>{model.reference}</Text>
+      )}
 
       <View style={styles.boxes}>
         <Party

@@ -44,7 +44,7 @@ export async function GET(
 
     return pdfResponse(
       pdf,
-      invoiceFileName(model.invoiceNo),
+      invoiceFileName(model.documentNo),
       wantsDownload(request),
     );
   } catch (error) {
