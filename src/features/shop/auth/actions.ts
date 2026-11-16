@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
-import { rateLimit } from "@/lib/rateLimit";
+import { clientAddressFrom, rateLimit } from "@/lib/rateLimit";
 import { headers } from "next/headers";
 
 /**
@@ -40,18 +40,17 @@ export async function signIn(
   }
 
   // Throttle credential stuffing. The limiter is process-local, which is
-  // coarse but enough to stop a script hammering a single instance.
-  const headerList = await headers();
-  const client =
-    headerList.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headerList.get("x-real-ip") ||
-    "unknown";
+  // coarse but enough to stop a script hammering a single instance. The
+  // address is read the same way as the public API, from the hop the platform
+  // appended: the leftmost X-Forwarded-For entry is the caller's own claim.
+  const client = clientAddressFrom(await headers());
   const limit = rateLimit(`shop-login:${client}`, {
     limit: 8,
     windowMs: 10 * 60 * 1000,
   });
 
   if (!limit.allowed) {
+    logger.warn("Shop login throttled");
     return {
       error: `Too many attempts. Try again in ${Math.ceil(limit.retryAfter / 60)} minutes.`,
     };

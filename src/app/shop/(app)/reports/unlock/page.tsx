@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Reports locked" };
 const ERROR_MESSAGES: Record<string, string> = {
   report: "Open a report from the menu to unlock it.",
   wrong: "That passcode is not right. Try again.",
+  throttled: "Too many wrong passcodes. Wait 15 minutes, then try again.",
   unset:
     "The reports cannot be opened yet. Ask the owner to set the reports passcode.",
 };
