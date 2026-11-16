@@ -1,5 +1,12 @@
 import { logger } from "@/lib/logger";
+import { readRawBody } from "@/lib/request-body";
 import { isValidSignature, safeEqual } from "@/lib/whatsapp/signature";
+
+/**
+ * Meta's own event batches are a few kilobytes. Anything far past this is not
+ * a real delivery, and it is refused before its bytes are buffered.
+ */
+const MAX_WEBHOOK_BYTES = 256 * 1024;
 
 /**
  * WhatsApp Cloud API webhook.
@@ -56,7 +63,14 @@ export async function POST(request: Request): Promise<Response> {
 
   // The exact bytes Meta signed. Parsing first and re-serialising would
   // change whitespace and key order, and the hash would never match.
-  const rawBody = await request.text();
+  const body = await readRawBody(request, MAX_WEBHOOK_BYTES);
+  if (!body.ok) {
+    logger.warn("WhatsApp webhook rejected: body too large", {
+      limitBytes: MAX_WEBHOOK_BYTES,
+    });
+    return new Response("Payload too large", { status: 413 });
+  }
+  const rawBody = body.text;
 
   const valid = isValidSignature({
     rawBody,

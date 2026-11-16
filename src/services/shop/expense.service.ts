@@ -51,10 +51,13 @@ export async function createExpense(payload: ExpensePayload): Promise<void> {
 export async function deleteExpense(id: string): Promise<void> {
   const { supabase } = await requireUser();
 
+  // Only live rows: re-deleting a hidden expense must not move its restore
+  // deadline forward.
   const { error } = await supabase
     .from("expenses")
     .update({ deleted_at: new Date().toISOString() })
-    .eq("id", id);
+    .eq("id", id)
+    .is("deleted_at", null);
 
   if (error) {
     throw new Error(describePostgresError(error, "delete the expense"));

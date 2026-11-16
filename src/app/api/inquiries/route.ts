@@ -21,6 +21,7 @@ export async function POST(request: Request): Promise<NextResponse<Body>> {
   const limit = rateLimit(`inquiry:${clientKey(request)}`);
 
   if (!limit.allowed) {
+    logger.warn("Inquiry throttled", { retryAfterSeconds: limit.retryAfter });
     return NextResponse.json(
       {
         success: false,

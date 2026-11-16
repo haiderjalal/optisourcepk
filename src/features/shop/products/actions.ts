@@ -299,6 +299,15 @@ export async function receivePowersAction(
   // from the batch field.
   const addPower = num("addPower");
   const batchCyl = num("cyl");
+
+  // `Number("abc")` is NaN, and NaN is written to the database as null: a typo
+  // would quietly file the stock under the wrong power. Refuse it instead.
+  const numericFields = [addPower, batchCyl, num("unitCost")];
+  if (
+    numericFields.some((value) => value !== null && !Number.isFinite(value))
+  ) {
+    return { error: "Powers and costs must be numbers. Check what you typed." };
+  }
   const supplierId = text("supplierId");
   const total = clean.reduce((sum, e) => sum + e.qty, 0);
 

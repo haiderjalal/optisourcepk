@@ -68,7 +68,7 @@ are in `src/app/globals.css`.
 - **Scroll reveals.** `Reveal`, `Stagger` and `StaggerItem` add the `.reveal`
   and `.stagger` classes. The motion comes from `animation-timeline: view()`.
   It applies only inside `@supports ((animation-timeline: view()) and
-  (animation-range: entry))` and `prefers-reduced-motion: no-preference`.
+(animation-range: entry))` and `prefers-reduced-motion: no-preference`.
   Browsers without support show the page static. Nothing is hidden in the
   markup, so there is no flash and no dependency on hydration.
 - **Reading progress.** A fixed bar in the site layout grows with
@@ -94,7 +94,13 @@ are in `src/app/globals.css`.
 
 `next.config.ts` sets `X-Frame-Options: DENY` and `frame-ancestors 'none'` on
 every route, so no page can be embedded in another site. It also sets HSTS,
-`nosniff`, a referrer policy and a permissions policy.
+`nosniff`, a referrer policy, a permissions policy, `X-Permitted-Cross-Domain-
+Policies: none` and `Cross-Origin-Opener-Policy: same-origin-allow-popups`.
+The header tests live in `tests/security-headers.test.ts`. See
+`docs/security-report.md` for the full pass.
+
+The development-only invoice preview at `/api/dev/invoice-preview` answers 404
+unless `NODE_ENV` is `development`, so it is never served on Vercel.
 
 A full `Content-Security-Policy` is deliberately not set. It needs a
 per-request nonce, and Next only applies a nonce when a page renders

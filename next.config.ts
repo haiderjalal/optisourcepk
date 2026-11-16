@@ -18,6 +18,11 @@ const securityHeaders = [
   },
   { key: "X-Frame-Options", value: "DENY" },
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  // No Flash or PDF-reader cross-domain policy file may widen access to this site.
+  { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+  // Another site cannot hold a handle to this window across a navigation. Same-
+  // origin popups keep working, so the back-office print preview is unaffected.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
   // HTTPS only for two years. No includeSubDomains: that would pin every
   // subdomain too, and this change should not reach beyond the site itself.
   { key: "Strict-Transport-Security", value: "max-age=63072000" },
