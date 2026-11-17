@@ -146,6 +146,8 @@ export function RxOrderForm({
   // The lens lines carry a lab status; any other line on the order is a stock item.
   const rxLines = lines.filter((line) => line.rx_status !== null);
   const first = rxLines[0];
+  // The patient is kept as typed, so a stock pair with no patient of its own can use it.
+  const [patient, setPatient] = useState(order?.patient_name ?? "");
   const [customerId, setCustomerId] = useState(
     order?.bill_to_customer_id ?? "",
   );
@@ -218,7 +220,10 @@ export function RxOrderForm({
 
   const stockProblem = firstStockProblem(stockRows, stockProducts);
   // Stock items are billed on the same invoice, at their own quantity and rate.
-  const payload = [...rxPayload, ...stockItemLines(stockRows, discountPct)];
+  const payload = [
+    ...rxPayload,
+    ...stockItemLines(stockRows, discountPct, patient),
+  ];
 
   function setEye(eye: EyeKey, patch: Partial<EyeDraft>) {
     setEyes((current) => ({
@@ -269,7 +274,8 @@ export function RxOrderForm({
                 {...p}
                 type="text"
                 maxLength={120}
-                defaultValue={order?.patient_name ?? ""}
+                value={patient}
+                onChange={(e) => setPatient(e.target.value)}
               />
             )}
           </Field>
@@ -624,6 +630,7 @@ export function RxOrderForm({
           onChange={setStockRows}
           stockProducts={stockProducts}
           fallbackDiscount={discountPct}
+          fallbackPatient={patient}
         />
       </section>
 

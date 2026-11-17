@@ -26,6 +26,18 @@ import { listLimit } from "@/lib/list-pagination";
 
 export const metadata: Metadata = { title: "RX orders" };
 
+/** The invoice a job sits on, as the RX list names it. */
+function invoiceCaption(job: RxJob): string {
+  if (job.voided) return "void";
+  if (!job.invoiceNo) return "not invoiced";
+  const state = job.billedEditing
+    ? " · editing"
+    : job.orderStatus === "delivered"
+      ? " · delivered"
+      : "";
+  return `Invoice ${job.invoiceNo}${state}`;
+}
+
 const MONTH_NAME = new Intl.DateTimeFormat("en-PK", {
   month: "long",
   year: "numeric",
@@ -317,13 +329,20 @@ export default async function RxOrdersPage({
                         >
                           {formatRxNo(job.rxNo)}
                         </Link>
-                        <span className="text-navy-400 block text-xs">
-                          {job.voided
-                            ? "void"
-                            : job.invoiceNo
-                              ? `Invoice ${job.invoiceNo}${job.billedEditing ? " · editing" : job.orderStatus === "delivered" ? " · delivered" : ""}`
-                              : "not invoiced"}
-                        </span>
+                        {job.billedIn !== null &&
+                        !job.voided &&
+                        job.invoiceNo !== null ? (
+                          <Link
+                            href={`/shop/orders/${job.billedIn}`}
+                            className="text-accent-700 block text-xs font-medium hover:underline"
+                          >
+                            {invoiceCaption(job)}
+                          </Link>
+                        ) : (
+                          <span className="text-navy-400 block text-xs">
+                            {invoiceCaption(job)}
+                          </span>
+                        )}
                         {job.labOrderNo && (
                           <span className="text-navy-400 block text-xs">
                             Lab {job.labOrderNo}

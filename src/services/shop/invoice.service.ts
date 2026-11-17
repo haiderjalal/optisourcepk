@@ -397,6 +397,8 @@ export async function replaceRxInvoiceStockLines(
       discount_pct: line.discountPct,
       quantity: line.quantity,
       stock_source: line.stockSource,
+      // The stock item is for this patient, printed above it on the invoice.
+      patient_name: line.patientName ?? null,
       // Daily items keep their purchase price for separate reporting.
       unit_cost: line.stockSource === "daily" ? line.unitCost : null,
     };
