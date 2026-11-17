@@ -66,6 +66,12 @@ export function RxInvoiceForm({
   );
   const problem =
     firstLensProblem(lensRows) ?? firstStockProblem(stockRows, stockProducts);
+  // A stock item with no patient of its own is for the first lens's patient.
+  const firstRxNo = lensRows.find((row) => row.rxNo !== null)?.rxNo;
+  const stockPatient =
+    firstRxNo === null || firstRxNo === undefined
+      ? ""
+      : (patients[firstRxNo] ?? "");
 
   return (
     <form action={formAction} className="space-y-5">
@@ -78,7 +84,7 @@ export function RxInvoiceForm({
       <input
         type="hidden"
         name="lines"
-        value={JSON.stringify(stockItemLines(stockRows, "0"))}
+        value={JSON.stringify(stockItemLines(stockRows, "0", stockPatient))}
       />
 
       <section className="shadow-lift rounded-2xl bg-white p-5 sm:p-6">
@@ -110,6 +116,7 @@ export function RxInvoiceForm({
           onChange={setStockRows}
           stockProducts={stockProducts}
           fallbackDiscount="0"
+          fallbackPatient={stockPatient}
         />
       </section>
 

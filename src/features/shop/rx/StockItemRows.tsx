@@ -18,6 +18,8 @@ import { lineAmount, lineCell } from "../orders/lineTable";
 export interface StockRowDraft {
   key: string;
   productId: string;
+  /** The patient this item is for. Blank means the order's patient. */
+  patient: string;
   stockSource: "normal" | "daily";
   eye: "" | "R" | "L";
   sph: string;
@@ -36,10 +38,14 @@ export interface StockRowDraft {
 export const cell =
   "border-mist-300 focus:border-accent-600 w-full rounded-md border bg-white px-2 py-1.5 text-center font-mono text-sm outline-none transition-colors";
 
-export function blankStockRow(eye: StockRowDraft["eye"] = ""): StockRowDraft {
+export function blankStockRow(
+  eye: StockRowDraft["eye"] = "",
+  patient = "",
+): StockRowDraft {
   return {
     key: crypto.randomUUID(),
     productId: "",
+    patient,
     stockSource: "normal",
     eye,
     sph: "",
@@ -61,6 +67,7 @@ export function stockRowsFrom(lines: OrderLine[]): StockRowDraft[] {
     .map((line) => ({
       key: line.id,
       productId: line.product_id ?? "",
+      patient: line.patient_name ?? "",
       stockSource: line.stock_source,
       eye: line.eye === "R" || line.eye === "L" ? line.eye : "",
       sph: text(line.sph),
@@ -109,10 +116,12 @@ export function firstStockProblem(
 export function stockItemLines(
   rows: StockRowDraft[],
   fallbackDiscount: string,
+  fallbackPatient: string,
 ) {
   return rows.map((row) => ({
     productId: row.productId,
     productName: "",
+    patientName: row.patient.trim() || fallbackPatient.trim(),
     orderRef: "",
     stockSource: row.stockSource,
     eye: row.eye,
@@ -145,12 +154,15 @@ export function StockItemRows({
   onChange,
   stockProducts,
   fallbackDiscount,
+  fallbackPatient,
 }: {
   rows: StockRowDraft[];
   onChange: (rows: StockRowDraft[]) => void;
   stockProducts: Product[];
   /** Shown as the blank discount, and used for a row left blank. */
   fallbackDiscount: string;
+  /** The order's patient: a stock item with no patient is for this one. */
+  fallbackPatient: string;
 }) {
   const stockById = useMemo(
     () => new Map(stockProducts.map((p) => [p.id, p])),
@@ -213,7 +225,11 @@ export function StockItemRows({
           variant="outline"
           size="sm"
           onClick={() =>
-            onChange([...rows, blankStockRow("R"), blankStockRow("L")])
+            onChange([
+              ...rows,
+              blankStockRow("R", fallbackPatient),
+              blankStockRow("L", fallbackPatient),
+            ])
           }
         >
           <Plus className="size-4" aria-hidden />
@@ -223,7 +239,9 @@ export function StockItemRows({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => onChange([...rows, blankStockRow()])}
+          onClick={() =>
+            onChange([...rows, blankStockRow("", fallbackPatient)])
+          }
         >
           <Plus className="size-4" aria-hidden />
           Add stock item
@@ -237,7 +255,7 @@ export function StockItemRows({
       ) : (
         <div className="mt-3 overflow-hidden rounded-xl border border-mist-200">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] text-sm">
+            <table className="w-full min-w-[1240px] text-sm">
               <caption className="sr-only">Stock items</caption>
               <thead>
                 <tr className="text-navy-500 bg-mist-100 text-left text-xs">
@@ -246,6 +264,9 @@ export function StockItemRows({
                   </th>
                   <th scope="col" className="px-3 py-2.5 font-medium">
                     Product
+                  </th>
+                  <th scope="col" className="w-36 px-2 py-2.5 font-medium">
+                    Patient
                   </th>
                   <th scope="col" className="w-28 px-2 py-2.5 font-medium">
                     Stock
@@ -314,6 +335,19 @@ export function StockItemRows({
                             </option>
                           ))}
                         </select>
+                      </td>
+                      <td className="px-2 py-2">
+                        <input
+                          aria-label={`Patient for ${item}`}
+                          className={lineCell}
+                          type="text"
+                          maxLength={120}
+                          placeholder={fallbackPatient || "Patient"}
+                          value={row.patient}
+                          onChange={(e) =>
+                            update(row.key, { patient: e.target.value })
+                          }
+                        />
                       </td>
                       <td className="px-2 py-2">
                         <select
