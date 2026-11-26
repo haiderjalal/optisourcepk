@@ -5,7 +5,13 @@ import { ArrowLeft } from "lucide-react";
 import { requireUser } from "@/server/shop/dal";
 import { getSupplier } from "@/services/shop/supplier.service";
 import { listPurchases } from "@/services/shop/purchase.service";
+import {
+  listInvoiceBalances,
+  listSupplierPayments,
+} from "@/services/shop/supplier-payment.service";
 import { SupplierForm } from "@/features/shop/suppliers/SupplierForm";
+import { SupplierPaymentForm } from "@/features/shop/suppliers/SupplierPaymentForm";
+import { SupplierPayments } from "@/features/shop/suppliers/SupplierPayments";
 import { PurchaseTable } from "@/features/shop/purchases/PurchaseTable";
 
 export const metadata: Metadata = { title: "Supplier" };
@@ -16,9 +22,11 @@ export default async function SupplierPage({
   await requireUser();
   const { id } = await params;
 
-  const [supplier, purchases] = await Promise.all([
+  const [supplier, purchases, invoices, payments] = await Promise.all([
     getSupplier(id),
     listPurchases({ supplierId: id }),
+    listInvoiceBalances(id),
+    listSupplierPayments(id),
   ]);
   if (!supplier) notFound();
 
@@ -50,6 +58,17 @@ export default async function SupplierPage({
           <PurchaseTable purchases={purchases} showSupplier={false} />
         </div>
       )}
+
+      <h2 className="mb-3 text-lg font-semibold">Payments</h2>
+      <p className="text-navy-500 mb-4 text-sm">
+        Money sent to {supplier.name}, each against one purchase invoice.
+      </p>
+      <div className="mb-4">
+        <SupplierPaymentForm supplierId={supplier.id} invoices={invoices} />
+      </div>
+      <div className="mb-8">
+        <SupplierPayments invoices={invoices} payments={payments} />
+      </div>
 
       <h2 className="mb-4 text-lg font-semibold">Details</h2>
       <SupplierForm supplier={supplier} />

@@ -5,14 +5,22 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/server/shop/dal";
 import { supplierSchema } from "@/lib/validations/shop/supplier";
+import { supplierPaymentSchema } from "@/lib/validations/shop/supplier-payment";
 import {
   createSupplier,
   updateSupplier,
 } from "@/services/shop/supplier.service";
+import { recordSupplierPayment } from "@/services/shop/supplier-payment.service";
 
 export interface SupplierFormState {
   error?: string;
   fieldErrors?: Record<string, string[]>;
+}
+
+export interface SupplierPaymentState {
+  error?: string;
+  fieldErrors?: Record<string, string[]>;
+  message?: string;
 }
 
 export async function saveSupplier(
@@ -52,4 +60,44 @@ export async function saveSupplier(
   revalidatePath("/shop/suppliers");
   if (isUpdate) revalidatePath(`/shop/suppliers/${id}`);
   redirect("/shop/suppliers");
+}
+
+/** Record money sent to a supplier against one of their purchase invoices. */
+export async function recordSupplierPaymentAction(
+  supplierId: string,
+  _previous: SupplierPaymentState,
+  formData: FormData,
+): Promise<SupplierPaymentState> {
+  await requireUser();
+
+  const parsed = supplierPaymentSchema.safeParse({
+    purchaseInvoiceId: formData.get("purchaseInvoiceId"),
+    amount: formData.get("amount"),
+    paymentDate: formData.get("paymentDate") ?? "",
+    method: formData.get("method"),
+    reference: formData.get("reference") ?? "",
+    memo: formData.get("memo") ?? "",
+  });
+
+  if (!parsed.success) {
+    return {
+      error: "Check the highlighted fields.",
+      fieldErrors: z.flattenError(parsed.error).fieldErrors as Record<
+        string,
+        string[]
+      >,
+    };
+  }
+
+  try {
+    await recordSupplierPayment(parsed.data);
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Could not record it.",
+    };
+  }
+
+  revalidatePath(`/shop/suppliers/${supplierId}`);
+  revalidatePath("/shop/suppliers");
+  return { message: "Payment recorded." };
 }
