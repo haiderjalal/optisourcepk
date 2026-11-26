@@ -233,9 +233,7 @@ export function StockItemRows({
           type="button"
           variant="outline"
           size="sm"
-          onClick={() =>
-            onChange([...rows, blankStockRow()])
-          }
+          onClick={() => onChange([...rows, blankStockRow()])}
         >
           <Plus className="size-4" aria-hidden />
           Add stock item
