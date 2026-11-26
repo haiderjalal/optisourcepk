@@ -38,14 +38,12 @@ export interface StockRowDraft {
 export const cell =
   "border-mist-300 focus:border-accent-600 w-full rounded-md border bg-white px-2 py-1.5 text-center font-mono text-sm outline-none transition-colors";
 
-export function blankStockRow(
-  eye: StockRowDraft["eye"] = "",
-  patient = "",
-): StockRowDraft {
+/** A new item starts with no patient: blank means the order's patient at save. */
+export function blankStockRow(eye: StockRowDraft["eye"] = ""): StockRowDraft {
   return {
     key: crypto.randomUUID(),
     productId: "",
-    patient,
+    patient: "",
     stockSource: "normal",
     eye,
     sph: "",
@@ -225,11 +223,7 @@ export function StockItemRows({
           variant="outline"
           size="sm"
           onClick={() =>
-            onChange([
-              ...rows,
-              blankStockRow("R", fallbackPatient),
-              blankStockRow("L", fallbackPatient),
-            ])
+            onChange([...rows, blankStockRow("R"), blankStockRow("L")])
           }
         >
           <Plus className="size-4" aria-hidden />
@@ -240,7 +234,7 @@ export function StockItemRows({
           variant="outline"
           size="sm"
           onClick={() =>
-            onChange([...rows, blankStockRow("", fallbackPatient)])
+            onChange([...rows, blankStockRow()])
           }
         >
           <Plus className="size-4" aria-hidden />
