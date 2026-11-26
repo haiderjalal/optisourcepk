@@ -239,6 +239,30 @@ type PurchaseInvoiceTotalsRow = {
   total_amount: number;
 };
 
+/** What is owed on each purchase invoice: its total, what was paid, the rest. */
+type PurchaseInvoiceBalanceRow = {
+  id: string;
+  supplier_id: string;
+  supplier_name: string;
+  invoice_no: string;
+  invoice_date: string;
+  total_amount: number;
+  paid_amount: number;
+  balance: number;
+};
+
+type SupplierPaymentRow = {
+  id: string;
+  supplier_id: string;
+  purchase_invoice_id: string;
+  amount: number;
+  payment_date: string;
+  payment_method: PaymentMethod;
+  reference: string | null;
+  memo: string | null;
+  created_at: string;
+};
+
 type OrderRow = {
   id: string;
   order_no: number;
@@ -553,6 +577,7 @@ export interface Database {
       sales_return_lines: Table<SalesReturnLineRow>;
       purchase_invoices: Table<PurchaseInvoiceRow>;
       purchase_invoice_lines: Table<PurchaseInvoiceLineRow>;
+      supplier_payments: Table<SupplierPaymentRow>;
       trash: Table<TrashRow>;
     };
     Views: {
@@ -560,6 +585,7 @@ export interface Database {
       customer_balances: View<CustomerBalanceRow>;
       low_stock: View<LowStockRow>;
       purchase_invoice_totals: View<PurchaseInvoiceTotalsRow>;
+      purchase_invoice_balances: View<PurchaseInvoiceBalanceRow>;
       rx_monthly: View<RxMonthlyRow>;
       sales_by_channel_monthly: View<SalesChannelMonthlyRow>;
       sales_returns_monthly: View<SalesReturnsMonthlyRow>;
@@ -737,6 +763,17 @@ export interface Database {
         };
         Returns: string;
       };
+      record_supplier_payment: {
+        Args: {
+          p_purchase_invoice_id: string;
+          p_amount: number;
+          p_payment_date: string | null;
+          p_method: PaymentMethod;
+          p_reference: string | null;
+          p_memo: string | null;
+        };
+        Returns: string;
+      };
       update_purchase: {
         Args: {
           p_purchase_id: string;
@@ -781,6 +818,8 @@ export type SalesReturnLine = SalesReturnLineRow;
 export type PurchaseInvoice = PurchaseInvoiceRow;
 export type PurchaseInvoiceLine = PurchaseInvoiceLineRow;
 export type PurchaseInvoiceSummary = PurchaseInvoiceTotalsRow;
+export type PurchaseInvoiceBalance = PurchaseInvoiceBalanceRow;
+export type SupplierPayment = SupplierPaymentRow;
 export type RxMonth = RxMonthlyRow;
 export type TrashItem = TrashRow;
 export type BusinessTotals = BusinessTotalsRow;
