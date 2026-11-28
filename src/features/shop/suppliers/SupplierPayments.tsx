@@ -69,11 +69,14 @@ export function SupplierPayments({
                   <th scope="col" className="px-4 py-3 font-medium">
                     Date
                   </th>
-                  <th
-                    scope="col"
-                    className="hidden px-4 py-3 font-medium sm:table-cell"
-                  >
+                  <th scope="col" className="px-4 py-3 font-medium">
                     Paid by
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Reference
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Note
                   </th>
                   <th scope="col" className="px-4 py-3 text-right font-medium">
                     Amount (Rs)
@@ -83,15 +86,16 @@ export function SupplierPayments({
               <tbody>
                 {payments.map((payment) => (
                   <tr key={payment.id} className="border-t border-mist-200">
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {formatDate(payment.payment_date)}
                     </td>
-                    <td className="hidden px-4 py-3 sm:table-cell">
+                    <td className="px-4 py-3">
                       {methodLabel.get(payment.payment_method) ??
                         payment.payment_method}
-                      {payment.reference ? ` · ${payment.reference}` : ""}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
+                    <td className="px-4 py-3">{payment.reference ?? "—"}</td>
+                    <td className="px-4 py-3">{payment.memo ?? "—"}</td>
+                    <td className="px-4 py-3 text-right font-medium tabular-nums">
                       {formatAmount(payment.amount)}
                     </td>
                   </tr>
