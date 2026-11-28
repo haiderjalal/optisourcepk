@@ -5,7 +5,7 @@ import {
   summariseReturns,
   type ReturnSummary,
 } from "@/features/shop/returns/summary";
-import { patientHeads } from "@/features/shop/invoice/patients";
+import { patientLabels } from "@/features/shop/invoice/patients";
 
 /**
  * What the invoice document draws.
@@ -23,7 +23,7 @@ export interface InvoicePdfParty {
 export interface InvoicePdfLine {
   no: number;
   orderRef: string;
-  /** Set on the first line of a pair that has a patient name; printed above it. */
+  /** Set on a line that has a patient name printed above it. */
   patient?: string;
   product: string;
   sph: string;
@@ -143,7 +143,7 @@ export function buildInvoicePdfModel(
   const net = order.net_amount;
   // Pairs are read from the lines still on the document, so a returned eye
   // leaves its partner standing alone with its own name.
-  const patients = patientHeads(kept, ({ line }) => ({
+  const patients = patientLabels(kept, ({ line }) => ({
     eye: line.eye,
     patient: line.patient_name,
   }));
