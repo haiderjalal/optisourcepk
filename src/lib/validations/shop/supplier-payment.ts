@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 /**
- * Money sent to a supplier, against one purchase invoice. The database refuses
- * an amount above what the invoice still owes; this checks the shape of the
- * input and gives the message the form shows.
+ * Money sent to a supplier's account. The database refuses an amount above what
+ * is owed to them; this checks the shape of the input and gives the message the
+ * form shows.
  */
 
 const methods = [
@@ -16,7 +16,6 @@ const methods = [
 ] as const;
 
 export const supplierPaymentSchema = z.object({
-  purchaseInvoiceId: z.uuid({ error: "Pick the purchase invoice this pays." }),
   amount: z.coerce
     .number({ error: "Enter the amount sent." })
     .positive("A payment must be more than zero.")

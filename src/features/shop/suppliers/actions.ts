@@ -71,7 +71,6 @@ export async function recordSupplierPaymentAction(
   await requireUser();
 
   const parsed = supplierPaymentSchema.safeParse({
-    purchaseInvoiceId: formData.get("purchaseInvoiceId"),
     amount: formData.get("amount"),
     paymentDate: formData.get("paymentDate") ?? "",
     method: formData.get("method"),
@@ -90,7 +89,7 @@ export async function recordSupplierPaymentAction(
   }
 
   try {
-    await recordSupplierPayment(parsed.data);
+    await recordSupplierPayment(supplierId, parsed.data);
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Could not record it.",

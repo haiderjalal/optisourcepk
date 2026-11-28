@@ -6,7 +6,7 @@ import { requireUser } from "@/server/shop/dal";
 import { getSupplier } from "@/services/shop/supplier.service";
 import { listPurchases } from "@/services/shop/purchase.service";
 import {
-  listInvoiceBalances,
+  getSupplierBalance,
   listSupplierPayments,
 } from "@/services/shop/supplier-payment.service";
 import { SupplierForm } from "@/features/shop/suppliers/SupplierForm";
@@ -22,10 +22,10 @@ export default async function SupplierPage({
   await requireUser();
   const { id } = await params;
 
-  const [supplier, purchases, invoices, payments] = await Promise.all([
+  const [supplier, purchases, balance, payments] = await Promise.all([
     getSupplier(id),
     listPurchases({ supplierId: id }),
-    listInvoiceBalances(id),
+    getSupplierBalance(id),
     listSupplierPayments(id),
   ]);
   if (!supplier) notFound();
@@ -64,10 +64,13 @@ export default async function SupplierPage({
         Money sent to {supplier.name}, each against one purchase invoice.
       </p>
       <div className="mb-4">
-        <SupplierPaymentForm supplierId={supplier.id} invoices={invoices} />
+        <SupplierPaymentForm
+          supplierId={supplier.id}
+          owed={balance?.owed ?? 0}
+        />
       </div>
       <div className="mb-8">
-        <SupplierPayments invoices={invoices} payments={payments} />
+        <SupplierPayments balance={balance} payments={payments} />
       </div>
 
       <h2 className="mb-4 text-lg font-semibold">Details</h2>

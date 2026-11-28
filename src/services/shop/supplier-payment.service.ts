@@ -3,24 +3,25 @@ import "server-only";
 import { requireUser } from "@/server/shop/dal";
 import { logger } from "@/lib/logger";
 import type { SupplierPaymentPayload } from "@/lib/validations/shop/supplier-payment";
-import type { PurchaseInvoiceBalance, SupplierPayment } from "@/types/database";
+import type { SupplierBalance, SupplierPayment } from "@/types/database";
 import { describePostgresError } from "./errors";
 
-/** Money sent to suppliers, each payment against one purchase invoice. */
+/** Money sent to a supplier's account, and what is still owed to them. */
 
 function optional(value: string | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
 }
 
-/** Records a payment; the database refuses more than the invoice still owes. */
+/** Records a payment; the database refuses more than the supplier is owed. */
 export async function recordSupplierPayment(
+  supplierId: string,
   payload: SupplierPaymentPayload,
 ): Promise<string> {
   const { supabase } = await requireUser();
 
   const { data, error } = await supabase.rpc("record_supplier_payment", {
-    p_purchase_invoice_id: payload.purchaseInvoiceId,
+    p_supplier_id: supplierId,
     p_amount: payload.amount,
     p_payment_date: optional(payload.paymentDate),
     p_method: payload.method,
@@ -32,29 +33,26 @@ export async function recordSupplierPayment(
     throw new Error(describePostgresError(error, "record the payment"));
   }
 
-  logger.info("Supplier payment recorded", {
-    paymentId: data,
-    purchaseInvoiceId: payload.purchaseInvoiceId,
-  });
+  logger.info("Supplier payment recorded", { paymentId: data, supplierId });
   return data;
 }
 
-/** Every purchase invoice of a supplier, with what was paid and what is owed. */
-export async function listInvoiceBalances(
+/** What the supplier's bills add up to: bought, paid, and still owed. */
+export async function getSupplierBalance(
   supplierId: string,
-): Promise<PurchaseInvoiceBalance[]> {
+): Promise<SupplierBalance | null> {
   const { supabase } = await requireUser();
 
   const { data, error } = await supabase
-    .from("purchase_invoice_balances")
+    .from("supplier_balances")
     .select("*")
     .eq("supplier_id", supplierId)
-    .order("invoice_date", { ascending: false });
+    .maybeSingle();
 
   if (error) {
-    throw new Error(describePostgresError(error, "load the invoices"));
+    throw new Error(describePostgresError(error, "load the balance"));
   }
-  return data ?? [];
+  return data;
 }
 
 /** The payments sent to a supplier, newest first. */
