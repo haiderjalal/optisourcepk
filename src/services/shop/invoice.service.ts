@@ -259,12 +259,13 @@ async function replaceLines(
     return {
       order_id: orderId,
       line_no: index + 1,
-      // On an RX order the patient's name is the reference, so it prints on
-      // the invoice against each lens.
+      // A lens on an RX order takes the patient's name as its reference, so it
+      // prints on the invoice against each lens. A stock item on the same order
+      // is not a lens and keeps only its own reference, not the RX patient's.
       order_ref:
         optional(line.orderRef) ??
         optional(payload.externalOrderRef) ??
-        (payload.isRx ? optional(payload.patientName) : null),
+        (rx ? optional(payload.patientName) : null),
       // Only written when given, so a stock order with no patient still saves
       // on a database that has not had this column yet.
       ...(line.patientName ? { patient_name: line.patientName } : {}),
