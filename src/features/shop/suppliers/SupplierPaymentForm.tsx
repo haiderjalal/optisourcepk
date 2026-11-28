@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { formatAmount, todayInKarachi } from "@/lib/format";
 import { PAYMENT_METHODS } from "@/lib/validations/shop/payment";
-import type { PurchaseInvoiceBalance } from "@/types/database";
 import {
   recordSupplierPaymentAction,
   type SupplierPaymentState,
@@ -24,34 +23,27 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
 }
 
 /**
- * Record money sent to a supplier against one of their purchase invoices.
- * Only invoices that still owe money are offered; the database refuses any
- * amount above what an invoice owes.
+ * Record money sent to a supplier's account. The database refuses any amount
+ * above what is owed to them.
  */
 export function SupplierPaymentForm({
   supplierId,
-  invoices,
+  owed,
 }: {
   supplierId: string;
-  invoices: PurchaseInvoiceBalance[];
+  owed: number;
 }) {
   const [state, formAction] = useActionState<SupplierPaymentState, FormData>(
     recordSupplierPaymentAction.bind(null, supplierId),
     {},
   );
-
-  const owing = invoices.filter((invoice) => invoice.balance > 0);
-  const [invoiceId, setInvoiceId] = useState(owing[0]?.id ?? "");
   const [amount, setAmount] = useState("");
-
-  // A fully paid invoice drops out of the list, so fall back to the first one.
-  const invoice = owing.find((item) => item.id === invoiceId) ?? owing[0];
   const paid = Number(amount) || 0;
 
-  if (!invoice) {
+  if (owed <= 0) {
     return (
       <p className="text-navy-500 text-sm">
-        Every purchase invoice from this supplier is paid.
+        Nothing is owed to this supplier right now.
       </p>
     );
   }
@@ -60,33 +52,10 @@ export function SupplierPaymentForm({
     <form action={formAction} className="shadow-lift rounded-2xl bg-white p-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
-          name="purchaseInvoiceId"
-          label="Purchase invoice"
-          required
-          className="sm:col-span-2"
-          errors={state.fieldErrors?.purchaseInvoiceId}
-        >
-          {(p) => (
-            <select
-              {...p}
-              value={invoice.id}
-              onChange={(e) => setInvoiceId(e.target.value)}
-            >
-              {owing.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.invoice_no} · {item.invoice_date} · owes Rs{" "}
-                  {formatAmount(item.balance)}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
-
-        <Field
           name="amount"
           label="Amount sent (Rs)"
           required
-          hint={`At most Rs ${formatAmount(invoice.balance)}`}
+          hint={`At most Rs ${formatAmount(owed)}`}
           errors={state.fieldErrors?.amount}
         >
           {(p) => (
@@ -146,9 +115,9 @@ export function SupplierPaymentForm({
       {paid > 0 && (
         <dl className="mt-4 flex flex-wrap gap-x-8 gap-y-2 rounded-lg bg-mist-50 p-4 text-sm">
           <div>
-            <dt className="text-navy-500 text-xs">Owed on this invoice</dt>
+            <dt className="text-navy-500 text-xs">Owed now</dt>
             <dd className="font-medium tabular-nums">
-              Rs {formatAmount(invoice.balance)}
+              Rs {formatAmount(owed)}
             </dd>
           </div>
           <div>
@@ -160,7 +129,7 @@ export function SupplierPaymentForm({
           <div>
             <dt className="text-navy-500 text-xs">Still owed after</dt>
             <dd className="font-semibold tabular-nums">
-              Rs {formatAmount(invoice.balance - paid)}
+              Rs {formatAmount(owed - paid)}
             </dd>
           </div>
         </dl>

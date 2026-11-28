@@ -1,85 +1,58 @@
 import { formatAmount, formatDate } from "@/lib/format";
 import { PAYMENT_METHODS } from "@/lib/validations/shop/payment";
-import type { PurchaseInvoiceBalance, SupplierPayment } from "@/types/database";
+import type { SupplierBalance, SupplierPayment } from "@/types/database";
 
 /**
- * What is owed on each purchase invoice, and the payments sent to the supplier.
- * Rendered on the server; the form that records a payment sits beside it.
+ * The supplier's account as one bill: everything bought, everything paid, and
+ * what is still owed, then the payments sent. Rendered on the server; the form
+ * that records a payment sits beside it.
  */
 export function SupplierPayments({
-  invoices,
+  balance,
   payments,
 }: {
-  invoices: PurchaseInvoiceBalance[];
+  balance: SupplierBalance | null;
   payments: SupplierPayment[];
 }) {
-  const invoiceNoById = new Map(
-    invoices.map((invoice) => [invoice.id, invoice.invoice_no]),
-  );
   const methodLabel = new Map(PAYMENT_METHODS.map((m) => [m.value, m.label]));
+  const bought = balance?.total_bought ?? 0;
+  const paid = balance?.total_paid ?? 0;
+  const owed = balance?.owed ?? 0;
 
-  if (invoices.length === 0) {
+  if (bought === 0 && payments.length === 0) {
     return (
       <p className="text-navy-500 text-sm">
-        Record a purchase first. Payments are made against purchase invoices.
+        Record a purchase first. Payments are made against what was bought.
       </p>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="shadow-lift overflow-x-auto rounded-2xl bg-white">
-        <table className="w-full text-sm">
-          <caption className="sr-only">
-            Amount owed per purchase invoice
-          </caption>
-          <thead>
-            <tr className="text-navy-500 bg-mist-100 text-left">
-              <th scope="col" className="px-4 py-3 font-medium">
-                Invoice
-              </th>
-              <th
-                scope="col"
-                className="hidden px-4 py-3 font-medium sm:table-cell"
-              >
-                Date
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-medium">
-                Total (Rs)
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-medium">
-                Paid (Rs)
-              </th>
-              <th scope="col" className="px-4 py-3 text-right font-medium">
-                Owed (Rs)
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoices.map((invoice) => (
-              <tr key={invoice.id} className="border-t border-mist-200">
-                <td className="px-4 py-3 font-medium">{invoice.invoice_no}</td>
-                <td className="hidden px-4 py-3 sm:table-cell">
-                  {formatDate(invoice.invoice_date)}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatAmount(invoice.total_amount)}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums">
-                  {formatAmount(invoice.paid_amount)}
-                </td>
-                <td
-                  className={`px-4 py-3 text-right font-semibold tabular-nums ${
-                    invoice.balance > 0 ? "text-amber-700" : "text-navy-500"
-                  }`}
-                >
-                  {formatAmount(invoice.balance)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <dl className="shadow-lift grid gap-4 rounded-2xl bg-white p-5 sm:grid-cols-3">
+        <div>
+          <dt className="text-navy-500 text-xs">Total bought</dt>
+          <dd className="mt-1 text-lg font-semibold tabular-nums">
+            Rs {formatAmount(bought)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-navy-500 text-xs">Paid</dt>
+          <dd className="mt-1 text-lg font-semibold tabular-nums">
+            Rs {formatAmount(paid)}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-navy-500 text-xs">Owed</dt>
+          <dd
+            className={`mt-1 text-lg font-semibold tabular-nums ${
+              owed > 0 ? "text-amber-700" : "text-navy-500"
+            }`}
+          >
+            Rs {formatAmount(owed)}
+          </dd>
+        </div>
+      </dl>
 
       <div>
         <h3 className="mb-3 text-base font-semibold">Payments sent</h3>
@@ -95,9 +68,6 @@ export function SupplierPayments({
                 <tr className="text-navy-500 bg-mist-100 text-left">
                   <th scope="col" className="px-4 py-3 font-medium">
                     Date
-                  </th>
-                  <th scope="col" className="px-4 py-3 font-medium">
-                    Invoice
                   </th>
                   <th
                     scope="col"
@@ -115,9 +85,6 @@ export function SupplierPayments({
                   <tr key={payment.id} className="border-t border-mist-200">
                     <td className="px-4 py-3">
                       {formatDate(payment.payment_date)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {invoiceNoById.get(payment.purchase_invoice_id) ?? "—"}
                     </td>
                     <td className="hidden px-4 py-3 sm:table-cell">
                       {methodLabel.get(payment.payment_method) ??
