@@ -44,6 +44,9 @@ export function PurchaseTable({
             <th scope="col" className="px-4 py-3 text-right font-medium">
               Amount (Rs)
             </th>
+            <th scope="col" className="px-4 py-3 text-right font-medium">
+              Deducted (Rs)
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -76,6 +79,9 @@ export function PurchaseTable({
               </td>
               <td className="px-4 py-3 text-right font-medium tabular-nums">
                 {formatAmount(purchase.total_amount)}
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums">
+                {formatAmount(purchase.paid_amount)}
               </td>
             </tr>
           ))}
