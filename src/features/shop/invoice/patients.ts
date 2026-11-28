@@ -61,6 +61,33 @@ export function patientHeads<T>(
   return heads;
 }
 
+/**
+ * The patient name to print above each line that carries one. A lens pair (or
+ * lone eye) is headed by its name once, above its first line. Any other line,
+ * a stock item, has no heading of its own, so its name is printed wherever it
+ * changes from the line above; otherwise every item after the first would read
+ * as belonging to that first name. Pair members and unnamed lines get none.
+ */
+export function patientLabels<T>(
+  lines: readonly T[],
+  read: (line: T) => PairRead,
+): Map<T, string> {
+  const labels = new Map<T, string>();
+  let previous = "";
+  for (const group of patientGroups(lines, read)) {
+    const [first] = group;
+    const { eye, patient } = read(first);
+    const name = cleanPatient(patient);
+    if (eye === "R" || eye === "L") {
+      if (name) labels.set(first, name);
+    } else if (name && name !== previous) {
+      labels.set(first, name);
+    }
+    previous = name;
+  }
+  return labels;
+}
+
 /** One pair (or a lone lens line): its lines and the patient they share. */
 export interface PatientBlock<T> {
   members: T[];

@@ -37,7 +37,10 @@ import {
 import { ReturnItemsPanel } from "@/features/shop/returns/ReturnItemsPanel";
 import { ReturnsList } from "@/features/shop/returns/ReturnsList";
 import { summariseReturns } from "@/features/shop/returns/summary";
-import { cleanPatient, patientBlocks } from "@/features/shop/invoice/patients";
+import {
+  patientBlocks,
+  patientLabels as patientLabelsFor,
+} from "@/features/shop/invoice/patients";
 import { PairPatientForm } from "@/features/shop/orders/PairPatientForm";
 import {
   formatAmount,
@@ -120,21 +123,11 @@ export default async function OrderPage({
     eye: line.eye,
     patient: line.patient_name,
   }));
-  // A line that is not a lens pair's head has no heading of its own, so a stock
-  // item's name is labelled wherever it changes from the line above. Otherwise
-  // every item after the first would read as belonging to that first name.
-  const patientLabels = new Map<(typeof order.lines)[number], string>();
-  let previousPatient = "";
-  for (const line of order.lines) {
-    const block = blocks.get(line);
-    if (block) {
-      previousPatient = block.patient;
-      continue;
-    }
-    const name = cleanPatient(line.patient_name);
-    if (name && name !== previousPatient) patientLabels.set(line, name);
-    previousPatient = name;
-  }
+  // The name shown on a stock item (no heading of its own) wherever it changes.
+  const patientLabels = patientLabelsFor(order.lines, (line) => ({
+    eye: line.eye,
+    patient: line.patient_name,
+  }));
   const patientsEditable =
     !order.is_rx && !order.combines_rx && !billed && !voided;
   // One sticker per lens line of an RX job: the R and L of a pair, headed by
@@ -420,7 +413,7 @@ export default async function OrderPage({
                         </td>
                       </tr>
                     )}
-                    {patientLabels.has(line) && (
+                    {!block && patientLabels.has(line) && (
                       <tr className="border-t border-mist-200 bg-mist-100/50">
                         <td
                           colSpan={showStockSource ? 12 : 11}
