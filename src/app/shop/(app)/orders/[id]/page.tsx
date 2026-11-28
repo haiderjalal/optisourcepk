@@ -37,7 +37,7 @@ import {
 import { ReturnItemsPanel } from "@/features/shop/returns/ReturnItemsPanel";
 import { ReturnsList } from "@/features/shop/returns/ReturnsList";
 import { summariseReturns } from "@/features/shop/returns/summary";
-import { patientBlocks } from "@/features/shop/invoice/patients";
+import { cleanPatient, patientBlocks } from "@/features/shop/invoice/patients";
 import { PairPatientForm } from "@/features/shop/orders/PairPatientForm";
 import {
   formatAmount,
@@ -120,6 +120,21 @@ export default async function OrderPage({
     eye: line.eye,
     patient: line.patient_name,
   }));
+  // A line that is not a lens pair's head has no heading of its own, so a stock
+  // item's name is labelled wherever it changes from the line above. Otherwise
+  // every item after the first would read as belonging to that first name.
+  const patientLabels = new Map<(typeof order.lines)[number], string>();
+  let previousPatient = "";
+  for (const line of order.lines) {
+    const block = blocks.get(line);
+    if (block) {
+      previousPatient = block.patient;
+      continue;
+    }
+    const name = cleanPatient(line.patient_name);
+    if (name && name !== previousPatient) patientLabels.set(line, name);
+    previousPatient = name;
+  }
   const patientsEditable =
     !order.is_rx && !order.combines_rx && !billed && !voided;
   // One sticker per lens line of an RX job: the R and L of a pair, headed by
@@ -402,6 +417,19 @@ export default async function OrderPage({
                               </span>
                             </>
                           )}
+                        </td>
+                      </tr>
+                    )}
+                    {patientLabels.has(line) && (
+                      <tr className="border-t border-mist-200 bg-mist-100/50">
+                        <td
+                          colSpan={showStockSource ? 12 : 11}
+                          className="px-3 py-2 text-xs"
+                        >
+                          <span className="text-navy-500 mr-2">Patient</span>
+                          <span className="text-navy-800 font-medium">
+                            {patientLabels.get(line)}
+                          </span>
                         </td>
                       </tr>
                     )}
