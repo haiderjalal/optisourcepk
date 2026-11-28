@@ -237,6 +237,8 @@ type PurchaseInvoiceTotalsRow = {
   line_count: number;
   total_qty: number;
   total_amount: number;
+  /** The part of this bill settled by payments to the supplier, oldest bill first. */
+  paid_amount: number;
 };
 
 /** A supplier's account as one bill: everything bought, paid, and still owed. */
